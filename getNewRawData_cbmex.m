@@ -1,6 +1,11 @@
 function newContData = getNewRawData_cbmex(chsel)
 
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
+
+if isempty(continuousData)
+    error('No continuous data; ensure that data acquisition has been enabled.')
+end
+
 chnum = [continuousData{:,1}]';
 fs = [continuousData{:,2}]';
 chname = spikeEvents(:,1);
