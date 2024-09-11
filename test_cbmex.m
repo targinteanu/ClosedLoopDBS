@@ -1,5 +1,5 @@
 dT = .01; % s between data requests 
-N = 100; % # of data samples to obtain 
+N = round(5/dT); % # of data samples to obtain 
 channelIndex = 1;
 
 connect_cbmex(); 

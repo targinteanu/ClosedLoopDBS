@@ -5,6 +5,7 @@ if N <= height(newData)
     if N >= height(oldBuffer)
         newBuffer = newData(end-height(oldBuffer)+1:end, :);
         newBuffer.Properties.VariableUnits = oldBuffer.Properties.VariableUnits;
+        newBuffer.Properties.UserData = oldBuffer.Properties.UserData;
     else
         % buffer AND overwrite 
         L = height(newData)-N; % length to overwrite

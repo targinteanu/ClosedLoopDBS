@@ -24,6 +24,10 @@ for ch = 1:length(chsel)
             'StartTime', seconds(time - (bufferSize-1)/fs(chInd)) + initTime, ... % start time is not correct
             'VariableNames', chname(chInd)); 
 
+        % User Data 
+        ud.SampleRate = fs(chInd);
+        contData{ch}.Properties.UserData = ud;
+
         % check units 
         config = cbmex('config', chInd);
         unitname_is = lower(config{11,1});
