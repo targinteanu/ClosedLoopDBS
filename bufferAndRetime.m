@@ -1,4 +1,5 @@
-function [newBuffer, newTail] = bufferAndRetime(oldBuffer, oldTail, newData, bufferFunc)
+function [newBuffer, newTail, newAll] = ...
+    bufferAndRetime(oldBuffer, oldTail, newData, bufferFunc)
 % Assume start time of newData is ground truth. Retime oldTail if
 % necessary. 
 
@@ -20,5 +21,8 @@ end
 
 newBuffer = bufferFunc(oldBuffer, oldTail); 
 newTail = newData; 
+newAll = [newBuffer; newTail]; 
+newAll = retime(newAll,'regular','nearest',...
+    'SampleRate',newAll.Properties.UserData.SampleRate);
 
 end
