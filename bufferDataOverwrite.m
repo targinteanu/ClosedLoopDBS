@@ -1,6 +1,7 @@
 function newBuffer = bufferDataOverwrite(oldBuffer, newData, N)
-
+% Allow the tail end of the old buffer to be overwritten by new data. 
 % N = # of points of data that is actually new 
+
 if N <= height(newData)
     if N >= height(oldBuffer)
         newBuffer = newData(end-height(oldBuffer)+1:end, :);

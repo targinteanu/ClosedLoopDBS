@@ -21,7 +21,7 @@ end
 
 newBuffer = bufferFunc(oldBuffer, oldTail); 
 newTail = newData; 
-newAll = [newBuffer; newTail]; 
+newAll = bufferFunc(newBuffer, newTail); 
 newAll = retime(newAll,'regular','nearest',...
     'SampleRate',newAll.Properties.UserData.SampleRate);
 
