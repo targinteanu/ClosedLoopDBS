@@ -1,9 +1,9 @@
-function TTfilt = FilterTimetable(FiltObj, TTunfilt, FiltFun)
+function [TTfilt, filtCond] = FilterTimetable(FiltObj, TTunfilt, FiltCond, FiltFun)
 %
 % Filter time-series data in a timetable 
 %
 % Inputs: 
-%   FiltFun: function [e.g. @(d,x) filtfilt(d,x)] of form 
+%   FiltFun: function [e.g. [xFilt, filtCond] = @(b,1,x) filtfilt(b,1,x)] of form 
 %            FilteredSignal = FiltFun(FiltObj, UnfilteredSignal) 
 %            where FilteredSignal and UnfilteredSignal are matrix/vector 
 %            columns over time.
@@ -18,7 +18,7 @@ if nargin < 3
     FiltFun = [];
 end
 if isempty(FiltFun)
-    FiltFun = @(d,x) filter(d,x);
+    FiltFun = @filter;
 end
 
 %% sample rate check
@@ -32,7 +32,7 @@ end
 
 %% filtering 
 Xunfilt = table2array(TTunfilt);
-Xfilt = FiltFun(FiltObj, Xunfilt);
+[Xfilt,filtCond] = FiltFun(FiltObj, 1, Xunfilt, FiltCond);
 TTfilt = array2timetable(Xfilt,"RowTimes",Time_Signal,...
     "VariableNames",TTunfilt.Properties.VariableNames); 
 TTfilt.Properties.VariableUnits = TTunfilt.Properties.VariableUnits;
