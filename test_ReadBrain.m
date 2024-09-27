@@ -27,10 +27,36 @@ pause(dT);
 
 [rawH, rawT, rawB] = initRawData_cbmex([], buffSize, t0);
 fltH = initFilteredData(rawH, repmat(IndShiftFIR, size(rawH))); 
-forH = initForecastData(fltH, PDSwin);
+[forH, forT, forB] = initForecastData(fltH, PDSwin);
 
 rawN = cellfun(@(T) T.Properties.VariableNames{1}, rawH, 'UniformOutput',false);
 rawD = [rawN; rawH; rawT; rawB]; 
+forD = [rawN; forH; forT; forB];
+
+fltT = cellfun(@(T) 0.*T, rawT, 'UniformOutput',false);
+fltB = cellfun(@(T) 0.*T, rawB, 'UniformOutput',false);
+fltD = [rawN; fltH; fltT; fltB];
+
+foreArgs.k = PDSwin;
+fIC = zeros(IndShiftFIR,1); fIC = repmat(fIC, rize(rawH)); 
+filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
+
+fig = figure; 
+
+%% loop 
+while isvalid(fig)
+    [...
+    timeBuffs, rawD, ...
+    ~, ~, ...
+    fltD, filtArgs, ...
+    forBuffs, forD, foreArgs] = ...
+    iterReadBrain(...
+        timeBuffs, rawD, daqFun, ...
+        selRaw2Flt, selRaw2For, selFlt2For, ...
+        [], [], [], [], ...
+        fltD, filtFun, filtArgs, ...
+        forBuffs, forD, foreFun, foreArgs);
+end
 
 %% function def 
 
@@ -51,4 +77,15 @@ for ch = 1:size(inData,2)
     foreTails{ch} = mySimpleForecast(inData{ch}, k);
     foreBuffsAdd = [rand,rand]*2 + foreTails{ch}.StartTime; % replace with time of peak, trough
 end
+end
+
+function [fltTails, fltArgs] = filtFun(fltArgs, rawTails)
+filtObj = fltArgs.fltObj;
+filtInit = fltArgs.fltInit;
+filtFin = cell(size(filtInit));
+fltTails = cell(size(rawTails));
+for ch = 1:size(rawTails,2)
+    [fltTails{ch},filtFin{ch}] = FilterTimetable(filtObj,rawTails{ch},filtInit{ch});
+end
+fltArgs.fltInit = filtFin;
 end
