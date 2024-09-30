@@ -12,6 +12,11 @@ chname = spikeEvents(:,1);
 chname = chname(chnum);
 newContDataRaw = continuousData(:,3); 
 
+if isempty(chsel)
+    % select all channels
+    chsel = chnum;
+end
+
 newContData = cell(length(chsel),1);
 for ch = 1:length(chsel)
     chInd = find(chnum == chsel(ch)); 

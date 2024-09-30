@@ -8,6 +8,15 @@ function emptyData = initFilteredData(rawData, filtShift)
 %   correctly-sized buffers of zero data as timetables 
 % 
 
+if length(filtShift) < length(rawData)
+    if length(filtShift) == 1
+        % assume the one input applies to all channels. 
+        filtShift = repmat(filtShift, size(rawData));
+    else
+        error('Incompatible input dimensions.')
+    end
+end
+
 emptyData = cell(size(rawData));
 
 for ch = 1:length(rawData)
