@@ -3,7 +3,7 @@ function [TTfilt, filtCond] = FilterTimetable(FiltObj, TTunfilt, FiltCond, FiltF
 % Filter time-series data in a timetable 
 %
 % Inputs: 
-%   FiltFun: function [e.g. [xFilt, filtCond] = @(b,1,x) filtfilt(b,1,x)] of form 
+%   FiltFun: function [e.g. [xFilt, filtCond] = @(b,x) filtfilt(b,x)] of form 
 %            FilteredSignal = FiltFun(FiltObj, UnfilteredSignal) 
 %            where FilteredSignal and UnfilteredSignal are matrix/vector 
 %            columns over time.
@@ -15,9 +15,6 @@ function [TTfilt, filtCond] = FilterTimetable(FiltObj, TTunfilt, FiltCond, FiltF
 %
 
 if nargin < 3
-    FiltFun = [];
-end
-if isempty(FiltFun)
     FiltFun = @filter;
 end
 

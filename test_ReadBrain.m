@@ -27,36 +27,64 @@ pause(dT);
 
 [rawH, rawT, rawB] = initRawData_cbmex([], buffSize, t0);
 fltH = initFilteredData(rawH, repmat(IndShiftFIR, size(rawH))); 
-[forH, forT, forB] = initForecastData(fltH, PDSwin);
+[forH, forT, forB] = initForecastData(fltH, repmat(PDSwin, size(fltH)));
 
 rawN = cellfun(@(T) T.Properties.VariableNames{1}, rawH, 'UniformOutput',false);
 rawD = [rawN; rawH; rawT; rawB]; 
 forD = [rawN; forH; forT; forB];
 
-fltT = cellfun(@(T) 0.*T, rawT, 'UniformOutput',false);
-fltB = cellfun(@(T) 0.*T, rawB, 'UniformOutput',false);
+fltT = cellfun(@(T) multTbl(0,T), rawT, 'UniformOutput',false);
+fltB = cellfun(@(T) multTbl(0,T), rawB, 'UniformOutput',false);
 fltD = [rawN; fltH; fltT; fltB];
 
 foreArgs.k = PDSwin;
-fIC = zeros(IndShiftFIR,1); fIC = repmat(fIC, rize(rawH)); 
+fIC = zeros(IndShiftFIR,1); fIC = repmat({fIC}, size(rawH)); 
 filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
+
+timeBuffs = cellfun(@(T) T.Time, rawH, 'UniformOutput',false);
+forBuffs = cellfun(@(X) seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
+
+selRaw2Flt = 1:length(rawN); selRaw2For = []; selFlt2For = selRaw2Flt;
 
 fig = figure; 
 
+% replace below with "snapshot data" channel selector
+chInd = 1;
+pltRaw = plot(rawB{chInd}, rawB{chInd}.Properties.VariableNames{1}); 
+hold on; grid on; 
+pltFlt = plot(fltB{chInd}, fltB{chInd}.Properties.VariableNames{1});
+pltFor = plot(forB{chInd}, forB{chInd}.Properties.VariableNames{1});
+
 %% loop 
-while isvalid(fig)
+cont = isvalid(fig);
+while cont
+    try
     [...
     timeBuffs, rawD, ...
     ~, ~, ...
     fltD, filtArgs, ...
     forBuffs, forD, foreArgs] = ...
     iterReadBrain(...
-        timeBuffs, rawD, daqFun, ...
+        timeBuffs, rawD, @() getNewRawData_cbmex([], t0), ...
         selRaw2Flt, selRaw2For, selFlt2For, ...
         [], [], [], [], ...
-        fltD, filtFun, filtArgs, ...
-        forBuffs, forD, foreFun, foreArgs);
+        fltD, @filtFun, filtArgs, ...
+        forBuffs, forD, @foreFun, foreArgs);
+
+    pltRaw.YData = rawD{4,chInd}.Variables; pltRaw.XData = rawD{4,chInd}.Time;
+    pltFlt.YData = fltD{4,chInd}.Variables; pltFlt.XData = fltD{4,chInd}.Time;
+    pltFor.YData = forD{4,chInd}.Variables; pltFor.XData = forD{4,chInd}.Time;
+
+    cont = isvalid(fig);
+
+    catch ME
+        cont = false;
+        getReport(ME)
+    end
 end
+
+%% close 
+disconnect_cbmex();
 
 %% function def 
 

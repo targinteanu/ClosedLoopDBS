@@ -8,15 +8,24 @@ function [emptyPast, emptyFore, emptyBuff] = initForecastData(pastData, foreSamp
 %   correctly-sized buffers of zero data as timetables 
 % 
 
-emptyPast = cellfun(@(T) 0.*T, pastData, 'UniformOutput',false);
+if length(foreSamples) < length(pastData)
+    if length(foreSamples) == 1
+        % assume the one input applies to all channels. 
+        foreSamples = repmat(foreSamples, size(pastData));
+    else
+        error('Incompatible input dimensions.')
+    end
+end
+
+emptyPast = cellfun(@(T) multTbl(0,T), pastData, 'UniformOutput',false);
 
 emptyFore = cell(size(pastData));
 emptyBuff = emptyFore;
 
 for ch = 1:length(pastData)
     pastData_ch = pastData{ch};
-    bufferSize = height(rawData_ch);
-    fs = rawData_ch.Properties.UserData.SampleRate;
+    bufferSize = height(pastData_ch);
+    fs = pastData_ch.Properties.UserData.SampleRate;
     ud.SampleRate = fs;
     emptyFore{ch} = timetable(...
         zeros(bufferSize + foreSamples(ch), width(pastData_ch)), ...

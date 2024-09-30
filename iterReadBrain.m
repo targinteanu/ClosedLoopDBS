@@ -73,7 +73,7 @@ catch ME
 end
 selRaw2Flt = 1:length(selRaw2Flt); 
 selRaw2For = length(selRaw2Flt) + (1:length(selRaw2For));
-lenRaw = cellfun(@length, rawTails); lenFlt = lenRaw(selRaw2Flt);
+lenRaw = cellfun(@height, rawTails); lenFlt = lenRaw(selRaw2Flt);
 
 end
 
