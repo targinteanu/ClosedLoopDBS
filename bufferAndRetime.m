@@ -2,6 +2,8 @@ function [newBuffer, newTail, newAll] = ...
     bufferAndRetime(oldBuffer, oldTail, newData, bufferFunc)
 % Assume start time of newData is ground truth. Retime oldTail if
 % necessary. 
+% TO DO: for speed, newAll should not be retimed here; front end code/GUI
+% can retime it on a separate process (?)
 
 if nargin < 4
     bufferFunc = @bufferData; 
@@ -22,7 +24,12 @@ end
 newBuffer = bufferFunc(oldBuffer, oldTail); 
 newTail = newData; 
 newAll = bufferFunc(newBuffer, newTail); 
+try
+newAll = sortrows(newAll);
 newAll = retime(newAll,'regular','nearest',...
     'SampleRate',newAll.Properties.UserData.SampleRate);
+catch ME
+    keyboard
+end
 
 end

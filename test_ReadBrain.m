@@ -78,7 +78,6 @@ while cont
     pltFlt.YData = fltD{4,chInd}.Variables; pltFlt.XData = fltD{4,chInd}.Time;
     pltFor.YData = forD{4,chInd}.Variables; pltFor.XData = forD{4,chInd}.Time;
 
-    toc
     cont = isvalid(fig);
 
     catch ME
