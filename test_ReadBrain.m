@@ -38,11 +38,11 @@ fltB = cellfun(@(T) multTbl(0,T), rawB, 'UniformOutput',false);
 fltD = [rawN; fltH; fltT; fltB];
 
 foreArgs.k = PDSwin;
-fIC = zeros(IndShiftFIR,1); fIC = repmat({fIC}, size(rawH)); 
+fIC = zeros(filtorder,1); fIC = repmat({fIC}, size(rawH)); 
 filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
 
 timeBuffs = cellfun(@(T) T.Time, rawH, 'UniformOutput',false);
-forBuffs = cellfun(@(X) seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
+forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 
 selRaw2Flt = 1:length(rawN); selRaw2For = []; selFlt2For = selRaw2Flt;
 
@@ -50,14 +50,17 @@ fig = figure;
 
 % replace below with "snapshot data" channel selector
 chInd = 1;
-pltRaw = plot(rawB{chInd}, rawB{chInd}.Properties.VariableNames{1}); 
+pltRaw = plot(rawB{chInd}.Time, rawB{chInd}.Variables); 
 hold on; grid on; 
-pltFlt = plot(fltB{chInd}, fltB{chInd}.Properties.VariableNames{1});
-pltFor = plot(forB{chInd}, forB{chInd}.Properties.VariableNames{1});
+xlabel('time'); ylabel(rawB{chInd}.Properties.VariableNames{1});
+pltFlt = plot(fltB{chInd}.Time, fltB{chInd}.Variables);
+pltFor = plot(forB{chInd}.Time, forB{chInd}.Variables);
 
 %% loop 
 cont = isvalid(fig);
 while cont
+    pause(.001)
+
     try
     [...
     timeBuffs, rawD, ...
@@ -75,6 +78,7 @@ while cont
     pltFlt.YData = fltD{4,chInd}.Variables; pltFlt.XData = fltD{4,chInd}.Time;
     pltFor.YData = forD{4,chInd}.Variables; pltFor.XData = forD{4,chInd}.Time;
 
+    toc
     cont = isvalid(fig);
 
     catch ME
@@ -90,11 +94,12 @@ disconnect_cbmex();
 
 function Yf = mySimpleForecast(Yp, k)
 % zero-order interp; to be replaced with real 
-yf = repmat(Yp.Variables(end),k,1);
+yf = repmat(Yp{end,:},k,1);
 dt = Yp.Properties.TimeStep;
 Yf = timetable(yf, ...
     'TimeStep',dt, ...
-    'StartTime', Yp.Time(end)+dt);
+    'StartTime', Yp.Time(end)+dt, ...
+    'VariableNames',Yp.Properties.VariableNames);
 end
 
 function [foreTails, foreBuffsAdd, foreArgs] = foreFun(foreArgs, inData)
@@ -103,7 +108,7 @@ k = foreArgs.k;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
 for ch = 1:size(inData,2)
     foreTails{ch} = mySimpleForecast(inData{ch}, k);
-    foreBuffsAdd = [rand,rand]*2 + foreTails{ch}.StartTime; % replace with time of peak, trough
+    foreBuffsAdd{ch} = [rand,rand]*2 + foreTails{ch}.Properties.StartTime; % replace with time of peak, trough
 end
 end
 
@@ -113,7 +118,7 @@ filtInit = fltArgs.fltInit;
 filtFin = cell(size(filtInit));
 fltTails = cell(size(rawTails));
 for ch = 1:size(rawTails,2)
-    [fltTails{ch},filtFin{ch}] = FilterTimetable(filtObj,rawTails{ch},filtInit{ch});
+    [fltTails{ch},filtFin{ch}] = FilterTimetable(filtObj,1,rawTails{ch},filtInit{ch});
 end
 fltArgs.fltInit = filtFin;
 end

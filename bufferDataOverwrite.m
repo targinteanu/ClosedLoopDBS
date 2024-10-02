@@ -19,6 +19,7 @@ else
     nanpad = array2timetable(nan(N-height(newData), width(newData)), ...
         'TimeStep', dT, ...
         'StartTime', newData.Time(end)+dT);
+    nanpad.Properties.VariableNames = newData.Properties.VariableNames;
     newData = [newData; nanpad];
     newBuffer = bufferData(oldBuffer, newData);
 end
