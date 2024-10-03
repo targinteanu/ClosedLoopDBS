@@ -2,12 +2,15 @@ function [emptyData, contData, buffData, chanInfo] = ...
     initRawData_cbmex(chsel, bufferSize)
 % Initialize the multichannel raw data structure using BlackRock cbmex
 % interface. 
+%
+% Inputs: chsel is selected channel ID numbers output from BlackRock.
+% bufferSize is the size(s) of each corresponding channel buffer (samples). 
 % 
 % Output data structure is a cell array with columns to each channel. Each
 % channel is represented by the matrix [time column, data column]. Time
 % column contains time stamps in machine time seconds and nan elsewhere. 
 % 
-% chanInfo has fields: SampleRate, Name, Unit
+% chanInfo has fields: SampleRate, Name, Unit, IDnumber
 
 %% handle/check inputs 
 if length(bufferSize) < length(chsel)
@@ -75,6 +78,7 @@ for ch = 1:length(chsel)
         ud.SampleRate = fs(chInd);
         ud.Name = chname(chInd);
         ud.Unit = unitname;
+        ud.IDnumber = chnum(chInd);
         chanInfo{ch} = ud;
 
         buffData{ch} = bufferData(emptyData{ch}, contData{ch});
