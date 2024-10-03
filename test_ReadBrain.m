@@ -124,8 +124,7 @@ for ch = 1:size(inData,2)
     indf = find(~isnan(t)); indf = indf(end); 
     tf = t(indf); % last logged time
     L = height(t) - indf + 1; % how many samples between ^ and now
-    ti = tf + L*dt_ch; % est current time 
-    foreBuffsAdd{ch} = [rand,rand]*2 + ti + t0; % replace with time of peak, trough
+    foreBuffsAdd{ch} = [rand,rand]*2; % replace with ind of peak, trough
 end
 end
 
@@ -135,7 +134,7 @@ filtInit = fltArgs.fltInit;
 filtFin = cell(size(filtInit));
 fltTails = cell(size(rawTails));
 for ch = 1:size(rawTails,2)
-    [fltTails{ch},filtFin{ch}] = FilterTimetable(filtObj,1,rawTails{ch},filtInit{ch});
+    [fltTails{ch},filtFin{ch}] = filter(filtObj,1,rawTails{ch},filtInit{ch});
 end
 fltArgs.fltInit = filtFin;
 end
