@@ -16,7 +16,7 @@ filtwts = fir1(filtorder, [loco, hico]./(srate/2));
 
 %% init 
 
-dT = .01; % s between data requests 
+dT = .001; % s between data requests 
 N = round(3/dT); % # of data samples to obtain 
 PDSwin = 1000; % # samples ahead to forecast
 buffSize = 30000; % samples
@@ -59,7 +59,7 @@ pltFor = plot(forB{chInd}.Time, forB{chInd}.Variables);
 %% loop 
 cont = isvalid(fig);
 while cont
-    pause(.001)
+    pause(dT)
 
     try
     [...
