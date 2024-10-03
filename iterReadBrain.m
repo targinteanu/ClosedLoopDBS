@@ -23,6 +23,7 @@ function [...
 %   [forTails, forBuffsAdd, forArgs] = forFun(forArgs, inData)
 
 %% handle/check inputs 
+tic
 
 doDAQ = (~isempty(rawData)) && (~isempty(daqFun));
 doArt = doDAQ && (~isempty(artRemData)) && (~isempty(stimRef)) && (~isempty(artRemFun));
@@ -36,7 +37,9 @@ if (max(selFlt2For) > size(fltData,2)) || (min(selFlt2For) < 1)
     error('Improper selection of filtered channels.');
 end
 
+toc
 %% DAQ 
+tic
 if doDAQ 
 
 rawNames = rawData(1,:);
@@ -77,7 +80,9 @@ lenRaw = cellfun(@height, rawTails); lenFlt = lenRaw(selRaw2Flt);
 
 end
 
+toc
 %% Artifact Removal 
+tic
 if doArt
 
 artRemHeads = artRemData(2,:);
@@ -94,8 +99,9 @@ end
 rawTails = artRemData(3,:); rawAllData = rawData(4,:);
 
 end
-
+toc
 %% Filter
+tic
 if doFlt
  
 [fltTails, fltArgs] = fltFun(fltArgs, rawTails(selRaw2Flt));
@@ -112,7 +118,9 @@ else
     fltTails = {}; fltAllData = {};
 end
 
+toc
 %% Forecast 
+tic
 if doFor
 
 [forTails, forBuffsAdd, forArgs] = forFun(forArgs, ...
@@ -130,4 +138,5 @@ end
 
 end
 
+toc
 end
