@@ -1,7 +1,7 @@
 function emptyData = initFilteredData(rawData, filtShift)
 % 
 % Input: 
-%   cell array of unfilt data buffers as timetables 
+%   cell array of unfilt data buffers 
 %   array of # of samples eaten by filter corresponding to above 
 % 
 % Output: 
@@ -22,17 +22,11 @@ emptyData = cell(size(rawData));
 for ch = 1:length(rawData)
     rawData_ch = rawData{ch};
     bufferSize = height(rawData_ch);
-    fs = rawData_ch.Properties.UserData.SampleRate;
-    ud.SampleRate = fs;
     if bufferSize > filtShift(ch)
-        emptyData{ch} = timetable(...
-            zeros(bufferSize - filtShift(ch), width(rawData_ch)), ...
-            'SampleRate', fs, ...
-            'StartTime', rawData_ch.Time(1), ...
-            'VariableNames', rawData_ch.Properties.VariableNames);
-        emptyData{ch}.Properties.UserData = ud;
-        emptyData{ch}.Properties.VariableUnits = ...
-            rawData_ch.Properties.VariableUnits;
+        bufferSize = bufferSize - filtShift(ch);
+        t = rawData_ch(1:bufferSize,:);
+        emptyData{ch} = [t, ...
+            zeros(bufferSize - filtShift(ch), width(rawData_ch)-1)];
     else
         error(['Data buffer is not long enough to be filtered. ',...
                'Try increasing display window or altering filter.'])
