@@ -17,7 +17,6 @@ filtwts = fir1(filtorder, [loco, hico]./(srate/2));
 %% init 
 
 dT = .001; % s between data requests 
-N = round(3/dT); % # of data samples to obtain 
 PDSwin = 1000; % # samples ahead to forecast
 buffSize = 30000; % samples
 
@@ -25,36 +24,51 @@ connect_cbmex();
 t0 = datetime - seconds(cbmex('time'));
 pause(dT);
 
-[rawH, rawT, rawB] = initRawData_cbmex([], buffSize, t0);
+[rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
 fltH = initFilteredData(rawH, repmat(IndShiftFIR, size(rawH))); 
 [forH, forT, forB] = initForecastData(fltH, repmat(PDSwin, size(fltH)));
 
-rawN = cellfun(@(T) T.Properties.VariableNames{1}, rawH, 'UniformOutput',false);
 rawD = [rawN; rawH; rawT; rawB]; 
 forD = [rawN; forH; forT; forB];
 
-fltT = cellfun(@(T) multTbl(0,T), rawT, 'UniformOutput',false);
-fltB = cellfun(@(T) multTbl(0,T), rawB, 'UniformOutput',false);
+fltT = cellfun(@(D) [1,0].*D, rawT, 'UniformOutput',false);
+fltB = cellfun(@(D) [1,0].*D, rawB, 'UniformOutput',false);
 fltD = [rawN; fltH; fltT; fltB];
 
 foreArgs.k = PDSwin;
 fIC = zeros(filtorder,1); fIC = repmat({fIC}, size(rawH)); 
 filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
 
-timeBuffs = cellfun(@(T) T.Time, rawH, 'UniformOutput',false);
+timeBuffs = cell(size(rawH));
+for ch = 1:length(rawH)
+    t_ch = rawH{ch}(:,1);
+    if isnan(t_ch(1))
+        warning([rawN{ch}.Name,' timestamp 0 has not been assigned!'])
+    end
+    dt_ch = 1/rawN{ch}.SampleRate;
+    for it = 2:length(t_ch)
+        if isnan(t_ch(it))
+            t_ch(it) = t_ch(it-1) + dt_ch;
+        end
+    end
+    timeBuffs{ch} = t_ch + t0;
+end
 forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 
 selRaw2Flt = 1:length(rawN); selRaw2For = []; selFlt2For = selRaw2Flt;
 
 fig = figure; 
 
-% replace below with "snapshot data" channel selector
+% add plotting code below to be output from data2timetable? 
 chInd = 1;
-pltRaw = plot(rawB{chInd}.Time, rawB{chInd}.Variables); 
+rawPlt = data2timetable(rawB(chInd),rawN(chInd),t0); rawPlt = rawPlt{1};
+fltPlt = data2timetable(fltB(chInd),rawN(chInd),t0); fltPlt = fltPlt{1};
+forPlt = data2timetable(forB(chInd),rawN(chInd),t0); forPlt = forPlt{1};
+pltRaw = plot(rawPlt.Time, rawPlt.Variables); 
 hold on; grid on; 
-xlabel('time'); ylabel(rawB{chInd}.Properties.VariableNames{1});
-pltFlt = plot(fltB{chInd}.Time, fltB{chInd}.Variables);
-pltFor = plot(forB{chInd}.Time, forB{chInd}.Variables);
+xlabel('time'); ylabel(rawPlt.Properties.VariableNames{1});
+pltFlt = plot(fltPlt.Time, fltPlt.Variables);
+pltFor = plot(forPlt.Time, forPlt.Variables);
 
 %% loop 
 cont = isvalid(fig);
@@ -68,15 +82,19 @@ while cont
     fltD, filtArgs, ...
     forBuffs, forD, foreArgs] = ...
     iterReadBrain(...
-        timeBuffs, rawD, @() getNewRawData_cbmex([], t0), ...
+        timeBuffs, rawD, @() getNewRawData_cbmex([]), ...
         selRaw2Flt, selRaw2For, selFlt2For, ...
         [], [], [], [], ...
         fltD, @filtFun, filtArgs, ...
         forBuffs, forD, @foreFun, foreArgs);
 
-    pltRaw.YData = rawD{4,chInd}.Variables; pltRaw.XData = rawD{4,chInd}.Time;
-    pltFlt.YData = fltD{4,chInd}.Variables; pltFlt.XData = fltD{4,chInd}.Time;
-    pltFor.YData = forD{4,chInd}.Variables; pltFor.XData = forD{4,chInd}.Time;
+    rawPlt = data2timetable(rawD(4,chInd),rawD(1,chInd),t0); rawPlt = rawPlt{1};
+    fltPlt = data2timetable(fltD(4,chInd),rawD(1,chInd),t0); fltPlt = fltPlt{1};
+    forPlt = data2timetable(forD(4,chInd),rawD(1,chInd),t0); forPlt = forPlt{1};
+
+    pltRaw.YData = rawPlt.Variables; pltRaw.XData = rawPlt.Time;
+    pltFlt.YData = fltPlt.Variables; pltFlt.XData = fltPlt.Time;
+    pltFor.YData = forPlt.Variables; pltFor.XData = forPlt.Time;
 
     cont = isvalid(fig);
 
@@ -93,12 +111,7 @@ disconnect_cbmex();
 
 function Yf = mySimpleForecast(Yp, k)
 % zero-order interp; to be replaced with real 
-yf = repmat(Yp{end,:},k,1);
-dt = Yp.Properties.TimeStep;
-Yf = timetable(yf, ...
-    'TimeStep',dt, ...
-    'StartTime', Yp.Time(end)+dt, ...
-    'VariableNames',Yp.Properties.VariableNames);
+Yf = repmat(Yp(end,:),k,1);
 end
 
 function [foreTails, foreBuffsAdd, foreArgs] = foreFun(foreArgs, inData)
@@ -107,7 +120,12 @@ k = foreArgs.k;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
 for ch = 1:size(inData,2)
     foreTails{ch} = mySimpleForecast(inData{ch}, k);
-    foreBuffsAdd{ch} = [rand,rand]*2 + foreTails{ch}.Properties.StartTime; % replace with time of peak, trough
+    t = inData{ch}(:,1); 
+    indf = find(~isnan(t)); indf = indf(end); 
+    tf = t(indf); % last logged time
+    L = height(t) - indf + 1; % how many samples between ^ and now
+    ti = tf + L*dt_ch; % est current time 
+    foreBuffsAdd{ch} = [rand,rand]*2 + ti + t0; % replace with time of peak, trough
 end
 end
 
