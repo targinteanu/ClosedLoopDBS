@@ -43,8 +43,9 @@ tic
 if doDAQ 
 
 rawNames = rawData(1,:);
+% to do: for speed, use channel ID# instead of names 
 
-newTails = daqFun(); 
+newTails = daqFun(); % to do: daqfun should also get chan info
 for ch = 1:size(newTails,2)
     newTail = newTails{ch};
     tailName = newTail.Properties.VariableNames{1};

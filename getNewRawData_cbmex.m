@@ -1,5 +1,7 @@
 function newContData = getNewRawData_cbmex(chsel)
 
+% to do: this should also return the channel info for checking 
+
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
 
 if isempty(continuousData)
