@@ -22,7 +22,7 @@ buffSize = 30000; % samples
 
 connect_cbmex(); 
 t0 = datetime - seconds(cbmex('time'));
-pause(dT);
+pause(10*dT);
 
 try
     [rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
@@ -44,6 +44,8 @@ fltD = [rawN; fltH; fltT; fltB];
 foreArgs.k = PDSwin;
 fIC = zeros(filtorder,1); fIC = repmat({fIC}, size(rawH)); 
 filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
+filtArgs.TimeShift = repmat(TimeShiftFIR, size(rawH)); 
+foreArgs.TimeStart = nan(size(rawH));
 
 timeBuffs = cell(size(rawH));
 for ch = 1:length(rawH)
@@ -131,12 +133,7 @@ k = foreArgs.k;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
 for ch = 1:size(inData,2)
     foreTails{ch} = mySimpleForecast(inData{ch}, k);
-    t = inData{ch}(:,1); 
-    %{
-    indf = find(~isnan(t)); indf = indf(end); 
-    tf = t(indf); % last logged time
-    L = height(t) - indf + 1; % how many samples between ^ and now
-    %}
+    foreTails{ch}(1,1) = foreArgs.TimeStart(ch);
     foreBuffsAdd{ch} = [rand,rand]*2; % replace with ind of peak, trough
 end
 end

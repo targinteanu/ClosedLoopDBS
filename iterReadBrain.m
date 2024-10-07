@@ -46,11 +46,12 @@ chInfo = rawData(1,:);
 rawNames = cellfun(@(c) c.Name, chInfo, 'UniformOutput',false);
 % to do: for speed, use channel ID# instead of names 
 
+curTime = nan(1,size(rawData,2));
+
 [newTails, tailNames] = daqFun(); % to do: daqfun should also get chan info
 for ch = 1:size(newTails,2)
     newTail = newTails{ch};
     tailName = tailNames{ch};
-    tailProcTime = newTail(end,1);
     CH = find(strcmp(tailName, rawNames)); 
     if isempty(CH)
         error(['Unrecognized new raw data label: ',tailName]);
@@ -58,6 +59,10 @@ for ch = 1:size(newTails,2)
     if length(CH) > 1
         error(['Raw data label ',tailName,' is not unique.']);
     end
+
+    fs = chInfo{CH}.SampleRate;
+    tailProcTime = newTail(1,1) + (height(newTail)-1)/fs; 
+    curTime(CH) = tailProcTime;
 
     [rawData{2,CH}, rawData{3,CH}, rawData{4,CH}] = ...
         bufferjuggle(rawData{2,CH},rawData{3,CH},newTail,@bufferData);
@@ -113,6 +118,7 @@ end
 for CH = 1:size(fltData,2)
     [fltData{2,CH}, fltData{3,CH}, fltData{4,CH}] = ...
         bufferjuggle(fltData{2,CH},fltData{3,CH},fltTails{CH},@bufferData);
+    forArgs.TimeStart(CH) = curTime(CH) - fltArgs.TimeShift(CH);
 end
 fltTails = fltData(3,:); fltAllData = fltData(4,:);
 
