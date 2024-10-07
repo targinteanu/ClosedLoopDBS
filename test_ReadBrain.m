@@ -146,7 +146,7 @@ filtFin = cell(size(filtInit));
 fltTails = cell(size(rawTails));
 for ch = 1:size(rawTails,2)
     [FT,filtFin{ch}] = filter(filtObj,1,rawTails{ch}(:,2:end),filtInit{ch});
-    fltTails{ch} = [rawTails{ch}(:,1), FT];
+    fltTails{ch} = [rawTails{ch}(:,1) - fltArgs.TimeShift(ch), FT];
 end
 fltArgs.fltInit = filtFin;
 end
