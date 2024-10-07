@@ -14,6 +14,9 @@ IndShiftFIR = ceil(filtorder/2); % samples
 % >> filteredSignal = filtfilt(filtwts, 1, unfilteredSignal)
 filtwts = fir1(filtorder, [loco, hico]./(srate/2));
 
+%% load AR model 
+load("20240829_ARmdl.mat","ARmdl");
+
 %% init 
 
 dT = .001; % s between data requests 
@@ -31,6 +34,7 @@ catch ME
     pause(1);
     [rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
 end
+Fs = cellfun(@(s) s.SampleRate, rawN);
 fltH = initFilteredData(rawH, repmat(IndShiftFIR, size(rawH))); 
 [forH, forT, forB] = initForecastData(fltH, repmat(PDSwin, size(fltH)));
 
@@ -46,6 +50,10 @@ fIC = zeros(filtorder,1); fIC = repmat({fIC}, size(rawH));
 filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
 filtArgs.TimeShift = repmat(TimeShiftFIR, size(rawH)); 
 foreArgs.TimeStart = nan(size(rawH));
+foreArgs.TimeShift = filtArgs.TimeShift;
+foreArgs.ARmdls = {ARmdl};
+foreArgs.SampleRates = Fs;
+foreArgs.FreqRange = [loco, hico];
 
 timeBuffs = cell(size(rawH));
 for ch = 1:length(rawH)
@@ -140,19 +148,26 @@ disconnect_cbmex();
 
 %% function def 
 
-function Yf = mySimpleForecast(Yp, k)
-% zero-order interp; to be replaced with real 
-Yf = repmat(Yp(end,:),k,1);
-end
-
 function [foreTails, foreBuffsAdd, foreArgs] = foreFun(foreArgs, inData)
 % inData should just be the filtered channel of interest
 k = foreArgs.k;
+ARmdls = foreArgs.ARmdls;
+Fs = foreArgs.SampleRates;
+Ts = foreArgs.TimeShift;
+Fco = foreArgs.FreqRange;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
 for ch = 1:size(inData,2)
-    foreTails{ch} = mySimpleForecast(inData{ch}, k);
+    ARmdl = ARmdls{ch};
+    FT = myFastForecastAR(ARmdl, inData{ch}(:,2), k);
+    foreTails{ch} = [nan(height(FT),1), FT];
     foreTails{ch}(1,1) = foreArgs.TimeStart(ch);
-    foreBuffsAdd{ch} = [rand,rand]*2; % replace with ind of peak, trough
+
+    [t2,i2,phi_inst,f_inst] = blockPDS(...
+        inData{ch}(:,2), FT, Fs(ch), [0,pi], ...
+        Ts(ch), Fco(1), Fco(2));
+    t2 = t2-Ts(ch); % [t2peak, t2trough]
+    t2 = max(t2,0);
+    foreBuffsAdd{ch} = t2; 
 end
 end
 
