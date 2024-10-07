@@ -18,7 +18,7 @@ filtwts = fir1(filtorder, [loco, hico]./(srate/2));
 
 dT = .001; % s between data requests 
 PDSwin = 1000; % # samples ahead to forecast
-buffSize = 30000; % samples
+buffSize = 3000; % samples
 
 connect_cbmex(); 
 t0 = datetime - seconds(cbmex('time'));
@@ -72,7 +72,14 @@ forBuffs = forBuffs(chInd);
 
 fig = figure; 
 
+ax(2) = subplot(2,1,2); 
+tPlt = timeBuffs{chInd};
+pltTime = stem(t0 + seconds(tPlt), [nan; diff(tPlt)]);
+grid on;
+ylabel('Dur (s)');
+
 % add plotting code below to be output from data2timetable? 
+ax(1) = subplot(2,1,1);
 rawPlt = data2timetable(rawB(chInd),rawN(chInd),t0); rawPlt = rawPlt{1};
 fltPlt = data2timetable(fltB(chInd),rawN(chInd),t0); fltPlt = fltPlt{1};
 forPlt = data2timetable(forB(chInd),rawN(chInd),t0); forPlt = forPlt{1};
@@ -81,6 +88,8 @@ hold on; grid on;
 xlabel('time'); ylabel(rawPlt.Properties.VariableNames{1});
 pltFlt = plot(fltPlt.Time, fltPlt.Variables);
 pltFor = plot(forPlt.Time, forPlt.Variables);
+
+%linkaxes(ax, 'x')
 
 %% loop 
 cont = isvalid(fig);
@@ -103,6 +112,7 @@ while cont
     rawPlt = data2timetable(rawD(4,chInd),rawD(1,chInd),t0); rawPlt = rawPlt{1};
     fltPlt = data2timetable(fltD(4,chInd),rawD(1,chInd),t0); fltPlt = fltPlt{1};
     forPlt = data2timetable(forD(4,chInd),rawD(1,chInd),t0); forPlt = forPlt{1};
+    tPlt = timeBuffs{chInd};
 
     cont = isvalid(fig);
     if cont
@@ -110,6 +120,9 @@ while cont
         pltRaw.YData = rawPlt.Variables; pltRaw.XData = rawPlt.Time;
         pltFlt.YData = fltPlt.Variables; pltFlt.XData = fltPlt.Time;
         pltFor.YData = forPlt.Variables; pltFor.XData = forPlt.Time;
+        subplot(2,1,1); tPltRng = xlim();
+        pltTime.YData = [nan; diff(tPlt)]; pltTime.XData = t0 + seconds(tPlt);
+        subplot(2,1,2); xlim(tPltRng);
     end
 
     catch ME
