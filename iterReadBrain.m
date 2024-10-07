@@ -37,7 +37,7 @@ if (max(selFlt2For) > size(fltData,2)) || (min(selFlt2For) < 1)
     error('Improper selection of filtered channels.');
 end
 
-setup_time = toc
+setup_time = toc; disp(['Setup Time = ',num2str(setup_time)])
 %% DAQ 
 tic
 if doDAQ 
@@ -87,7 +87,7 @@ lenRaw = cellfun(@height, rawTails); lenFlt = lenRaw(selRaw2Flt);
 
 end
 
-DAQ_time = toc
+DAQ_time = toc; disp(['DAQ time = ',num2str(DAQ_time)])
 %% Artifact Removal 
 tic
 if doArt
@@ -106,7 +106,7 @@ end
 rawTails = artRemData(3,:); rawAllData = rawData(4,:);
 
 end
-artifact_time = toc
+artifact_time = toc; disp(['Artifact time = ',num2str(artifact_time)])
 %% Filter
 tic
 if doFlt
@@ -126,7 +126,7 @@ else
     fltTails = {}; fltAllData = {};
 end
 
-filter_time = toc
+filter_time = toc; disp(['Filter time = ',num2str(filter_time)])
 %% Forecast 
 tic
 if doFor
@@ -146,7 +146,7 @@ end
 
 end
 
-forecast_time = toc
+forecast_time = toc; disp(['Forecast time = ',num2str(forecast_time)])
 
 %% helper 
     function [newBuffer, newTail, newAll] = ...
