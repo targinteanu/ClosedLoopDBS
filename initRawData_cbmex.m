@@ -12,16 +12,6 @@ function [emptyData, contData, buffData, chanInfo] = ...
 % 
 % chanInfo has fields: SampleRate, Name, Unit, IDnumber
 
-%% handle/check inputs 
-if length(bufferSize) < length(chsel)
-    if length(bufferSize) == 1
-        % assume the one input applies to all channels.
-        bufferSize = repmat(bufferSize, size(chsel));
-    else
-        error('Incompatible input dimensions.')
-    end
-end
-
 %% access cbmex 
 
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
@@ -46,6 +36,16 @@ emptyData = cell(1,length(chsel));
 contData = emptyData; 
 buffData = emptyData;
 chanInfo = emptyData;
+
+%% handle/check inputs 
+if length(bufferSize) < length(chsel)
+    if length(bufferSize) == 1
+        % assume the one input applies to all channels.
+        bufferSize = repmat(bufferSize, size(chsel));
+    else
+        error('Incompatible input dimensions.')
+    end
+end
 
 %% assign data to the structure 
 
@@ -76,7 +76,7 @@ for ch = 1:length(chsel)
 
         % Channel Info
         ud.SampleRate = fs(chInd);
-        ud.Name = chname(chInd);
+        ud.Name = chname{chInd};
         ud.Unit = unitname;
         ud.IDnumber = chnum(chInd);
         chanInfo{ch} = ud;

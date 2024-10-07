@@ -1,4 +1,4 @@
-function newContData = getNewRawData_cbmex(chsel)
+function [newContData, chname] = getNewRawData_cbmex(chsel)
 
 % to do: this should also return the channel info for checking 
 
@@ -9,11 +9,9 @@ if isempty(continuousData)
 end
 
 chnum = [continuousData{:,1}]';
-%{
-fs = [continuousData{:,2}]';
+%fs = [continuousData{:,2}]';
 chname = spikeEvents(:,1);
 chname = chname(chnum);
-%}
 newContDataRaw = continuousData(:,3); 
 
 if isempty(chsel)

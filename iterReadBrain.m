@@ -42,14 +42,15 @@ toc
 tic
 if doDAQ 
 
-rawNames = rawData(1,:);
+chInfo = rawData(1,:);
+rawNames = cellfun(@(c) c.Name, chInfo, 'UniformOutput',false);
 % to do: for speed, use channel ID# instead of names 
 
-newTails = daqFun(); % to do: daqfun should also get chan info
+[newTails, tailNames] = daqFun(); % to do: daqfun should also get chan info
 for ch = 1:size(newTails,2)
     newTail = newTails{ch};
-    tailName = newTail.Properties.VariableNames{1};
-    tailProcTime = newTail.Time(end);
+    tailName = tailNames{ch};
+    tailProcTime = newTail(end,1);
     CH = find(strcmp(tailName, rawNames)); 
     if isempty(CH)
         error(['Unrecognized new raw data label: ',tailName]);
@@ -59,7 +60,7 @@ for ch = 1:size(newTails,2)
     end
 
     [rawData{2,CH}, rawData{3,CH}, rawData{4,CH}] = ...
-        bufferAndRetime(rawData{2,CH},rawData{3,CH},newTail);
+        bufferjuggle(rawData{2,CH},rawData{3,CH},newTail,@bufferData);
     timeBuffs{1,CH} = bufferData(timeBuffs{1,CH}, tailProcTime);
 end
 
@@ -93,7 +94,7 @@ if ~(size(artRemTails,2) == size(artRemData,2))
 end
 for CH = 1:size(artRemData, 2)
     [artRemData{2,CH}, artRemData{3,CH}, artRemData{4,CH}] = ...
-        bufferAndRetime(artRemData{2,CH},artRemData{3,CH},artRemTails{CH});
+        bufferjuggle(artRemData{2,CH},artRemData{3,CH},artRemTails{CH},@bufferData);
     % does this buffering need to have an overwrite for future extended
     % data instead? 
 end
@@ -111,7 +112,7 @@ if ~(size(fltTails,2) == size(fltData,2))
 end
 for CH = 1:size(fltData,2)
     [fltData{2,CH}, fltData{3,CH}, fltData{4,CH}] = ...
-        bufferAndRetime(fltData{2,CH},fltData{3,CH},fltTails{CH});
+        bufferjuggle(fltData{2,CH},fltData{3,CH},fltTails{CH},@bufferData);
 end
 fltTails = fltData(3,:); fltAllData = fltData(4,:);
 
@@ -132,7 +133,7 @@ if ~(size(forTails,2) == size(forData,2))
 end
 for CH = 1:size(forData,2)
     [forData{2,CH}, forData{3,CH}, forData{4,CH}] = ...
-        bufferAndRetime(forData{2,CH},forData{3,CH},forTails{CH}, ...
+        bufferjuggle(forData{2,CH},forData{3,CH},forTails{CH}, ...
         @(old, new) bufferDataOverwrite(old, new, lenFor(CH)));
     forBuffs{1,CH} = bufferData(forBuffs{1,CH}, forBuffsAdd{1,CH});
 end
@@ -140,4 +141,13 @@ end
 end
 
 toc
+
+%% helper 
+    function [newBuffer, newTail, newAll] = ...
+        bufferjuggle(oldBuffer, oldTail, newData, bufferFunc)
+        newBuffer = bufferFunc(oldBuffer, oldTail); 
+        newTail = newData; 
+        newAll = bufferFunc(newBuffer, newTail); 
+    end
+
 end
