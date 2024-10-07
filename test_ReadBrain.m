@@ -62,12 +62,15 @@ end
 %forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 
-selRaw2Flt = 1:length(rawN); selRaw2For = []; selFlt2For = selRaw2Flt;
+chInd = 1;
+selRaw2Flt = chInd; selRaw2For = []; selFlt2For = chInd;
+
+fltD = fltD(:,chInd); forD = forD(:,chInd);
+forBuffs = forBuffs(chInd);
 
 fig = figure; 
 
 % add plotting code below to be output from data2timetable? 
-chInd = 1;
 rawPlt = data2timetable(rawB(chInd),rawN(chInd),t0); rawPlt = rawPlt{1};
 fltPlt = data2timetable(fltB(chInd),rawN(chInd),t0); fltPlt = fltPlt{1};
 forPlt = data2timetable(forB(chInd),rawN(chInd),t0); forPlt = forPlt{1};
