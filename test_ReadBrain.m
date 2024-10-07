@@ -106,6 +106,7 @@ while cont
 
     cont = isvalid(fig);
     if cont
+        figure(fig);
         pltRaw.YData = rawPlt.Variables; pltRaw.XData = rawPlt.Time;
         pltFlt.YData = fltPlt.Variables; pltFlt.XData = fltPlt.Time;
         pltFor.YData = forPlt.Variables; pltFor.XData = forPlt.Time;
