@@ -24,7 +24,13 @@ connect_cbmex();
 t0 = datetime - seconds(cbmex('time'));
 pause(dT);
 
-[rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
+try
+    [rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
+catch ME
+    warning(['Error on first attempt: ',ME.message]);
+    pause(1);
+    [rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
+end
 fltH = initFilteredData(rawH, repmat(IndShiftFIR, size(rawH))); 
 [forH, forT, forB] = initForecastData(fltH, repmat(PDSwin, size(fltH)));
 
@@ -42,7 +48,7 @@ filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
 timeBuffs = cell(size(rawH));
 for ch = 1:length(rawH)
     t_ch = rawH{ch}(:,1);
-    if isnan(t_ch(1))
+    if isnan(t_ch(end))
         warning([rawN{ch}.Name,' timestamp 0 has not been assigned!'])
     end
     dt_ch = 1/rawN{ch}.SampleRate;
@@ -51,9 +57,10 @@ for ch = 1:length(rawH)
             t_ch(it) = t_ch(it-1) + dt_ch;
         end
     end
-    timeBuffs{ch} = t_ch + t0;
+    timeBuffs{ch} = t_ch;% + t0;
 end
-forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
+%forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
+forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 
 selRaw2Flt = 1:length(rawN); selRaw2For = []; selFlt2For = selRaw2Flt;
 
@@ -121,9 +128,11 @@ foreTails = cell(size(inData)); foreBuffsAdd = foreTails;
 for ch = 1:size(inData,2)
     foreTails{ch} = mySimpleForecast(inData{ch}, k);
     t = inData{ch}(:,1); 
+    %{
     indf = find(~isnan(t)); indf = indf(end); 
     tf = t(indf); % last logged time
     L = height(t) - indf + 1; % how many samples between ^ and now
+    %}
     foreBuffsAdd{ch} = [rand,rand]*2; % replace with ind of peak, trough
 end
 end
