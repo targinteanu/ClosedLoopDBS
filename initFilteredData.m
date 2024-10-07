@@ -24,9 +24,9 @@ for ch = 1:length(rawData)
     bufferSize = height(rawData_ch);
     if bufferSize > filtShift(ch)
         bufferSize = bufferSize - filtShift(ch);
-        t = rawData_ch(1:bufferSize,:);
+        t = rawData_ch(1:bufferSize,1);
         emptyData{ch} = [t, ...
-            zeros(bufferSize - filtShift(ch), width(rawData_ch)-1)];
+            zeros(bufferSize, width(rawData_ch)-1)];
     else
         error(['Data buffer is not long enough to be filtered. ',...
                'Try increasing display window or altering filter.'])
