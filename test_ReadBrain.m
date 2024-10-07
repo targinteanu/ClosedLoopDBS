@@ -80,7 +80,7 @@ pltFor = plot(forPlt.Time, forPlt.Variables);
 %% loop 
 cont = isvalid(fig);
 while cont
-    pause(dT)
+    pause(10*dT)
 
     try
     [...
@@ -99,11 +99,12 @@ while cont
     fltPlt = data2timetable(fltD(4,chInd),rawD(1,chInd),t0); fltPlt = fltPlt{1};
     forPlt = data2timetable(forD(4,chInd),rawD(1,chInd),t0); forPlt = forPlt{1};
 
-    pltRaw.YData = rawPlt.Variables; pltRaw.XData = rawPlt.Time;
-    pltFlt.YData = fltPlt.Variables; pltFlt.XData = fltPlt.Time;
-    pltFor.YData = forPlt.Variables; pltFor.XData = forPlt.Time;
-
     cont = isvalid(fig);
+    if cont
+        pltRaw.YData = rawPlt.Variables; pltRaw.XData = rawPlt.Time;
+        pltFlt.YData = fltPlt.Variables; pltFlt.XData = fltPlt.Time;
+        pltFor.YData = forPlt.Variables; pltFor.XData = forPlt.Time;
+    end
 
     catch ME
         cont = false;
