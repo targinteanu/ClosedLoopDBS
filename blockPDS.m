@@ -29,9 +29,8 @@ for p = 1:length(phi)
     t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
 
     % account for minimum delay time tmin 
-    while t < tmin
-        t = t+T; % add a full period 
-    end
+    nT = (tmin-t)/T; % how many periods needed to add 
+    t = t + ceil(nT)*T; 
 
     t2phi(p) = t;
     i2phi(p) = floor(fs*t2phi(p));
