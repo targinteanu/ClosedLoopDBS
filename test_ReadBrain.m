@@ -18,7 +18,7 @@ filtwts = fir1(filtorder, [loco, hico]./(srate/2));
 
 dT = .001; % s between data requests 
 PDSwin = 1000; % # samples ahead to forecast
-buffSize = 3000; % samples
+buffSize = 2000; % samples
 
 connect_cbmex(); 
 t0 = datetime - seconds(cbmex('time'));
@@ -73,9 +73,10 @@ forBuffs = forBuffs(chInd);
 fig = figure; 
 
 ax(2) = subplot(2,1,2); 
-tPlt = timeBuffs{chInd};
-pltTime = stem(t0 + seconds(tPlt), [nan; diff(tPlt)]);
-grid on;
+tPlt = timeBuffs{chInd}; tPltDisp = tPlt; td0 = tPltDisp(end); tDisp1 = tic;
+pltTime = stem(t0 + seconds(tPlt), [nan; diff(tPlt)], '--');
+grid on; hold on;
+pltTimeDisp = stem(t0 + seconds(tPltDisp), [nan; diff(tPltDisp)]);
 ylabel('Dur (s)');
 
 % add plotting code below to be output from data2timetable? 
@@ -94,7 +95,9 @@ pltFor = plot(forPlt.Time, forPlt.Variables);
 %% loop 
 cont = isvalid(fig);
 while cont
-    pause(10*dT)
+    pause(dT)
+    tDisp2 = td0 + toc(tDisp1); %tDisp1 = tic;
+    tPltDisp = bufferData(tPltDisp, tDisp2);
 
     try
     [...
@@ -122,6 +125,7 @@ while cont
         pltFor.YData = forPlt.Variables; pltFor.XData = forPlt.Time;
         subplot(2,1,1); tPltRng = xlim();
         pltTime.YData = [nan; diff(tPlt)]; pltTime.XData = t0 + seconds(tPlt);
+        pltTimeDisp.YData = [nan; diff(tPltDisp)]; pltTimeDisp.XData = t0 + seconds(tPltDisp);
         subplot(2,1,2); xlim(tPltRng);
     end
 
