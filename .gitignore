@@ -1,2 +1,7 @@
 
 *.asv
+*.mat
+*.ccf
+*.nev
+*.ns2
+20240829_notes.txt
