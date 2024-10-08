@@ -19,7 +19,7 @@ if isempty(chsel)
     chsel = chnum;
 end
 
-newContData = cell(length(chsel),1);
+newContData = cell(1,length(chsel));
 for ch = 1:length(chsel)
     chInd = find(chnum == chsel(ch)); 
     if ~isempty(chInd)

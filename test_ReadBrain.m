@@ -72,8 +72,8 @@ end
 %forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 
-chInd = 1;
-selRaw2Flt = chInd; selRaw2For = []; selFlt2For = chInd;
+chInd = 33;
+selRaw2Flt = chInd; selRaw2For = []; selFlt2For = 1;
 
 fltD = fltD(:,chInd); forD = forD(:,chInd);
 forBuffs = forBuffs(chInd);
@@ -121,8 +121,8 @@ while cont
         forBuffs, forD, @foreFun, foreArgs);
 
     rawPlt = data2timetable(rawD(4,chInd),rawD(1,chInd),t0); rawPlt = rawPlt{1};
-    fltPlt = data2timetable(fltD(4,chInd),rawD(1,chInd),t0); fltPlt = fltPlt{1};
-    forPlt = data2timetable(forD(4,chInd),rawD(1,chInd),t0); forPlt = forPlt{1};
+    fltPlt = data2timetable(fltD(4,1),fltD(1,1),t0); fltPlt = fltPlt{1};
+    forPlt = data2timetable(forD(4,1),forD(1,1),t0); forPlt = forPlt{1};
     tPlt = timeBuffs{chInd};
 
     cont = isvalid(fig);

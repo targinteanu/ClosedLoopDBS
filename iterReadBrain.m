@@ -48,7 +48,7 @@ rawNames = cellfun(@(c) c.Name, chInfo, 'UniformOutput',false);
 
 curTime = nan(1,size(rawData,2));
 
-[newTails, tailNames] = daqFun(); % to do: daqfun should also get chan info
+[newTails, tailNames] = daqFun(); 
 for ch = 1:size(newTails,2)
     newTail = newTails{ch};
     tailName = tailNames{ch};
