@@ -98,6 +98,10 @@ xlabel('time'); ylabel(rawPlt.Properties.VariableNames{1});
 pltFlt = plot(fltPlt.Time, fltPlt.Variables);
 pltFor = plot(forPlt.Time, forPlt.Variables);
 
+tPk = forBuffs{1}(:,1); tTr = forBuffs{1}(:,2);
+pltPk = plot(t0 + seconds(tPk), zeros(size(tPk)), '^m');
+pltTr = plot(t0 + seconds(tTr), zeros(size(tTr)), 'vm');
+
 %linkaxes(ax, 'x')
 
 %% loop 
@@ -124,6 +128,10 @@ while cont
     fltPlt = data2timetable(fltD(4,1),fltD(1,1),t0); fltPlt = fltPlt{1};
     forPlt = data2timetable(forD(4,1),forD(1,1),t0); forPlt = forPlt{1};
     tPlt = timeBuffs{chInd};
+    tPk = forBuffs{1}(:,1); tTr = forBuffs{1}(:,2);
+    tPltRng = [rawPlt.Time; fltPlt.Time; forPlt.Time];
+    tPltRng = [min(tPltRng), max(tPltRng)];
+    tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
 
     cont = isvalid(fig);
     if cont
@@ -131,10 +139,15 @@ while cont
         pltRaw.YData = rawPlt.Variables; pltRaw.XData = rawPlt.Time;
         pltFlt.YData = fltPlt.Variables; pltFlt.XData = fltPlt.Time;
         pltFor.YData = forPlt.Variables; pltFor.XData = forPlt.Time;
-        subplot(2,1,1); tPltRng = xlim();
+        % subplot(2,1,1); tPltRng = xlim();
+        pltPk.XData = t0 + seconds(tPk); pltPk.YData = zeros(size(tPk));
+        pltTr.XData = t0 + seconds(tTr); pltTr.YData = zeros(size(tTr));
         pltTime.YData = [nan; diff(tPlt)]; pltTime.XData = t0 + seconds(tPlt);
         pltTimeDisp.YData = [nan; diff(tPltDisp)]; pltTimeDisp.XData = t0 + seconds(tPltDisp);
-        subplot(2,1,2); xlim(tPltRng);
+        if sum(~isnat(tPltRng))
+            subplot(2,1,1); xlim(tPltRng);
+            subplot(2,1,2); xlim(tPltRng);
+        end
     end
 
     catch ME
