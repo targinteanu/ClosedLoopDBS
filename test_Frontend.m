@@ -81,10 +81,10 @@ if isempty(pool)
 end
 
 % Set up a data queue to communicate between the background task and the main thread
-DataQueue = parallel.pool.PollableDataQueue;
+dataQueue = parallel.pool.PollableDataQueue;
 
 % Execute the data acquisition function asynchronously
-f = parfeval(pool, @test_Backend, 0, DataQueue);  % 0 indicates no output
+f = parfeval(pool, @test_Backend, 0, dataQueue);  % 0 indicates no output
 
 %% loop 
 cont = isvalid(fig);
@@ -92,14 +92,18 @@ while cont
     pause(dT)
     tDisp2 = td0 + toc(tDisp1); %tDisp1 = tic;
 
-    [sentData, ok] = poll(DataQueue, .5);
+    [sentData, ok] = poll(dataQueue, .5);
     if ok
+        if strcmpi(class(sentData), 'MException')
+            getReport(ME)
+            cont = false;
+        else
         tPltDisp = bufferData(tPltDisp, tDisp2);
 
         rawD1 = sentData(1,1); rawD4 = sentData(2,1);
         fltD1 = sentData(1,2); fltD4 = sentData(2,2);
         forD1 = sentData(1,3); forD4 = sentData(2,3);
-        timeBuff = sentData{3,1}; foreBuff = sentData{3,3};
+        timeBuff = sentData{3,1}; forBuff = sentData{3,3};
 
         rawPlt = data2timetable(rawD4,rawD1,t0); rawPlt = rawPlt{1};
         fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
@@ -110,7 +114,7 @@ while cont
         tPltRng = [min(tPltRng), max(tPltRng)];
         tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
 
-        cont = isvalid(fig);
+        cont = cont && isvalid(fig);
         if cont
             figure(fig);
             pltRaw.YData = rawPlt.Variables; pltRaw.XData = rawPlt.Time;
@@ -126,7 +130,9 @@ while cont
                 subplot(2,1,2); xlim(tPltRng);
             end
         end
+        end
     end
+    cont = cont && isvalid(fig);
 end
 
 %% close 
