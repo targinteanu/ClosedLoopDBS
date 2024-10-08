@@ -1,4 +1,4 @@
-function [newContData, chname] = getNewRawData_cbmex(chsel)
+function [newContData, chname, chnum] = getNewRawData_cbmex(chsel)
 
 % to do: this should also return the channel info for checking 
 

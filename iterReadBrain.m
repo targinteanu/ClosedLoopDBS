@@ -43,16 +43,18 @@ tic
 if doDAQ 
 
 chInfo = rawData(1,:);
-rawNames = cellfun(@(c) c.Name, chInfo, 'UniformOutput',false);
-% to do: for speed, use channel ID# instead of names 
+%rawNames = cellfun(@(c) c.Name, chInfo, 'UniformOutput',false);
+rawIDs = cellfun(@(c) c.IDnumber, chInfo);
 
 curTime = nan(1,size(rawData,2));
 
-[newTails, tailNames] = daqFun(); 
+[newTails, tailNames, tailIDs] = daqFun(); 
 for ch = 1:size(newTails,2)
     newTail = newTails{ch};
     tailName = tailNames{ch};
-    CH = find(strcmp(tailName, rawNames)); 
+    %CH = find(strcmp(tailName, rawNames)); 
+    tailID = tailIDs(ch);
+    CH = find(tailID == rawIDs);
     if isempty(CH)
         error(['Unrecognized new raw data label: ',tailName]);
     end
@@ -141,7 +143,7 @@ for CH = 1:size(forData,2)
     [forData{2,CH}, forData{3,CH}, forData{4,CH}] = ...
         bufferjuggle(forData{2,CH},forData{3,CH},forTails{CH}, ...
         @(old, new) bufferDataOverwrite(old, new, lenFor(CH)));
-    forBuffs{1,CH} = bufferData(forBuffs{1,CH}, forBuffsAdd{1,CH});
+    forBuffs{1,CH} = bufferData(forBuffs{1,CH}, forBuffsAdd{1,CH} + curTime(CH));
 end
 
 end
