@@ -96,12 +96,13 @@ while cont
     if DQ.QueueLength == 0
         send(DQ, [rawD(1,chInd), fltD(1,1), forD(1,1); ...
                   rawD(4,chInd), fltD(4,1), forD(4,1); ...
-                  timeBuffs{chInd},     [], forBuffs{1}]);
+                  timeBuffs(chInd),  {nan}, forBuffs(1)]);
     end
 
     catch ME
         cont = false;
         getReport(ME)
+        send(DQ, ME);
     end
 end
 
