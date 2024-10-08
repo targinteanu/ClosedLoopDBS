@@ -141,5 +141,5 @@ end
 cancel(f); % stop background parallel pool
 disconnect_cbmex();
 svname = [mfilename,'_output_',datestr(t0,'yyyymmdd_HHMMSS'),'.mat'];
-PeakTrough = forBuffs{1};
+PeakTrough = forBuff;
 save(svname,"PeakTrough");
