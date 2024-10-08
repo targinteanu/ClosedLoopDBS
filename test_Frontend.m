@@ -10,7 +10,7 @@ IndShiftFIR = ceil(filtorder/2); % samples
 
 dT = .001; % s between data requests 
 PDSwin = 1000; % # samples ahead to forecast
-buffSize = 2000; % samples
+buffSize = 20000; % samples
 
 connect_cbmex(); 
 t0 = datetime - seconds(cbmex('time'));
@@ -74,6 +74,8 @@ pltTr = plot(t0 + seconds(tTr), zeros(size(tTr)), 'vm');
 %linkaxes(ax, 'x')
 
 %% start background parallel pool 
+disconnect_cbmex();
+
 % Start parallel pool if not already started
 pool = gcp('nocreate');
 if isempty(pool)
@@ -95,7 +97,7 @@ while cont
     [sentData, ok] = poll(dataQueue, .5);
     if ok
         if strcmpi(class(sentData), 'MException')
-            getReport(ME)
+            getReport(sentData)
             cont = false;
         else
         tPltDisp = bufferData(tPltDisp, tDisp2);

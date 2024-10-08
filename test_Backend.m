@@ -1,5 +1,7 @@
 function test_Backend(DQ)
 
+try
+
 %% set filter 
 minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
@@ -23,8 +25,9 @@ load("20240829_ARmdl.mat","ARmdl");
 
 dT = .001; % s between data requests 
 PDSwin = 1000; % # samples ahead to forecast
-buffSize = 2000; % samples
+buffSize = 20000; % samples
 
+connect_cbmex(); 
 pause(10*dT);
 
 try
@@ -104,6 +107,11 @@ while cont
         getReport(ME)
         send(DQ, ME);
     end
+end
+
+catch ME
+    getReport(ME)
+    send(DQ, ME);
 end
 
 %% function def 
