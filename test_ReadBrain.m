@@ -158,6 +158,9 @@ end
 
 %% close 
 disconnect_cbmex();
+svname = [mfilename,'_output_',datestr(t0,'yyyymmdd_HHMMSS'),'.mat'];
+PeakTrough = forBuffs{1};
+save(svname,"PeakTrough");
 
 %% function def 
 
