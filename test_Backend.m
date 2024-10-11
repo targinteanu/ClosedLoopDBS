@@ -26,23 +26,25 @@ dT = .001; % s between data requests
 forecastwin = 1000; % # samples ahead to forecast
 buffSize = 20000; % samples
 
-Fs = cellfun(@(s) s.SampleRate, rawN);
-foreArgs.k = forecastwin;
-fIC = zeros(filtorder,1); fIC = repmat({fIC}, size(rawH)); 
-filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
-filtArgs.TimeShift = repmat(TimeShiftFIR, size(rawH)); 
-foreArgs.TimeStart = nan(size(rawH));
-foreArgs.TimeShift = filtArgs.TimeShift;
-foreArgs.ARmdls = {ARmdl};
-foreArgs.SampleRates = Fs;
-foreArgs.FreqRange = [loco, hico];
-
 chInd = 33;
 selRaw2Flt = chInd; selRaw2For = []; selFlt2For = 1;
 
 [rawD, fltD, forD, timeBuffs] = ...
     InitializeRecording_cbmex(buffSize, filtorder, forecastwin, ...
     [], selRaw2Flt, selRaw2For, selFlt2For);
+rawN = rawD(1,:); fltN = fltD(1,:); forN = forD(1,:);
+
+Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
+foreArgs.K = forecastwin; foreArgs.k = ceil(.02*foreArgs.K);
+filtorder = repmat(filtorder, size(fltN));
+fIC = arrayfun(@(ord) zeros(ord,1), filtorder, 'UniformOutput',false);
+filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
+filtArgs.TimeShift = repmat(TimeShiftFIR, size(fltN)); 
+foreArgs.TimeStart = nan(size(forN));
+foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
+foreArgs.ARmdls = {ARmdl};
+foreArgs.SampleRates = Fs;
+foreArgs.FreqRange = [loco, hico];
 
 %forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
@@ -90,7 +92,7 @@ end
 
 function [foreTails, foreBuffsAdd, foreArgs] = foreFun(foreArgs, inData)
 % inData should just be the filtered channel of interest
-k = foreArgs.k;
+K = foreArgs.K; k = foreArgs.k;
 ARmdls = foreArgs.ARmdls;
 fs = foreArgs.SampleRates;
 Ts = foreArgs.TimeShift;
@@ -98,10 +100,11 @@ Fco = foreArgs.FreqRange;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
 for ch_ = 1:size(inData,2)
     armdl = ARmdls{ch_};
-    FT = myFastForecastAR(armdl, inData{ch_}(:,2), k);
+    FT = myFastForecastAR(armdl, inData{ch_}(:,2), K);
     foreTails{ch_} = [nan(height(FT),1), FT];
     foreTails{ch_}(1,1) = foreArgs.TimeStart(ch_);
 
+    FT = FT(1:k,:); % use limited duration for hilbert padding
     [t2,i2,phi_inst,f_inst] = blockPDS(...
         inData{ch_}(:,2), FT, fs(ch_), [0,pi], ...
         Ts(ch_), Fco(1), Fco(2));
