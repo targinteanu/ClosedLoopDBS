@@ -9,7 +9,6 @@ srate = 1000;
 loco = 13; hico = 30; % Hz 
 filtorder = minfac*fix(srate/loco);
 TimeShiftFIR = filtorder/(2*srate); % seconds
-IndShiftFIR = ceil(filtorder/2); % samples
 
 % build filter 
 % usage i.e.: 
@@ -24,31 +23,11 @@ load("20240829_ARmdl.mat","ARmdl");
 %% init 
 
 dT = .001; % s between data requests 
-PDSwin = 1000; % # samples ahead to forecast
+forecastwin = 1000; % # samples ahead to forecast
 buffSize = 20000; % samples
 
-connect_cbmex(); 
-pause(10*dT);
-
-try
-    [rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
-catch ME
-    warning(['Error on first attempt: ',ME.message]);
-    pause(1);
-    [rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
-end
 Fs = cellfun(@(s) s.SampleRate, rawN);
-fltH = initFilteredData(rawH, repmat(IndShiftFIR, size(rawH))); 
-[forH, forT, forB] = initForecastData(fltH, repmat(PDSwin, size(fltH)));
-
-rawD = [rawN; rawH; rawT; rawB]; 
-forD = [rawN; forH; forT; forB];
-
-fltT = cellfun(@(D) [1,0].*D, rawT, 'UniformOutput',false);
-fltB = cellfun(@(D) [1,0].*D, rawB, 'UniformOutput',false);
-fltD = [rawN; fltH; fltT; fltB];
-
-foreArgs.k = PDSwin;
+foreArgs.k = forecastwin;
 fIC = zeros(filtorder,1); fIC = repmat({fIC}, size(rawH)); 
 filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
 filtArgs.TimeShift = repmat(TimeShiftFIR, size(rawH)); 
@@ -58,24 +37,15 @@ foreArgs.ARmdls = {ARmdl};
 foreArgs.SampleRates = Fs;
 foreArgs.FreqRange = [loco, hico];
 
-timeBuffs = cell(size(rawH));
-for ch = 1:length(rawH)
-    t_ch = rawH{ch}(:,1);
-    dt_ch = 1/rawN{ch}.SampleRate;
-    for it = 2:length(t_ch)
-        if isnan(t_ch(it))
-            t_ch(it) = t_ch(it-1) + dt_ch;
-        end
-    end
-    timeBuffs{ch} = t_ch;% + t0;
-end
-%forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
-forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
-
 chInd = 33;
 selRaw2Flt = chInd; selRaw2For = []; selFlt2For = 1;
 
-fltD = fltD(:,chInd); forD = forD(:,chInd);
+[rawD, fltD, forD, timeBuffs] = ...
+    InitializeRecording_cbmex(buffSize, filtorder, forecastwin, ...
+    [], selRaw2Flt, selRaw2For, selFlt2For);
+
+%forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
+forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = forBuffs(chInd);
 
 %% loop 
@@ -108,6 +78,8 @@ while cont
         send(DQ, ME);
     end
 end
+
+disconnect_cbmex();
 
 catch ME
     getReport(ME)
