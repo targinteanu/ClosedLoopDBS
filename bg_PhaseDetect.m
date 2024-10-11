@@ -14,29 +14,30 @@ chInd = UserArgs.chInd;
 forecastwin = UserArgs.PDSwin1; % # samples ahead to forecast
 forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
 buffSize = UserArgs.bufferSize; % samples
+PhaseOfInterest = UserArgs.PhaseOfInterest;
 
 %% init 
 
 dT = .001; % s between data requests 
-
+TimeShiftFIR = filtorder/(2*srate); % seconds
 selRaw2Flt = chInd; selRaw2For = []; selFlt2For = 1;
 
 [rawD, fltD, forD, timeBuffs] = ...
-    InitializeRecording(buffSize, filtorder, forecastwin, ...
+    InitializeRecording(buffSize, filtOrds, forecastwin, ...
     selRaw, selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); fltN = fltD(1,:); forN = forD(1,:);
 
 Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
-foreArgs.K = forecastwin; foreArgs.k = ceil(.02*foreArgs.K);
-filtorder = repmat(filtorder, size(fltN));
-fIC = arrayfun(@(ord) zeros(ord,1), filtorder, 'UniformOutput',false);
-filtArgs.fltInit = fIC; filtArgs.fltObj = filtwts;
-filtArgs.TimeShift = repmat(TimeShiftFIR, size(fltN)); 
+foreArgs.K = forecastwin; foreArgs.k = forecastpad;
+fIC = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
+filtArgs.fltInit = fIC; filtArgs.fltObj = filtObjs;
+filtArgs.TimeShift = TimeShiftFIR; 
 foreArgs.TimeStart = nan(size(forN));
 foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
 foreArgs.ARmdls = mdls;
 foreArgs.SampleRates = Fs;
 foreArgs.FreqRange = [loco, hico];
+foreArgs.PhaseOfInterest = PhaseOfInterest;
 
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = forBuffs(chInd);
@@ -89,20 +90,21 @@ ARmdls = foreArgs.ARmdls;
 fs = foreArgs.SampleRates;
 Ts = foreArgs.TimeShift;
 Fco = foreArgs.FreqRange;
+phis = foreArgs.PhaseOfInterest;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
-for ch_ = 1:size(inData,2)
-    armdl = ARmdls{ch_};
-    FT = myFastForecastAR(armdl, inData{ch_}(:,2), K);
-    foreTails{ch_} = [nan(height(FT),1), FT];
-    foreTails{ch_}(1,1) = foreArgs.TimeStart(ch_);
+for ch_fore = 1:size(inData,2)
+    armdl = ARmdls{ch_fore};
+    FT = myFastForecastAR(armdl, inData{ch_fore}(:,2), K);
+    foreTails{ch_fore} = [nan(height(FT),1), FT];
+    foreTails{ch_fore}(1,1) = foreArgs.TimeStart(ch_fore);
 
     FT = FT(1:k,:); % use limited duration for hilbert padding
     [t2,i2,phi_inst,f_inst] = blockPDS(...
-        inData{ch_}(:,2), FT, fs(ch_), [0,pi], ...
-        Ts(ch_), Fco(1), Fco(2));
-    t2 = t2-Ts(ch_); % [t2peak, t2trough]
+        inData{ch_fore}(:,2), FT, fs(ch_fore), phis, ...
+        Ts(ch_fore), Fco(1), Fco(2));
+    t2 = t2-Ts(ch_fore); % [t2peak, t2trough]
     t2 = max(t2,0);
-    foreBuffsAdd{ch_} = t2; 
+    foreBuffsAdd{ch_fore} = t2; 
 end
 end
 
@@ -111,9 +113,10 @@ filtObj = fltArgs.fltObj;
 filtInit = fltArgs.fltInit;
 filtFin = cell(size(filtInit));
 fltTails = cell(size(rawTails));
-for ch__ = 1:size(rawTails,2)
-    [FT,filtFin{ch__}] = filter(filtObj,1,rawTails{ch__}(:,2:end),filtInit{ch__});
-    fltTails{ch__} = [rawTails{ch__}(:,1) - fltArgs.TimeShift(ch__), FT];
+for ch_flt = 1:size(rawTails,2)
+    a = filtObj{1,ch_flt}; b = filtObj{2,ch_flt};
+    [FT,filtFin{ch_flt}] = filter(b,a,rawTails{ch_flt}(:,2:end),filtInit{ch_flt});
+    fltTails{ch_flt} = [rawTails{ch_flt}(:,1) - fltArgs.TimeShift(ch_flt), FT];
 end
 fltArgs.fltInit = filtFin;
 end
