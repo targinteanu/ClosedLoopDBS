@@ -16,6 +16,9 @@ connect_cbmex();
 t0 = datetime - seconds(cbmex('time'));
 pause(10*dT);
 
+svname = ['Saved Data Test',filesep,mfilename,'_SaveFile_',datestr(t0,'yyyymmdd_HHMMSS')];
+svN = 1;
+
 try
     [rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
 catch ME
@@ -105,7 +108,15 @@ while cont
         rawD1 = sentData(1,1); rawD4 = sentData(2,1);
         fltD1 = sentData(1,2); fltD4 = sentData(2,2);
         forD1 = sentData(1,3); forD4 = sentData(2,3);
-        timeBuff = sentData{3,1}; forBuff = sentData{3,3};
+        timeBuff = sentData{3,1}; forBuff = sentData{3,3}; 
+        forBuffSv = sentData{3,2};
+
+        if ~isempty(forBuffSv)
+            PeakTrough = forBuffSv;
+            save([svname,'_',num2str(svN),'.mat'], 'PeakTrough');
+            svN = svN+1;
+            forBuff = [forBuffSv; forBuff];
+        end
 
         rawPlt = data2timetable(rawD4,rawD1,t0); rawPlt = rawPlt{1};
         fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
@@ -140,6 +151,5 @@ end
 %% close 
 cancel(f); % stop background parallel pool
 disconnect_cbmex();
-svname = [mfilename,'_output_',datestr(t0,'yyyymmdd_HHMMSS'),'.mat'];
 PeakTrough = forBuff;
 save(svname,"PeakTrough");

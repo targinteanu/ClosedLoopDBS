@@ -27,6 +27,9 @@ connect_cbmex();
 t0 = datetime - seconds(cbmex('time'));
 pause(10*dT);
 
+svname = ['Saved Data Test',filesep,mfilename,'_SaveFile_',datestr(t0,'yyyymmdd_HHMMSS')];
+svN = 1;
+
 try
     [rawH, rawT, rawB, rawN] = initRawData_cbmex([], buffSize);
 catch ME
@@ -76,7 +79,7 @@ chInd = 33;
 selRaw2Flt = chInd; selRaw2For = []; selFlt2For = 1;
 
 fltD = fltD(:,chInd); forD = forD(:,chInd);
-forBuffs = forBuffs(chInd);
+forBuffs = forBuffs(chInd); forBuffRow = ones(size(forBuffs));
 
 fig = figure; 
 
@@ -116,19 +119,27 @@ while cont
     timeBuffs, rawD, ...
     ~, ~, ...
     fltD, filtArgs, ...
-    forBuffs, forD, foreArgs] = ...
+    forBuffs, forBuffRow, forBuffedOut, forD, foreArgs] = ...
     iterReadBrain(...
         timeBuffs, rawD, @() getNewRawData_cbmex([]), ...
         selRaw2Flt, selRaw2For, selFlt2For, ...
         [], [], [], [], ...
         fltD, @filtFun, filtArgs, ...
-        forBuffs, forD, @foreFun, foreArgs);
+        forBuffs, forBuffRow, forD, @foreFun, foreArgs);
+
+    forBuffedOut = forBuffedOut{1}; forBuffs = forBuffs{1};
+    if ~isempty(foreBuffedOut)
+        PeakTrough = foreBuffedOut;
+        save([svname,'_',num2str(svN),'.mat'], 'PeakTrough');
+        svN = svN+1;
+        forBuffs = [forBuffedOut; forBuffs];
+    end
 
     rawPlt = data2timetable(rawD(4,chInd),rawD(1,chInd),t0); rawPlt = rawPlt{1};
     fltPlt = data2timetable(fltD(4,1),fltD(1,1),t0); fltPlt = fltPlt{1};
     forPlt = data2timetable(forD(4,1),forD(1,1),t0); forPlt = forPlt{1};
     tPlt = timeBuffs{chInd};
-    tPk = forBuffs{1}(:,1); tTr = forBuffs{1}(:,2);
+    tPk = forBuffs(:,1); tTr = forBuffs(:,2);
     tPltRng = [rawPlt.Time; fltPlt.Time; forPlt.Time];
     tPltRng = [min(tPltRng), max(tPltRng)];
     tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
@@ -158,8 +169,7 @@ end
 
 %% close 
 disconnect_cbmex();
-svname = [mfilename,'_output_',datestr(t0,'yyyymmdd_HHMMSS'),'.mat'];
-PeakTrough = forBuffs{1};
+PeakTrough = forBuffs;
 save(svname,"PeakTrough");
 
 %% function def 
