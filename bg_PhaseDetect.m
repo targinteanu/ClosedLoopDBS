@@ -2,9 +2,14 @@ function bgArgOut = bg_PhaseDetect(UQ, DQ, SQ, ...
     InitializeRecording, ShutdownRecording, selRaw)
 % Run brain recording with phase detection/prediction for PDS
 
+bgArgOut = [];
+
+cont_fullfunc = true; % run or wait for user input
+while cont_fullfunc
 try
 %% poll queue(s) for data 
-[UserArgs, ok] = poll(UQ, 3600);
+poll_timeout_sec = 3600;
+[UserArgs, ok] = poll(UQ, poll_timeout_sec);
 if ~ok
     error('Background process timed out without user input.')
 end
@@ -48,8 +53,8 @@ forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = forBuffs(chInd);
 
 %% loop 
-cont = true;
-while cont
+cont_loop = true;
+while cont_loop
     pause(dT)
 
     try
@@ -65,14 +70,22 @@ while cont
         fltD, @filtFun, filtArgs, ...
         forBuffs, forD, @foreFun, foreArgs);
 
+    % DataQueue is empty when the User polls it, which means the
+    % User is ready for new data. 
     if DQ.QueueLength == 0
         send(DQ, [rawD(1,chInd), fltD(1,1), forD(1,1); ...
                   rawD(4,chInd), fltD(4,1), forD(4,1); ...
                   timeBuffs(chInd),  {nan}, forBuffs(1)]);
     end
 
+    % If the UserQueue is non-empty, there are new UserArgs, and the full
+    % func should be restarted. 
+    cont_loop = cont_loop && UQ.QueueLength < 1;
+
+    % If there are any errors in the loop, stop looping and allow the
+    % User to handle them. 
     catch ME_loop
-        cont = false;
+        cont_loop = false;
         getReport(ME_loop)
         send(DQ, ME_loop);
     end
@@ -81,9 +94,13 @@ end
 %% stop 
 ShutdownRecording();
 
+% If there are any errors in the full func, stop looping and allow the User
+% to handle them. 
 catch ME_fullfunc
+    cont_fullfunc = false;
     getReport(ME_fullfunc)
     send(DQ, ME_fullfunc)
+end
 end
 
 %% function def 
