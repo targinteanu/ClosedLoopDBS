@@ -1,27 +1,29 @@
-function [storage1, p1, storage2, p2] = ...
-    bufferStorage(storage1, p1, storage2, newData)
-% Populate a storage buffer storage1 until it is full; then, begin
-% populating the next buffer storage2. 
-% storage2 is assumed to be empty at function call. 
-% p1 and p2 are pointers to the current rows of the respective storages. If
-% zero is returned, storage is full. 
+function [storageFull, curStorage, curRow, oldStorage] = ...
+    bufferStorage(curStorage, curRow, newData)
+% Populate the current storage buffer until it is full; then, begin
+% populating the next buffer. 
+% curRow indicates current row of the storage. 
+% If storageFull is true, storage has been filled, and the old storage to
+% be saved is returned as oldStorage. Otherwise, oldStorage is empty. 
 
 N = height(newData); 
-if p1+N-1 > height(storage1)
+storageFull = curRow+N-1 > height(curStorage);
+if storageFull
     % storage 1 is now full 
-    if N > height(storage2)
+    oldStorage = curStorage;
+    curStorage = nan(size(curStorage));
+    if N > height(curStorage)
         warning('Data overloaded save buffer; some data may not be saved.')
-        N = height(storage2);
+        N = height(curStorage);
         newData = newData(1:N, :);
     end
-    p1 = 0; 
-    storage2(1:N, :) = newData; 
-    p2 = N+1;
+    curStorage(1:N, :) = newData; 
+    curRow = N+1;
 else
     % normal buffering
-    storage1(p1:(p1+N-1), :) = newData;
-    p1 = p1+N;
-    p2 = [];
+    curStorage(curRow:(curRow+N-1), :) = newData;
+    curRow = curRow+N;
+    oldStorage = [];
 end
 
 end
