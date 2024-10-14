@@ -2,7 +2,12 @@ function bgArgOut = bg_PhaseDetect(UQ, DQ, SQ, ...
     InitializeRecording, ShutdownRecording, selRaw)
 % Run brain recording with phase detection/prediction for PDS
 
-try 
+try
+%% poll queue(s) for data 
+[UserArgs, ok] = poll(UQ, 3600);
+if ~ok
+    error('Background process timed out without user input.')
+end
 
 %% import filter and model details, etc
 % change names according to front-end handles/app/struct!!
