@@ -127,19 +127,19 @@ while cont
         fltD, @filtFun, filtArgs, ...
         forBuffs, forBuffRow, forD, @foreFun, foreArgs);
 
-    forBuffedOut = forBuffedOut{1}; forBuffs = forBuffs{1};
-    if ~isempty(foreBuffedOut)
-        PeakTrough = foreBuffedOut;
+    forBuffedOut = forBuffedOut{1}; forBuffs1 = forBuffs{1};
+    if ~isempty(forBuffedOut)
+        PeakTrough = forBuffedOut;
         save([svname,'_',num2str(svN),'.mat'], 'PeakTrough');
         svN = svN+1;
-        forBuffs = [forBuffedOut; forBuffs];
+        forBuffs1 = [forBuffedOut; forBuffs1];
     end
 
     rawPlt = data2timetable(rawD(4,chInd),rawD(1,chInd),t0); rawPlt = rawPlt{1};
     fltPlt = data2timetable(fltD(4,1),fltD(1,1),t0); fltPlt = fltPlt{1};
     forPlt = data2timetable(forD(4,1),forD(1,1),t0); forPlt = forPlt{1};
     tPlt = timeBuffs{chInd};
-    tPk = forBuffs(:,1); tTr = forBuffs(:,2);
+    tPk = forBuffs1(:,1); tTr = forBuffs1(:,2);
     tPltRng = [rawPlt.Time; fltPlt.Time; forPlt.Time];
     tPltRng = [min(tPltRng), max(tPltRng)];
     tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
@@ -169,7 +169,7 @@ end
 
 %% close 
 disconnect_cbmex();
-PeakTrough = forBuffs;
+PeakTrough = forBuffs{1};
 save(svname,"PeakTrough");
 
 %% function def 
