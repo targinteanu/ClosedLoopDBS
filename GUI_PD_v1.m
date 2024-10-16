@@ -74,7 +74,7 @@ handles.timer = timer(...
 %}
 
 
-handles.cbmexStatus = false;
+handles.DAQstatus = false;
 
 % start receiver serial communication from paradigm computer
 handles.textSrl.String = 'attempting to start serial com here ...';
@@ -174,9 +174,9 @@ disconnect_cbmex();
 
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     handles.userQueue, handles.dataQueue, handles.stimQueue, ...
-    @InitializeRecording_cbmex, @disconnect_cbmex, []);
+    @InitializeRecording_cbmex, @disconnect_cbmex, @getNewRawData_cbmex, []);
 
-handles.cbmexStatus = true;
+handles.DAQstatus = true;
 
 % Acquire some data to get channel information. Determine which channels
 % are enabled
@@ -185,7 +185,7 @@ send(handles.userQueue, rmfield(handles, handles.rmfieldList));
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
     handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
 if ~dataRecd
-    handles.cbmexStatus = false;
+    handles.DAQstatus = false;
     send(handles.userQueue, rmfield(handles, handles.rmfieldList));
     warning('Data aquisition timed out.')
 else
@@ -234,7 +234,7 @@ function cmd_cbmexClose_Callback(hObject, eventdata, handles)
 % hObject    handle to cmd_cbmexClose (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.cbmexStatus = false;
+handles.DAQstatus = false;
 send(handles.userQueue, rmfield(handles, handles.rmfieldList));
 guidata(hObject,handles)
 
@@ -280,7 +280,7 @@ handles = guidata(hObject);
 if get(hObject,'Value') == 1
     
     % Check to make sure cbmex connection is open
-    if ~handles.cbmexStatus
+    if ~handles.DAQstatus
         errordlg('No cbmex connection.  Open connection before starting','Not Connected')
         return
     end
@@ -342,7 +342,7 @@ end
 
 try
 cbmex('close')
-handles.cbmexStatus = false;
+handles.DAQstatus = false;
 send(handles.userQueue, rmfield(handles, handles.rmfieldList));
 guidata(hObject, handles)
 %stop(handles.timer)
@@ -387,7 +387,7 @@ while handles.RunMainLoop
 try
     
     handles = guidata(hObject);
-    if ~handles.cbmexStatus
+    if ~handles.DAQstatus
         %stop(handles.timer)
         StopMainLoop(hObject,eventdata,handles)
     end
@@ -726,7 +726,7 @@ try
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
     if ~dataRecd
-        handles.cbmexStatus = false;
+        handles.DAQstatus = false;
         send(handles.userQueue, rmfield(handles, handles.rmfieldList));
         warning('Data aquisition timed out.')
     else

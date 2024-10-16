@@ -1,5 +1,5 @@
 function bgArgOut = bg_PhaseDetect(UQ, DQ, SQ, ...
-    InitializeRecording, ShutdownRecording, selRaw)
+    InitializeRecording, ShutdownRecording, GetNewRawData, selRaw)
 % 
 % Run brain recording with phase detection/prediction for PDS.
 % 
@@ -12,6 +12,9 @@ function bgArgOut = bg_PhaseDetect(UQ, DQ, SQ, ...
 % [ raw , filtered , forecast, timing buffer ] data
 % 
 % ShutdownRecording takes no arguments.
+% 
+% GetNewRawData takes selRaw as an argument and returns new raw tails. 
+% 
 
 bgArgOut = [];
 
@@ -27,7 +30,7 @@ end
 
 %% import filter and model details, etc
 % change names according to front-end handles/app/struct!!
-cont_loop = UserArgs.cbmexStatus; 
+cont_loop = UserArgs.DAQstatus; 
 FilterSetUp = UserArgs.FilterSetUp; % t/f
 MdlSetUp = UserArgs.MdlSetUp; % t/f
 filtOrds = UserArgs.filtOrds; % cell with chans as cols
@@ -98,7 +101,7 @@ while cont_loop
     fltD, filtArgs, ...
     forBuffs, forBuffRow, forBuffedOut, forD, foreArgs] = ...
     iterReadBrain(...
-        timeBuffs, rawD, @() getNewRawData_cbmex(selRaw), ...
+        timeBuffs, rawD, @() GetNewRawData(selRaw), ...
         selRaw2Flt, selRaw2For, selFlt2For, ...
         [], [], [], [], ...
         fltD, @filtfun, filtArgs, ...
