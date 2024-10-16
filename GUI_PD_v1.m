@@ -491,6 +491,7 @@ try
                 handles.stimDataBuffer(stimind) = true;
 
                 % artifact removal 
+                %{
                 if handles.check_artifact.Value
                     try
                     catch ME3
@@ -501,12 +502,14 @@ try
                         pause(.01);
                     end
                 end
+                %}
             end
             end
 
-            set(handles.h_stimTrace,'YData',0*plotLogical(handles.stimDataBuffer));
+            % set(handles.h_stimTrace,'YData',0*plotLogical(handles.stimDataBuffer));
 
             % queue stimulus pulse, if applicable 
+            %{
             % ***** TO DO: can this be moved elsewhere to avoid delays?  
             if handles.StimActive
                 ParadigmPhase = handles.srl.UserData.ParadigmPhase;
@@ -523,6 +526,7 @@ try
                     end
                 end
             end
+            %}
 
             % plot sine wave 
             if handles.check_polar.Value
@@ -685,8 +689,10 @@ try
                 '^', 'Color',"#EDB120"); 
             handles.h_trouTrace = plot(handles.time0 + seconds(tTr) - tNow, zeros(size(tTr)), ...
                 'v', 'Color',"#EDB120"); 
+            %{
             handles.h_stimTrace = plot(xValues3,0*plotLogical(handles.stimDataBuffer), ...
                 '*', 'Color','r'); 
+            %}
             handles.h_predTrace = plot(forPlt.Time - tNow, forPlt.Variables, ':');
             %handles.h_sineTrace = plot(xValues3,handles.sineDataBuffer,'--');
 
