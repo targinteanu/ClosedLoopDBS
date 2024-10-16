@@ -97,35 +97,20 @@ while cont
     pause(dT)
     tDisp2 = td0 + toc(tDisp1); %tDisp1 = tic;
 
-    [sentData, ok] = poll(dataQueue, .5);
-    if ok
-        if strcmpi(class(sentData), 'MException')
-            getReport(sentData)
-            cont = false;
-        else
+    try
+    [ok, svN, timeBuff, forBuff, ...
+    tPltRng, rawPlt, fltPlt, forPlt, ...
+    rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
+    pollDataQueue_PhaseDetect_v1(dataQueue, svname, svN, t0, .5);
+    catch sentData
+        getReport(sentData)
+        cont = false;
+    end
+    if cont && ok
         tPltDisp = bufferData(tPltDisp, tDisp2);
 
-        rawD1 = sentData(1,1); rawD4 = sentData(2,1);
-        fltD1 = sentData(1,2); fltD4 = sentData(2,2);
-        forD1 = sentData(1,3); forD4 = sentData(2,3);
-        timeBuff = sentData{3,1}; forBuff = sentData{3,3}; 
-        forBuffSv = sentData{3,2};
-
-        if ~isempty(forBuffSv)
-            PeakTrough = forBuffSv;
-            save([svname,'_',num2str(svN),'.mat'], 'PeakTrough');
-            svN = svN+1;
-            forBuff = [forBuffSv; forBuff];
-        end
-
-        rawPlt = data2timetable(rawD4,rawD1,t0); rawPlt = rawPlt{1};
-        fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
-        forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
         tPlt = timeBuff;
         tPk = forBuff(:,1); tTr = forBuff(:,2);
-        tPltRng = [rawPlt.Time; fltPlt.Time; forPlt.Time];
-        tPltRng = [min(tPltRng), max(tPltRng)];
-        tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
 
         cont = cont && isvalid(fig);
         if cont
@@ -142,7 +127,6 @@ while cont
                 subplot(2,1,1); xlim(tPltRng);
                 subplot(2,1,2); xlim(tPltRng);
             end
-        end
         end
     end
     cont = cont && isvalid(fig);
