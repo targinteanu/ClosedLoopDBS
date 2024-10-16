@@ -751,15 +751,6 @@ end
 % ----                                                                --- %
 % ----------------------------------------------------------------------- %
 
-function newBuffer = cycleBuffer(oldBuffer, newData)
-N = length(newData);
-if N >= length(oldBuffer)
-    newBuffer = newData(end-length(oldBuffer)+1:end);
-else
-    newBuffer = [oldBuffer(N+1:end); newData];
-end
-
-
 function settingChange(hObject)
 handles = guidata(hObject);
 
@@ -787,73 +778,6 @@ plotData = double(logData);
 plotData(~logData) = nan; 
 
 
-function [storage1, p1, storage2, p2] = ...
-    cycleStorage(storage1, p1, storage2, newData)
-N = length(newData); 
-if p1+N-1 > length(storage1)
-    % storage 1 is now full 
-    if N > length(storage2)
-        warning('Data overloaded save buffer; some data may not be saved.')
-        N = length(storage2);
-        newData = newData(1:N);
-    end
-    p1 = 0; 
-    storage2(1:N) = newData; 
-    p2 = N+1;
-else
-    storage1(p1:(p1+N-1)) = newData;
-    p1 = p1+N;
-    p2 = [];
-end
-
-
-function [newBuffer, lastBuffer] = CombineAndCycle(oldBuffer, newData, N)
-% ?? does this still work when N is longer than length oldBuffer ??
-M = length(newData); 
-newBuffer = false(size(oldBuffer)); 
-newBuffer(1:(end-N)) = oldBuffer((N+1):end);
-lastBuffer = oldBuffer; 
-if N < length(lastBuffer)
-    lastBuffer = lastBuffer(1:N);
-end
-newBuffer((end-M+1):end) = newData;
-
-
-function newBuffer = OverwriteAndCycle(oldBuffer, newData, N)
-% N = # of points of data that is actually new 
-if N <= length(newData)
-    if N >= length(oldBuffer)
-        newBuffer = newData(end-length(oldBuffer)+1:end);
-    else
-        % buffer AND overwrite 
-        L = length(newData)-N; % length to overwrite
-        newBuffer = [oldBuffer((N+1):(end-L)); newData];
-    end
-else
-    % there is no data to overwrite; in fact, there is not enough new data
-    % nan-pad newData to length N and cycle buffer 
-    newData = [newData; nan(N-length(newData),1)];
-    newBuffer = cycleBuffer(oldBuffer, newData);
-end
-
-
-function [newFiltBuffer, filterFinalCond] = FilterAndCycle(...
-    oldFiltBuffer, newUnfilt, filtobj, filterInitCond)
-[newFilt,filterFinalCond] = filter(filtobj,1,newUnfilt,filterInitCond);
-newFiltBuffer = cycleBuffer(oldFiltBuffer, newFilt);
-
-
-function dataForecast = MdlForecast(MdlObj, dataPast, k, fs)
-% This needs to be made faster. Since fs is same as model fit, can do
-% by direct multiplication instead of built-in? 
-% Forecast the next <k> datapoints <dataForecast> using the model
-% system <MdlObj> and the previous data <dataPast> sampled at constant rate
-% <fs>. All data is in columns. 
-dataPast = iddata(dataPast,[],1/fs); 
-dataForecast = forecast(MdlObj,dataPast,k);
-dataForecast = dataForecast.OutputData;
-
-
 function setTgl(hObject, eventdata, handles, hTgl, newValue)
 % set a toggle button to a desired Value and activate its callback if it is
 % not currently at that value. 
@@ -863,46 +787,6 @@ if ~(curValue == newValue)
     hTgl.Callback(hTgl, eventdata);
     guidata(hObject, handles);
 end
-
-
-function [t2phi, i2phi, phi_inst, f_inst] = ...
-    blockPDS(pastData, futureData, fs, phi, tmin, fmin, fmax)
-% Determine the time (s) and # samples to next desired phase phi from a
-% block of data sampled at a constant rate fs (Hz). Also return the current
-% inst. phase phi_inst (rad) and frequency f_inst (Hz).
-% Block data should include some length of pastData and
-% (forecasted/predicted) futureData to minimize edge effects at the present
-% timepoint, which is the last element of pastData. Data should be input as
-% columns. 
-% phi [desired] is in radians, i.e. phi=0 for peak, phi=pi for trough
-% frequency will be clipped within range [fmin, fmax] (Hz) 
-
-N = size(pastData,1); M = size(futureData,1);
-blockData = [pastData; futureData];
-
-[phi_block, f_block] = instPhaseFreq(blockData, fs);
-phi_inst = phi_block(N,:);
-f_block = max(f_block, fmin); 
-f_block = min(f_block, fmax);
-fwinlen = floor(.03*N); fwinlen = min(fwinlen, M);
-fwin = N + ((-fwinlen):fwinlen);
-f_inst = mean(f_block(fwin,:));
-T=1/f_inst;
-
-% time to next [desired] phi 
-t2phi = zeros(size(phi)); i2phi = t2phi;
-for p = 1:length(phi)
-    phi_ = phi(p);
-    t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
-
-    % account for minimum delay time tmin 
-    nT = (tmin-t)/T; % how many periods needed to add 
-    t = t + ceil(nT)*T; 
-
-    t2phi(p) = t;
-    i2phi(p) = floor(fs*t2phi(p));
-end
- 
 
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
@@ -1667,6 +1551,7 @@ function txt_griddur_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of txt_griddur as text
 %        str2double(get(hObject,'String')) returns contents of txt_griddur as a double
+settingChange(hObject)
 
 
 % --- Executes during object creation, after setting all properties.
