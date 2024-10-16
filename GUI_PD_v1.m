@@ -385,6 +385,10 @@ handles = guidata(hObject);
 while handles.RunMainLoop
 
 try
+
+    pause(.1); % s between displays 
+    tNow = datetime;
+    timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
     
     handles = guidata(hObject);
     if ~handles.DAQstatus
@@ -392,7 +396,20 @@ try
         StopMainLoop(hObject,eventdata,handles)
     end
     
-    [events, time, continuousData] = cbmex('trialdata',1);
+    % get data from Central
+    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+    [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
+    tPltRng, rawPlt, fltPlt, forPlt, ...
+    rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
+    pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
+        handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
+    if ~dataRecd
+        handles.DAQstatus = false;
+        send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+        warning('Data aquisition timed out.')
+    else
+
+    end
 
     if ~isempty(continuousData)
     if size(continuousData,1) >= handles.channelIndex
@@ -464,18 +481,6 @@ try
             handles.filtDataBuffer, newContinuousData, ...
             handles.BPF, handles.filtCond);
         set(handles.h_filtDataTrace,'YData',handles.filtDataBuffer)
-
-        %{
-        % ===== FILTER DEBUGGING =====
-        % (This imposes unnecessary computational burden and should be
-        % removed or commented-out when debugging is complete.)
-        x1 =   filter(handles.BPF,1, handles.rawDataBuffer);
-        x2 = filtfilt(handles.BPF,1, handles.rawDataBuffer);
-        x1 = x1((handles.IndShiftFIR + 1):end);
-        set(handles.h_fullfiltTrace, 'YData', x1);
-        set(handles.h_filtfiltTrace, 'YData', x2);
-        % ============================
-        %}
 
         % update model-forecasted data 
         if handles.MdlSetUp
@@ -688,7 +693,6 @@ try
     set(handles.h_timingTrace,'YData',handles.diffSampleProcTime)
 
     guidata(hObject,handles)
-    pause(.001)
 
     end
     end
@@ -715,8 +719,14 @@ function  StartMainLoop(hObject, eventdata, handles)
 
 try
 
+    tNow = datetime;
+
     % Check which channel is selected and get some data to plot
     handles.channelIndex = get(handles.pop_channels,'Value'); 
+    % Now we know the sampling rate of the selected channel
+    handles.fSample = handles.fSamples(handles.channelIndex);
+    handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
+    handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
 
     % get data from Central
     send(handles.userQueue, rmfield(handles, handles.rmfieldList));
@@ -730,57 +740,66 @@ try
         send(handles.userQueue, rmfield(handles, handles.rmfieldList));
         warning('Data aquisition timed out.')
     else
-    
-    % Now that we know the sampling rate of the selected channel,
-    % Create raw data buffer of zeros of the correct length
-    handles.fSample = handles.fSamples(handles.channelIndex);
-    handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
-    handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
-    handles.rawDataBuffer = zeros(handles.bufferSize,1);
-
-    end
 
     % keep track of the display time 
-    handles.tDisp1 = tic; 
+    handles.timeDisp1 = tic; handles.timeDisp0 = timeBuff(end, :);
+    handles.timeDispBuff = nan(size(timeBuff));
 
+    % initiate raw data plot
     axes(handles.ax_raw);
-    handles.h_rawDataTrace = plot(rawPlt.Time, rawPlt.Variables);
+    handles.h_rawDataTrace = plot(rawPlt.Time - tNow, rawPlt.Variables);
     grid on; title('Raw Channel Data'); 
     xlabel('time'); ylabel(rawPlt.Properties.VariableNames{1});
-    common_xlim = xlim;
+    if sum(~isnat(tPltRng))
+        common_xlim = tPltRng; 
+        xlim(common_xlim);
+    else
+        common_xlim = xlim();
+    end
 
+    % initiate timing stem plot
     axes(handles.ax_timing); 
-    handles.h_timingTrace = stem(xValues,handles.diffSampleProcTime);
+    handles.h_timingTrace = ...
+        stem(handles.time0 + seconds(timeBuff) - tNow, ...
+        [nan; diff(timeBuff)], 's');
+    handles.h_timeDispTrace = ...
+        stem(handles.time0 + seconds(handles.timeDispBuff) - tNow, ...
+        [nan; diff(handles.timeDispBuff)], 's');
     grid on; title('Update Duration'); xlabel('time (s)'); ylabel('s');
+    xlim(common_xlim);
 
+    % initiate filtered data plot
     if handles.FilterSetUp
-        try
+        try        
         common_xdiff = diff(common_xlim); 
         ext_xdiff = common_xdiff * handles.ax_filt.InnerPosition(3) / ...
             handles.ax_raw.InnerPosition(3); 
         ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left 
         axes(handles.ax_filt); hold off; 
-        handles.h_filtDataTrace = plot(fltPlt.Time, fltPlt.Variables); 
+        handles.h_filtDataTrace = plot(fltPlt.Time - tNow, fltPlt.Variables); 
         grid on; hold on; 
         title('Filtered & Predicted Data'); xlabel('time (s)'); ylabel(unitname);
         xlim(ext_xlim);
 
+        % initiate prediction & peak/trough indicators overlayed on
+        % filtered plot
         if handles.MdlSetUp
             tPk = forBuff(:,1); tTr = forBuff(:,2);
-            handles.h_peakTrace = plot(handles.time0 + seconds(tPk), zeros(size(tPk)), ...
+            handles.h_peakTrace = plot(handles.time0 + seconds(tPk) - tNow, zeros(size(tPk)), ...
                 '^', 'Color',"#EDB120"); 
-            handles.h_trouTrace = plot(handles.time0 + seconds(tTr), zeros(size(tTr)), ...
+            handles.h_trouTrace = plot(handles.time0 + seconds(tTr) - tNow, zeros(size(tTr)), ...
                 'v', 'Color',"#EDB120"); 
             handles.h_stimTrace = plot(xValues3,0*plotLogical(handles.stimDataBuffer), ...
                 '*', 'Color','r'); 
-            handles.h_predTrace = plot(forPlt.Time, forPlt.Variables, ':');
-            handles.h_sineTrace = plot(xValues3,handles.sineDataBuffer,'--');
+            handles.h_predTrace = plot(forPlt.Time - tNow, forPlt.Variables, ':');
+            %handles.h_sineTrace = plot(xValues3,handles.sineDataBuffer,'--');
 
+            % initiate polar histogram 
             bedge = (-1:2:35)*pi/18; 
             axes(handles.ax_polar); hold off;
-            handles.h_peakPhase = polarhistogram(0, bedge);
+            handles.h_peakPhase = polarhistogram(nan, bedge);
             hold on; 
-            handles.h_trouPhase = polarhistogram(pi, bedge);
+            handles.h_trouPhase = polarhistogram(nan, bedge);
             title('Actual Phase')
         end
 
@@ -788,13 +807,17 @@ try
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
             handles.FilterSetUp = false;
+            send(handles.userQueue, rmfield(handles, handles.rmfieldList));
             pause(.01);
         end
     end
 
     handles.RunMainLoop = true; 
+    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
     guidata(hObject,handles)
     updateDisplay(hObject,eventdata)
+
+    end
     
 catch ME
     getReport(ME)

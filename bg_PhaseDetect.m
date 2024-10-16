@@ -30,13 +30,19 @@ end
 
 %% import filter and model details, etc
 % change names according to front-end handles/app/struct!!
-cont_loop = UserArgs.DAQstatus; 
+cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop; 
+    % if false, loop should only run once
+
 FilterSetUp = UserArgs.FilterSetUp; % t/f
 MdlSetUp = UserArgs.MdlSetUp; % t/f
-filtOrds = UserArgs.filtOrds; % cell with chans as cols
-filtObjs = UserArgs.filtObjs; % cell with rows {a; b}; chans as cols
-hico = UserArgs.hico; loco = UserArgs.loco; % Hz 
-mdls = UserArgs.mdls;
+if FilterSetUp
+    filtOrds = UserArgs.filtOrds; % cell with chans as cols
+    filtObjs = UserArgs.filtObjs; % cell with rows {a; b}; chans as cols
+    hico = UserArgs.hico; loco = UserArgs.loco; % Hz 
+end
+if MdlSetUp
+    mdls = UserArgs.mdls;
+end
 chInd = UserArgs.channelIndex;
 forecastwin = UserArgs.PDSwin1; % # samples ahead to forecast
 forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
@@ -65,16 +71,25 @@ rawN = rawD(1,:); fltN = fltD(1,:); forN = forD(1,:);
 % to do: double width of forD and implement sine wave
 
 Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
-foreArgs.K = forecastwin; foreArgs.k = forecastpad;
-fIC = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
-filtArgs.fltInit = fIC; filtArgs.fltObj = filtObjs;
-filtArgs.TimeShift = TimeShiftFIR; 
-foreArgs.TimeStart = nan(size(forN));
-foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
-foreArgs.ARmdls = mdls;
-foreArgs.SampleRates = Fs;
-foreArgs.FreqRange = [loco, hico];
-foreArgs.PhaseOfInterest = PhaseOfInterest;
+if FilterSetUp
+    fIC = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
+    filtArgs.fltInit = fIC; filtArgs.fltObj = filtObjs;
+    filtArgs.TimeShift = TimeShiftFIR; 
+    if MdlSetUp
+        foreArgs.K = forecastwin; foreArgs.k = forecastpad;
+        foreArgs.TimeStart = nan(size(forN));
+        foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
+        foreArgs.ARmdls = mdls;
+        foreArgs.SampleRates = Fs;
+        foreArgs.FreqRange = [loco, hico];
+        foreArgs.PhaseOfInterest = PhaseOfInterest;
+    else
+        foreArgs = [];
+    end
+else
+    filtArgs = [];
+    foreArgs = [];
+end
 
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = forBuffs(chInd); forBuffRow = ones(size(forBuffs));
@@ -91,6 +106,7 @@ else
 end
 
 %% loop 
+cont_loop = true;
 while cont_loop
     pause(dT)
 
@@ -117,7 +133,7 @@ while cont_loop
 
     % If the UserQueue is non-empty, there are new UserArgs, and the full
     % func should be restarted. 
-    cont_loop = cont_loop && UQ.QueueLength < 1;
+    cont_loop = cont_loop && cont_loop_2 && UQ.QueueLength < 1;
 
     % If there are any errors in the loop, stop looping and allow the
     % User to handle them. 
