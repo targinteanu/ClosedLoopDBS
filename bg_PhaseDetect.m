@@ -36,12 +36,14 @@ cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop;
 FilterSetUp = UserArgs.FilterSetUp; % t/f
 MdlSetUp = UserArgs.MdlSetUp; % t/f
 if FilterSetUp
-    filtOrds = UserArgs.filtOrds; % cell with chans as cols
-    filtObjs = UserArgs.filtObjs; % cell with rows {a; b}; chans as cols
-    hico = UserArgs.hico; loco = UserArgs.loco; % Hz 
+    filtOrds = [UserArgs.filtorder]; % array with chans as cols
+    filtObjs = {UserArgs.BPF}; % cell with rows {a; b}; chans as cols
+    hico = UserArgs.hicutoff; loco = UserArgs.locutoff; % Hz 
+else
+    filtOrds = {};
 end
 if MdlSetUp
-    mdls = UserArgs.mdls;
+    mdls = {UserArgs.Mdl};
 end
 chInd = UserArgs.channelIndex;
 forecastwin = UserArgs.PDSwin1; % # samples ahead to forecast
@@ -52,7 +54,6 @@ PhaseOfInterest = UserArgs.PhaseOfInterest;
 %% init 
 
 dT = .001; % s between data requests 
-TimeShiftFIR = filtorder/(2*srate); % seconds
 
 [rawD, ~, ~, ~] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
@@ -74,7 +75,7 @@ Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
 if FilterSetUp
     fIC = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
     filtArgs.fltInit = fIC; filtArgs.fltObj = filtObjs;
-    filtArgs.TimeShift = TimeShiftFIR; 
+    filtArgs.TimeShift = filtords(1)/Fs; 
     if MdlSetUp
         foreArgs.K = forecastwin; foreArgs.k = forecastpad;
         foreArgs.TimeStart = nan(size(forN));
