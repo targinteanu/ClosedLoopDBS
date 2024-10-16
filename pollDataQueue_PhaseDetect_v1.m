@@ -30,7 +30,7 @@ end
 
         if ~isempty(forBuffSv)
             PeakTrough = forBuffSv;
-            save([svname,'_',num2str(svN),'.mat'], 'PeakTrough');
+            save([svname,num2str(svN),'.mat'], 'PeakTrough');
             svN = svN+1;
             forBuff = [forBuffSv; forBuff];
         end

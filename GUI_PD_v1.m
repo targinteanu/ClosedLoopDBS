@@ -117,6 +117,7 @@ svloc = ['Saved Data PD',filesep,'Saved Data ',...
 pause(1)
 mkdir(svloc); 
 handles.SaveFileLoc = svloc;
+handles.SaveFileName = [svloc,filesep,'SaveFile'];
 handles.SaveFileN = 1;
 
 % start parallel pool(s) 
@@ -361,7 +362,7 @@ end
 try
 % save stored data 
 SerialLog = handles.srlStorage1;
-svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
 disp(['Saving Serial to ',svfn])
 save(svfn,'SerialLog');
 disp('Saving all data...')
@@ -386,10 +387,13 @@ while handles.RunMainLoop
 
 try
 
+    % timing 
     pause(.1); % s between displays 
     tNow = datetime;
     timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
+    handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
     
+    % ensure connection with hardware 
     handles = guidata(hObject);
     if ~handles.DAQstatus
         %stop(handles.timer)
@@ -397,48 +401,24 @@ try
     end
     
     % get data from Central
-    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
     if ~dataRecd
-        handles.DAQstatus = false;
-        send(handles.userQueue, rmfield(handles, handles.rmfieldList));
-        warning('Data aquisition timed out.')
-    else
-
+        error('Data aquisition timed out.')
     end
-
-    if ~isempty(continuousData)
-    if size(continuousData,1) >= handles.channelIndex
-        % !!!!! sometimes CD does not have all channels?????
-        % also add a check whether channel name at channelIndex is the same
-        % as specified in UI *****
-        
-    newContinuousData = continuousData{handles.channelIndex,3}; 
-    handles.rawDataBuffer = cycleBuffer(handles.rawDataBuffer, newContinuousData);
-    N = length(newContinuousData);
-    t0 = handles.lastSampleProcTime; 
-    handles.lastSampleProcTime = ...
-        time + (length(newContinuousData)-1)/handles.fSample;
-    T = handles.lastSampleProcTime - t0;
-    if T < 0
-        %warning('Reported sample time is negative.')
-    end
-    diffSampleProcTime = nan(size(newContinuousData)); diffSampleProcTime(end) = T;
-    handles.diffSampleProcTime = cycleBuffer(handles.diffSampleProcTime, diffSampleProcTime);
-
-    guidata(hObject,handles)
+    lastSampleProcTime = timeBuff(end);
 
     % update serial log 
     % TO DO: there should be a better way to do this; serial callback
     % should trigger an event or listener that logs the info 
+    % Should this be in background instead?
     ReceivedData = handles.srl.UserData.ReceivedData; 
     if ~strcmp(ReceivedData, handles.srlLastMsg)
         ud = handles.srl.UserData; 
-        ud.TimeStamp = handles.lastSampleProcTime;
+        ud.TimeStamp = lastSampleProcTime;
         if handles.srlP1 <= length(handles.srlStorage1)
             handles.srlStorage1(handles.srlP1) = ud;
             handles.srlP1 = handles.srlP1+1;
@@ -446,7 +426,7 @@ try
             ud = handles.udBlank; 
             % storage full; save
             SerialLog = handles.srlStorage1;
-            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+            svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
             disp(['Saving Serial to ',svfn])
             save(svfn,'SerialLog');
             handles.SaveFileN = handles.SaveFileN + 1;
@@ -461,9 +441,15 @@ try
         try
             elecimg = handles.elecGridImg.CData;
             for ch = 1:63
-                newContinuousData_ch = continuousData{ch,3};
-                fSample_ch = continuousData{ch,2};
-                elecimg(ch) = handles.elecGridFunc(newContinuousData_ch, fSample_ch);
+                x = rawD4{ch}(:,2); L = handles.bufferSizeGrid(ch);
+                if height(x) > L
+                    x = x((end-L+1):end, :);
+                end
+                if height(x) < L
+                    warning(['Channel ',num2str(ch),' Electrode Grid buffer is not full length!'])
+                end
+                fSample_ch = handles.fSamples(ch);
+                elecimg(ch) = handles.elecGridFunc(x, fSample_ch);
             end
             handles.elecGridImg.CData = elecimg;
         catch ME4 
@@ -474,47 +460,24 @@ try
         end
     end
 
-    % update filtered data 
+    % update filtered data plot
     if handles.FilterSetUp
         try
-        [handles.filtDataBuffer, handles.filtCond] = FilterAndCycle(...
-            handles.filtDataBuffer, newContinuousData, ...
-            handles.BPF, handles.filtCond);
-        set(handles.h_filtDataTrace,'YData',handles.filtDataBuffer)
+        set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
+        set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
 
-        % update model-forecasted data 
+        % update model-forecasted data plot
         if handles.MdlSetUp
             try
-
-            % use AR model to get some future data 
-            dataPast = handles.filtDataBuffer; 
-            dataPast = dataPast((end-handles.PDSwin1+1):end);
-            dataFutu = myFastForecastAR(handles.Mdl, dataPast, handles.PDSwin1);
-            dataFutu2 = dataFutu(1:handles.PDSwin2);
             if handles.check_polar.Value
-            handles.predDataBuffer = OverwriteAndCycle(...
-                handles.predDataBuffer, dataFutu, N);
-            set(handles.h_predTrace,'YData',handles.predDataBuffer);
+                set(handles.h_predTrace,'YData',forPlt.Variables);
+                set(handles.h_predTrace,'XData',forPlt.Time - tNow);
             end
-
-            % find the time to next peak, trough and plot 
-            bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate 
-            dataPk = false(handles.PDSwin1 - handles.IndShiftFIR,1); % +1? 
-            dataTr = dataPk; % dataSt = dataPk;  
-            [t2,i2,phi_inst,f_inst] = ...
-                blockPDS(dataPast,dataFutu2, handles.fSample, [0,pi], ...
-                handles.TimeShiftFIR, handles.locutoff, handles.hicutoff);
-            t2 = t2 - handles.TimeShiftFIR; i2 = i2 - handles.IndShiftFIR; 
-            t2 = max(t2,0); i2 = max(i2,1);
-            t2peak = t2(1); t2trou = t2(2);
-            i2peak = i2(1); i2trou = i2(2);
-            dataPk(i2peak) = true; dataTr(i2trou) = true;
-            [handles.peakDataBuffer, oldPeak] = CombineAndCycle(...
-                handles.peakDataBuffer, dataPk, N); 
-            [handles.trouDataBuffer, oldTrou] = CombineAndCycle(...
-                handles.trouDataBuffer, dataTr, N);
-            set(handles.h_peakTrace,'YData',0*plotLogical(handles.peakDataBuffer));
-            set(handles.h_trouTrace,'YData',0*plotLogical(handles.trouDataBuffer));
+            tPk = forBuff(:,1); tTr = forBuff(:,2);
+            set(handles.h_peakTrace,'YData',zeros(size(tPk)));
+            set(handles.h_peakTrace,'XData',handles.time0 + seconds(tPk) - tNow);
+            set(handles.h_trouTrace,'YData',zeros(size(tTr)));
+            set(handles.h_trouTrace,'XData',handles.time0 + seconds(tTr) - tNow);
 
             % time of stimulus 
             if handles.stimNewTime > 0
@@ -530,20 +493,6 @@ try
                 % artifact removal 
                 if handles.check_artifact.Value
                     try
-                    artInd = stimind - N;  
-                    artInd = (-5:104) + artInd; % set artifact duration
-                    artInd = artInd(artInd > 0);
-                    artInd = artInd(artInd <= handles.bufferSize); % ***** insufficient/temporary fix !!!!!
-                    artPastData = zeros(handles.PDSwin1,1);
-                    if ~isempty(artInd)
-                    artPastStart = artInd(1) - handles.PDSwin1; 
-                    artPastStart = max(1, artPastStart);
-                    artPastData1 = handles.rawDataBuffer(artPastStart:(artInd(1)-1),:);
-                    artPastN = size(artPastData1,1);
-                    artPastData((end-artPastN+1):end,:) = artPastData1;
-                    artReplace = myFastForecastAR(handles.Mdl, artPastData, length(artInd));
-                    handles.rawDataBuffer(artInd) = artReplace;
-                    end
                     catch ME3
                         getReport(ME3)
                         % keyboard
@@ -555,14 +504,10 @@ try
             end
             end
 
-            [handles.stimDataBuffer, oldStim] = CombineAndCycle(...
-                handles.stimDataBuffer, [], N);
             set(handles.h_stimTrace,'YData',0*plotLogical(handles.stimDataBuffer));
 
             % queue stimulus pulse, if applicable 
             % ***** TO DO: can this be moved elsewhere to avoid delays?  
-            Stim2Q = false;
-            if bp > 10 % min band power cutoff; orig at 1000
             if handles.StimActive
                 ParadigmPhase = handles.srl.UserData.ParadigmPhase;
                 if ~strcmpi(ParadigmPhase,'WAIT')
@@ -576,94 +521,49 @@ try
                         warning(['ParadigmPhase ',ParadigmPhase,' unrecognized.'])
                         StimMode = 'None';
                     end
-                    if strcmpi(StimMode,'Peak')
-                        t2Q = t2peak;
-                        Stim2Q = true;
-                    end
-                    if strcmpi(StimMode,'Trough')
-                        t2Q = t2trou;
-                        Stim2Q = true;
-                    end
-                end
-            if strcmp(handles.QueuedStim.Running, 'on')
-                stop(handles.QueuedStim);
-            end
-            end
-            end
-            if Stim2Q
-                if strcmp(handles.QueuedStim.Running, 'on')
-                    % should not get here, because it should have been
-                    % turned off above 
-                    keyboard
-                end
-                % overwrite existing timer with new one
-                t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
-                if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
-                    t2Qabs = t2Q + handles.lastSampleProcTime; % in NSP time "absolute"
-                    Dt2Q = t2Qabs - handles.stimLastTime; 
-                    if 1/Dt2Q <= handles.stimMaxFreq
-                        handles.QueuedStim.StartDelay = t2Q;
-                        handles.QueuedStim.UserData = t2Qabs;
-                        start(handles.QueuedStim);
-                    end
                 end
             end
 
             % plot sine wave 
             if handles.check_polar.Value
-            tSin = (1:handles.PDSwin1)/handles.fSample; tSin = tSin';
-            sinMag = handles.filtDataBuffer(end) / cos(phi_inst);
-            sinData = sinMag*cos(2*pi*f_inst*tSin + phi_inst);
-            handles.sineDataBuffer = OverwriteAndCycle(...
-                handles.sineDataBuffer, sinData, N);
-            set(handles.h_sineTrace,'YData',handles.sineDataBuffer);
+                % set(handles.h_sineTrace,'YData', ...
+                % set(handles.h_sineTrace,'XData', ...
             end
 
             % evaluate accuracy of above --> polar histogram
             if handles.check_polar.Value
-            phiPk = handles.peakDataBuffer; 
-            phiTr = handles.trouDataBuffer;
-            phiPk = phiPk(1:length(handles.filtDataBuffer));
-            phiTr = phiTr(1:length(handles.filtDataBuffer));
-            phi = instPhaseFreq(handles.filtDataBuffer, handles.fSample);
-            phiPk = phi(phiPk); phiTr = phi(phiTr);
-            set(handles.h_peakPhase,'Data',phiPk);
-            set(handles.h_trouPhase,'Data',phiTr);
-            end
 
-            % store peaks and troughs that have been buffered out
-                % N samples of new continuous data have come in 
-                % most recent time stamp is lastSampleProcTime 
-            tOldBuffer = ((1-N):0)/handles.fSample + handles.lastSampleProcTime - ...
-                handles.bufferSize/handles.fSample;
-            tOldPeak = tOldBuffer(oldPeak); tOldTrou = tOldBuffer(oldTrou);
-            [handles.pkStorage1, handles.pkP1,  handles.pkStorage2, p2] = ...
-                cycleStorage(handles.pkStorage1, handles.pkP1, ...
-                             handles.pkStorage2, tOldPeak);
-            if ~handles.pkP1
-                % storage full; save 
-                PeakTime = handles.pkStorage1;
-                svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
-                disp(['Saving Peaks to ',svfn])
-                save(svfn,'PeakTime');
-                handles.SaveFileN = handles.SaveFileN + 1;
-                handles.pkStorage1 = handles.pkStorage2; 
-                handles.pkP1 = p2; 
-                handles.pkStorage2 = nan(size(handles.pkStorage2));
-            end
-            [handles.trStorage1, handles.trP1,  handles.trStorage2, p2] = ...
-                cycleStorage(handles.trStorage1, handles.trP1, ...
-                             handles.trStorage2, tOldTrou);
-            if ~handles.trP1
-                % storage full; save 
-                TroughTime = handles.trStorage1;
-                svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
-                disp(['Saving Troughs to ',svfn])
-                save(svfn,'TroughTime');
-                handles.SaveFileN = handles.SaveFileN + 1;
-                handles.trStorage1 = handles.trStorage2; 
-                handles.trP1 = p2; 
-                handles.trStorage2 = nan(size(handles.trStorage2));
+                % row indexes of peak events 
+                rowPk = nan(size(tPk)); 
+                for r = 1:height(tPk)
+                    % find time of current event relative to time now
+                    tPk_r = handles.time0 + seconds(tPk(r)) - tNow ;
+                    if (tPk_r >= fltPlt.Time(1)) && (tPk_r <= fltPlt.Time(end))
+                        % current event is in time range shown on screen,
+                        % so let row index be the nearest 
+                        [~,rowPk(r)] = min(abs( tPk_r - fltPlt.Time ));
+                    end
+                end
+                rowPk = rowPk(~isnan(rowPk));
+
+                % row indexes of trough events 
+                rowTr = nan(size(tTr)); 
+                for r = 1:height(tTr)
+                    % find time of current event relative to time now
+                    tTr_r = handles.time0 + seconds(tTr(r)) - tNow ;
+                    if (tTr_r >= fltPlt.Time(1)) && (tTr_r <= fltPlt.Time(end))
+                        % current event is in time range shown on screen,
+                        % so let row index be the nearest 
+                        [~,rowTr(r)] = min(abs( tTr_r - fltPlt.Time ));
+                    end
+                end
+                rowTr = rowTr(~isnan(rowTr));
+
+                % calc phase and histogram
+                phi = instPhaseFreq(fltPlt.Variables, handles.fSample);
+                phiPk = phi(rowPk); phiTr = phi(rowTr);
+                set(handles.h_peakPhase,'Data',phiPk);
+                set(handles.h_trouPhase,'Data',phiTr);
             end
 
             catch ME2
@@ -682,23 +582,21 @@ try
         end
     end
 
-    % update YData of ax_rawData
-    if ~(length(handles.rawDataBuffer) == handles.bufferSize)
-        % malfunctioning artifact removal can cause this 
-        % there will be a problem if it gets here 
-        error('Raw data buffer changed size. Check artifact removal code.')
-        % keyboard
-    end
-    set(handles.h_rawDataTrace,'YData',handles.rawDataBuffer)
-    set(handles.h_timingTrace,'YData',handles.diffSampleProcTime)
+    % update raw data and timing plots
+    set(handles.h_rawDataTrace,'YData',rawPlt.Variables);
+    set(handles.h_rawDataTrace,'XData',rawPlt.Time - tNow);
+    set(handles.h_timingTrace,'YData',[nan; diff(timeBuff)]);
+    set(handles.h_timingTrace,'XData', ...
+        handles.time0 + seconds(timeBuff) - tNow );
+    set(handles.h_timeDispTrace,'YData',[nan; diff(handles.timeDispBuff)]);
+    set(handles.h_timeDispTrace,'XData', ...
+        handles.time0 + seconds(handles.timeDispBuff) - tNow );
 
     guidata(hObject,handles)
 
-    end
-    end
-
 catch ME 
     getReport(ME)
+    StopMainLoop(hObject,eventdata,handles)
     keyboard
 end
 
@@ -736,10 +634,8 @@ try
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
     if ~dataRecd
-        handles.DAQstatus = false;
-        send(handles.userQueue, rmfield(handles, handles.rmfieldList));
-        warning('Data aquisition timed out.')
-    else
+        error('Data aquisition timed out.')
+    end
 
     % keep track of the display time 
     handles.timeDisp1 = tic; handles.timeDisp0 = timeBuff(end, :);
@@ -816,11 +712,12 @@ try
     send(handles.userQueue, rmfield(handles, handles.rmfieldList));
     guidata(hObject,handles)
     updateDisplay(hObject,eventdata)
-
-    end
     
 catch ME
     getReport(ME)
+    handles.RunMainLoop = false; 
+    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+    guidata(hObject, handles);
     keyboard
 end
 
@@ -887,7 +784,7 @@ if handles.stP1 <= length(handles.stStorage1)
 else
     % storage full; save
     StimTime = handles.stStorage1;
-    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
     disp(['Saving Stimulus to ',svfn])
     save(svfn,'StimTime');
     handles.SaveFileN = handles.SaveFileN + 1;
