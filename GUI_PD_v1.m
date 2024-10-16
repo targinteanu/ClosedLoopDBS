@@ -738,81 +738,12 @@ try
         stop(handles.QueuedStim)
     end
     handles.RunMainLoop = false;
+    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
     guidata(hObject, handles)
 catch ME
     getReport(ME)
     keyboard
 end
-
-% ----------------------------------------------------------------------- %
-% ----                                                                --- %
-% ----               Stimulus Pulse Timer Functions                   --- %
-% ----                                                                --- %
-% ----------------------------------------------------------------------- %
-
-function myPULSE(hTimer,eventdata,hFigure)
-handles = guidata(hFigure);
-stimulator = handles.stimulator;
-if ~stimulator.isConnected()
-    warning('Stimulator is not connected.')
-end
-if stimulator.isLocked()
-    warning('Stimulator is locked.')
-end
-stimstatus = stimulator.getSequenceStatus;
-if stimstatus == 2
-    warning('Stimulator is already playing.')
-    % if this warning shows up, consider wrapping the rest of the function
-    % in a conditional that stimstatus == 0 [stopped] or 1 [paused] (?), or
-    % try using stimulator.stop()
-end
-% if stimstatus == 0
-stimtime1 = cbmex('time');
-stimulator.play(1); % consider changing to groupStimulus or manualStim to save time
-stimtime2 = cbmex('time');
-dstimtime = stimtime2 - stimtime1; 
-% disp time of pulse using eventdata
-eventTime = datestr(eventdata.Data.time);
-stimtime = .5*(stimtime1 + stimtime2);
-stimschedtime = hTimer.UserData; 
-disp(['Stimulus pulsed at ',eventTime,' within ',num2str(dstimtime),'s, ',...
-      num2str(stimtime - stimschedtime),' s late'])
-handles.stimLastTime = stimtime; handles.stimNewTime = stimtime; 
-if handles.stP1 <= length(handles.stStorage1)
-    handles.stStorage1(handles.stP1) = stimtime; 
-    handles.stP1 = handles.stP1 + 1;
-else
-    % storage full; save
-    StimTime = handles.stStorage1;
-    svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
-    disp(['Saving Stimulus to ',svfn])
-    save(svfn,'StimTime');
-    handles.SaveFileN = handles.SaveFileN + 1;
-    handles.stP1 = 1;
-    handles.stStorage1 = nan(size(handles.stStorage1));
-end
-% end
-guidata(hFigure,handles);
-
-function schedulePULSE(hTimer,eventdata,hFigure)
-%{
-% announce when stimulus will go off
-eventTime = datestr(eventdata.Data.time);
-disp(['at ',eventTime,...
-    ' stimulus pulse scheduled for NSP time ',...
-    num2str(hTimer.UserData),...
-    ' in ',num2str(hTimer.StartDelay),' s'])
-%}
-
-function finishPULSE(hTimer,eventdata,hFigure)
-%{
-% announce that this stim has completed or been aborted.
-eventTime = datestr(eventdata.Data.time);
-disp(['at ',eventTime,...
-    ' stimulus scheduled for NSP time ',...
-    num2str(hTimer.UserData),...
-    ' has been completed or aborted.'])
-%}
 
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
