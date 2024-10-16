@@ -27,6 +27,9 @@ end
 
 %% import filter and model details, etc
 % change names according to front-end handles/app/struct!!
+cont_loop = UserArgs.cbmexStatus; 
+FilterSetUp = UserArgs.FilterSetUp; % t/f
+MdlSetUp = UserArgs.MdlSetUp; % t/f
 filtOrds = UserArgs.filtOrds; % cell with chans as cols
 filtObjs = UserArgs.filtObjs; % cell with rows {a; b}; chans as cols
 hico = UserArgs.hico; loco = UserArgs.loco; % Hz 
@@ -56,6 +59,7 @@ selRaw2Flt = chID; selRaw2For = []; selFlt2For = 1;
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
     selRaw, selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); fltN = fltD(1,:); forN = forD(1,:);
+% to do: double width of forD and implement sine wave
 
 Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
 foreArgs.K = forecastwin; foreArgs.k = forecastpad;
@@ -72,8 +76,18 @@ foreArgs.PhaseOfInterest = PhaseOfInterest;
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = forBuffs(chInd); forBuffRow = ones(size(forBuffs));
 
+if FilterSetUp
+    filtfun = @filtFun;
+else
+    filtfun = [];
+end
+if MdlSetUp
+    forefun = @foreFun;
+else
+    forefun = [];
+end
+
 %% loop 
-cont_loop = true;
 while cont_loop
     pause(dT)
 
@@ -84,11 +98,11 @@ while cont_loop
     fltD, filtArgs, ...
     forBuffs, forBuffRow, forBuffedOut, forD, foreArgs] = ...
     iterReadBrain(...
-        timeBuffs, rawD, @() getNewRawData_cbmex([]), ...
+        timeBuffs, rawD, @() getNewRawData_cbmex(selRaw), ...
         selRaw2Flt, selRaw2For, selFlt2For, ...
         [], [], [], [], ...
-        fltD, @filtFun, filtArgs, ...
-        forBuffs, forBuffRow, forD, @foreFun, foreArgs);
+        fltD, @filtfun, filtArgs, ...
+        forBuffs, forBuffRow, forD, @forefun, foreArgs);
 
     % DataQueue is empty when the User polls it, which means the
     % User is ready for new data. 
