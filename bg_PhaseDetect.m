@@ -1,6 +1,17 @@
 function bgArgOut = bg_PhaseDetect(UQ, DQ, SQ, ...
     InitializeRecording, ShutdownRecording, selRaw)
-% Run brain recording with phase detection/prediction for PDS
+% 
+% Run brain recording with phase detection/prediction for PDS.
+% 
+% InitializeRecording takes arguments:
+% ( buffer size(s) , filter order(s) , forecast window(s) , 
+%   raw channel ID(s) selected , raw channel ID(s) to filter , 
+%   raw channel ID(s) to use for forecasting , 
+%   filtered channel ID(s) to use for forecasting ) 
+% and returns data structures for: 
+% [ raw , filtered , forecast, timing buffer ] data
+% 
+% ShutdownRecording takes no arguments.
 
 bgArgOut = [];
 
@@ -20,17 +31,26 @@ filtOrds = UserArgs.filtOrds; % cell with chans as cols
 filtObjs = UserArgs.filtObjs; % cell with rows {a; b}; chans as cols
 hico = UserArgs.hico; loco = UserArgs.loco; % Hz 
 mdls = UserArgs.mdls;
-chInd = UserArgs.chInd;
+chInd = UserArgs.channelIndex;
 forecastwin = UserArgs.PDSwin1; % # samples ahead to forecast
 forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
-buffSize = UserArgs.bufferSize; % samples
+buffSize = UserArgs.bufferSizeGrid;
 PhaseOfInterest = UserArgs.PhaseOfInterest;
 
 %% init 
 
 dT = .001; % s between data requests 
 TimeShiftFIR = filtorder/(2*srate); % seconds
-selRaw2Flt = chInd; selRaw2For = []; selFlt2For = 1;
+
+[rawD, ~, ~, ~] = ...
+    InitializeRecording(buffSize, filtOrds, forecastwin, ...
+    [], [], [], []);
+rawN = rawD(1,:); 
+chID = cellfun(@(s) s.IDnumber, rawN); chID = chID(chInd);
+buffSize = UserArgs.bufferSizeGrid .* ones(size(rawN)); % samples
+buffSize(chInd) = UserArgs.bufferSize;
+
+selRaw2Flt = chID; selRaw2For = []; selFlt2For = 1;
 
 [rawD, fltD, forD, timeBuffs] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
@@ -73,9 +93,9 @@ while cont_loop
     % DataQueue is empty when the User polls it, which means the
     % User is ready for new data. 
     if DQ.QueueLength == 0
-        send(DQ, [rawD(1,chInd), fltD(1,1), forD(1,1); ...
-                  rawD(4,chInd), fltD(4,1), forD(4,1); ...
-                  timeBuffs(chInd), forBuffedOut(1), forBuffs(1)]);
+        send(DQ, [rawD(1,chID), fltD(1,1), forD(1,1); ...
+                  rawD(4,chID), fltD(4,1), forD(4,1); ...
+                  timeBuffs(chID), forBuffedOut(1), forBuffs(1)]);
     end
 
     % If the UserQueue is non-empty, there are new UserArgs, and the full
