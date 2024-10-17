@@ -1,13 +1,20 @@
 function [rawD, fltD, forD, timeBuffs] = ...
     InitializeRecording_cbmex(buffSize, filtorder, forecastwin, ...
-    selRaw, selRaw2Flt, selRaw2For, selFlt2For)
+    selRawID, selRaw2Flt, selRaw2For, selFlt2For)
 % Initialize the multichannel data structures used in ClosedLoopDBS using
 % BlackRock hardware with the cbmex function.
 % Return structures for raw, filtered, and forecast data, as well as timing
 % buffers.
+% 
+% Buffer Size(s) [buffSize], Filter Order(s) [filtorder], and Forecast
+% Window(s) [forecastwin] can be a single input that applies to all 
+% channels, an array of inputs for each channel, or empty to bypass the
+% respective operation where applicable. 
+% selxxx2xxx is a horizontal array of selected column indexes, but selRawID
+% is ID number(s) and can be passed as empty to select all.
 
 IndShiftFIR = ceil(filtorder/2); % samples
-selFor = sort(unique([selRaw2For, selFlt2For]));
+selFor = [selRaw2For, selFlt2For];
 
 connect_cbmex(); 
 pause(1);
@@ -19,26 +26,28 @@ pause(1);
 emptyOut = {[]; []; []; []};
 
 try
-    [rawH, rawT, rawB, rawN] = initRawData_cbmex(selRaw, buffSize);
+    [rawH, rawT, rawB, rawN] = initRawData_cbmex(selRawID, buffSize);
 catch ME
     warning(['Error on first attempt: ',ME.message]);
     pause(1);
-    [rawH, rawT, rawB, rawN] = initRawData_cbmex(selRaw, buffSize);
+    [rawH, rawT, rawB, rawN] = initRawData_cbmex(selRawID, buffSize);
 end
 rawD = [rawN; rawH; rawT; rawB]; 
 
-if numel(IndShiftFIR)
-    fltH = initFilteredData(rawH, IndShiftFIR); 
-    fltT = cellfun(@(D) [1,0].*D, rawT, 'UniformOutput',false);
-    fltB = cellfun(@(D) [1,0].*D, rawB, 'UniformOutput',false);
-    fltD = [rawN; fltH; fltT; fltB];
+if numel(IndShiftFIR) && numel(selRaw2Flt)
+    fltH = initFilteredData(rawH(selRaw2Flt), IndShiftFIR); 
+    fltT = cellfun(@(D) [1,0].*D, rawT(selRaw2Flt), 'UniformOutput',false);
+    fltB = cellfun(@(D) [1,0].*D, rawB(selRaw2Flt), 'UniformOutput',false);
+    fltN = rawN(selRaw2Flt);
+    fltD = [fltN; fltH; fltT; fltB];
 else
     fltD = emptyOut;
 end
 
-if numel(forecastwin) && numel(IndShiftFIR)
-    [forH, forT, forB] = initForecastData(fltH, forecastwin);
-    forD = [rawN; forH; forT; forB];
+if numel(forecastwin) && numel(selFor)
+    [forH, forT, forB] = initForecastData(...
+        [rawH(selRaw2For), fltH(selFlt2For)], forecastwin);
+    forD = [[rawN(selRaw2For), fltN(selFlt2For)]; forH; forT; forB];
 else
     forD = emptyOut;
 end
@@ -56,15 +65,6 @@ for ch = 1:length(rawH)
         end
     end
     timeBuffs{ch} = t_ch;% + t0;
-end
-
-%% resizing buffers 
-% should this be placed within the respective init scripts instead? 
-if ~isempty(selRaw2Flt)
-    fltD = fltD(:,selRaw2Flt); 
-end
-if ~isempty(selFor)
-    forD = forD(:,selFor);
 end
 
 end

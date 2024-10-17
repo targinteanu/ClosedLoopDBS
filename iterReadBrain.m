@@ -15,7 +15,7 @@ function [...
 % Input Details: 
 %   timeBuffs columns correspond to columns of rawData 
 %   xxxData is a cell with 4 rows: (1) name, (2) head, (3) tail, (4) complete 
-%   selxxx2xxx is a horizontal array of selected columns 
+%   selxxx2xxx is a horizontal array of selected column indexes
 %   calling daqFun() gets new raw tails 
 %   stimRef is reference signal for new stimuli that would cause artifact
 %   [artRemData, artRemArgs] = artRemFun(artRemArgs, artRemHeads, rawTails)
