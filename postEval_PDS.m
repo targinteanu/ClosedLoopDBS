@@ -1,8 +1,8 @@
 %% access files 
 [fn,fp] = uigetfile('*.mat');
 load([fp,filesep,fn])
-load("20240829_NS2.mat")
-ns = NS2;
+load("20241017_side2004_NS5.mat")
+ns = NS5;
 PeakTime = PeakTrough(:,1); TroughTime = PeakTrough(:,2);
 trimNan = @(x) x(~isnan(x));
 PeakTime = trimNan(PeakTime); TroughTime = trimNan(TroughTime);
@@ -20,7 +20,11 @@ dataOneChannel = dataAllChannels(channelIndex,:);
 dataOneChannelWithArtifact = dataOneChannel; 
 
 %% Get timing data
-tRel = linspace(0,ns.MetaTags.DataPointsSec,ns.MetaTags.DataPoints);
+try
+    tRel = linspace(0,ns.MetaTags.DataPointsSec,ns.MetaTags.DataPoints);
+catch
+    tRel = linspace(0,ns.MetaTags.DataPoints/SamplingFreq,ns.MetaTags.DataPoints);
+end
 t = seconds(tRel);
 t0 = datetime(ns.MetaTags.DateTime); 
 t = t+t0; 

@@ -18,7 +18,7 @@ TimeShiftFIR = filtorder/(2*srate); % seconds
 filtwts = fir1(filtorder, [loco, hico]./(srate/2));
 
 %% load AR model 
-load("20240829_ARmdl.mat","ARmdl");
+load("20241017_side2_NS2.mat_ARmdl.mat","ARmdl");
 
 %% init 
 
@@ -26,13 +26,17 @@ dT = .001; % s between data requests
 forecastwin = 1000; % # samples ahead to forecast
 buffSize = 20000; % samples
 
-chInd = 33;
+chIDnum = 131;
+chInd = 67;
 selRaw2Flt = chInd; selRaw2For = []; selFlt2For = 1;
 
 [rawD, fltD, forD, timeBuffs] = ...
     InitializeRecording_cbmex(buffSize, filtorder, forecastwin, ...
     [], selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); fltN = fltD(1,:); forN = forD(1,:);
+chIDnums = cellfun(@(s) s.IDnumber, rawN); 
+chInd = find(chIDnums == chIDnum);
+%chIDnum = chIDnums(chInd);
 
 Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
 foreArgs.K = forecastwin; foreArgs.k = ceil(.02*foreArgs.K);
