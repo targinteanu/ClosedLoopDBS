@@ -1,8 +1,23 @@
 %% access files 
-[fn,fp] = uigetfile('*.mat');
+
+% ns file
+[fn,fp] = uigetfile({'*.ns*'; '*.mat'});
+[~,fn,fe] = fileparts(fn);
+if strcmpi(fe,'.mat')
+    load(fullfile(fp,fn,fe), 'NS2', 'ns2', 'NS5', 'ns5', 'NS', 'ns');
+    for vtry = {'NS2', 'ns2', 'NS5', 'ns5', 'NS'}
+        if exist(vtry{:})
+            ns = eval(vtry{:});
+        end
+    end
+else
+    openNSx(fullfile(fp,fn,fe));
+    ns = eval(['NS',fe(end)]);
+end
+
+% output file 
+[fn,fp] = uigetfile('*SaveFile*.mat');
 load([fp,filesep,fn])
-load("20241017_side2004_NS5.mat")
-ns = NS5;
 PeakTime = PeakTrough(:,1); TroughTime = PeakTrough(:,2);
 trimNan = @(x) x(~isnan(x));
 PeakTime = trimNan(PeakTime); TroughTime = trimNan(TroughTime);

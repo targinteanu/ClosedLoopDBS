@@ -1,7 +1,17 @@
 %% access files 
-[fn,fp] = uigetfile('*.mat');
-load([fp,filesep,fn])
-ns = NS5;
+[fn,fp] = uigetfile({'*.ns*'; '*.mat'});
+[~,fn,fe] = fileparts(fn);
+if strcmpi(fe,'.mat')
+    load(fullfile(fp,fn,fe), 'NS2', 'ns2', 'NS5', 'ns5', 'NS', 'ns');
+    for vtry = {'NS2', 'ns2', 'NS5', 'ns5', 'NS'}
+        if exist(vtry{:})
+            ns = eval(vtry{:});
+        end
+    end
+else
+    openNSx(fullfile(fp,fn,fe));
+    ns = eval(['NS',fe(end)]);
+end
 
 %% User selects channel
 channelNames = {ns.ElectrodesInfo.Label}; 
