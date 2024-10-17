@@ -19,7 +19,7 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 bgArgOut = [];
 
 cont_fullfunc = true; % run or wait for user input
-while cont_fullfunc
+%while cont_fullfunc
 try
 %% import filter and model details, etc
 % change names according to front-end handles/app/struct!!
@@ -56,7 +56,15 @@ chID = cellfun(@(s) s.IDnumber, rawN); chID = chID(chInd);
 buffSize = UserArgs.bufferSizeGrid .* ones(size(rawN)); % samples
 buffSize(chInd) = UserArgs.bufferSize;
 
-selRaw2Flt = chID; selRaw2For = []; selFlt2For = 1;
+selRaw2Flt = [];selFlt2For = []; 
+if FilterSetUp
+    selRaw2Flt = chID; 
+    if MdlSetUp
+        selFlt2For = 1;
+    end
+end
+selRaw2For = []; 
+
 
 [rawD, fltD, forD, timeBuffs] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
@@ -107,6 +115,7 @@ while cont_loop
     pause(dT)
 
     try
+    % main iteration 
     [...
     timeBuffs, rawD, ...
     ~, ~, ...
@@ -116,8 +125,8 @@ while cont_loop
         timeBuffs, rawD, @() GetNewRawData(selRaw), ...
         selRaw2Flt, selRaw2For, selFlt2For, ...
         [], [], [], [], ...
-        fltD, @filtfun, filtArgs, ...
-        forBuffs, forBuffRow, forD, @forefun, foreArgs);
+        fltD, filtfun, filtArgs, ...
+        forBuffs, forBuffRow, forD, forefun, foreArgs);
 
     % DataQueue is empty when the User polls it, which means the
     % User is ready for new data. 
@@ -127,9 +136,7 @@ while cont_loop
                   timeBuffs(chID), forBuffedOut(1), forBuffs(1)]);
     end
 
-    % If the UserQueue is non-empty, there are new UserArgs, and the full
-    % func should be restarted. 
-    cont_loop = cont_loop && cont_loop_2 && UQ.QueueLength < 1;
+    cont_loop = cont_loop && cont_loop_2;
 
     % If there are any errors in the loop, stop looping and allow the
     % User to handle them. 
@@ -150,7 +157,7 @@ catch ME_fullfunc
     getReport(ME_fullfunc)
     send(DQ, ME_fullfunc)
 end
-end
+%end
 
 %% function def 
 

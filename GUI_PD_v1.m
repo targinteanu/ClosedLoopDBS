@@ -682,7 +682,7 @@ try
     grid on; title('Raw Channel Data'); 
     xlabel('time'); ylabel(rawPlt.Properties.VariableNames{1});
     if sum(~isnat(tPltRng))
-        common_xlim = tPltRng; 
+        common_xlim = tPltRng - tNow; 
         xlim(common_xlim);
     else
         common_xlim = xlim();
@@ -693,6 +693,7 @@ try
     handles.h_timingTrace = ...
         stem(handles.time0 + seconds(timeBuff) - tNow, ...
         [nan; diff(timeBuff)], 's');
+    hold on;
     handles.h_timeDispTrace = ...
         stem(handles.time0 + seconds(handles.timeDispBuff) - tNow, ...
         [nan; diff(handles.timeDispBuff)], 's');

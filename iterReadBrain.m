@@ -33,8 +33,10 @@ doFor = doDAQ && (~isempty(forFun));
 if (~doFlt) && (~isempty(selFlt2For))
     error('Filter required to forecast, but filter is not specified.');
 end
-if (max(selFlt2For) > size(fltData,2)) || (min(selFlt2For) < 1)
-    error('Improper selection of filtered channels.');
+if numel(selFlt2For)
+    if (max(selFlt2For) > size(fltData,2)) || (min(selFlt2For) < 1)
+        error('Improper selection of filtered channels.');
+    end
 end
 
 setup_time = toc; disp(['Setup Time = ',num2str(setup_time)])
@@ -108,6 +110,7 @@ end
 rawTails = artRemData(3,:); rawAllData = rawData(4,:);
 
 end
+
 artifact_time = toc; disp(['Artifact time = ',num2str(artifact_time)])
 %% Filter
 tic
@@ -131,12 +134,13 @@ end
 filter_time = toc; disp(['Filter time = ',num2str(filter_time)])
 %% Forecast 
 tic
+forBuffedOut = cell(size(forBuffs));
+
 if doFor
 
 [forTails, forBuffsAdd, forArgs] = forFun(forArgs, ...
     [rawAllData(selRaw2For), fltAllData(selFlt2For)]);
 lenFor = [lenRaw(selRaw2For), lenFlt(selFlt2For)];
-forBuffedOut = cell(size(forBuffs));
 if ~(size(forTails,2) == size(forData,2))
     error('Forecast channels are inconsistent.');
 end
