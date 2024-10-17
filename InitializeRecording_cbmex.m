@@ -15,6 +15,9 @@ pause(1);
 %% defining the data structures
 % much of this is generic; can it be replaced with a non-cbmex-exclusive
 % function that gets called?
+
+emptyOut = {[]; []; []; []};
+
 try
     [rawH, rawT, rawB, rawN] = initRawData_cbmex(selRaw, buffSize);
 catch ME
@@ -22,15 +25,23 @@ catch ME
     pause(1);
     [rawH, rawT, rawB, rawN] = initRawData_cbmex(selRaw, buffSize);
 end
-fltH = initFilteredData(rawH, IndShiftFIR); 
-[forH, forT, forB] = initForecastData(fltH, forecastwin);
-
 rawD = [rawN; rawH; rawT; rawB]; 
-forD = [rawN; forH; forT; forB];
 
-fltT = cellfun(@(D) [1,0].*D, rawT, 'UniformOutput',false);
-fltB = cellfun(@(D) [1,0].*D, rawB, 'UniformOutput',false);
-fltD = [rawN; fltH; fltT; fltB];
+if numel(IndShiftFIR)
+    fltH = initFilteredData(rawH, IndShiftFIR); 
+    fltT = cellfun(@(D) [1,0].*D, rawT, 'UniformOutput',false);
+    fltB = cellfun(@(D) [1,0].*D, rawB, 'UniformOutput',false);
+    fltD = [rawN; fltH; fltT; fltB];
+else
+    fltD = emptyOut;
+end
+
+if numel(forecastwin) && numel(IndShiftFIR)
+    [forH, forT, forB] = initForecastData(fltH, forecastwin);
+    forD = [rawN; forH; forT; forB];
+else
+    forD = emptyOut;
+end
 
 %% timing buffers
 % this is generic; can it be replaced with a non-cbmex-exclusive
