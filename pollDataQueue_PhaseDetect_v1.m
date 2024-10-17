@@ -38,7 +38,7 @@ end
         rawPlt = data2timetable(rawD4,rawD1,t0); rawPlt = rawPlt{1};
         fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
         forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
-        tPltRng = [rawPlt.Time; fltPlt.Time; forPlt.Time];
+        tPltRng = [gettimes(rawPlt); gettimes(fltPlt); gettimes(forPlt)];
         tPltRng = [min(tPltRng), max(tPltRng)];
         tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
 
@@ -51,6 +51,14 @@ end
         rawD1 = []; rawD4 = []; 
         fltD1 = []; fltD4 = []; 
         forD1 = []; forD4 = [];
+    end
+
+    function t = gettimes(tbl)
+        if numel(tbl)
+            t = tbl.Time;
+        else
+            t = t0 + nan;
+        end
     end
 
 end
