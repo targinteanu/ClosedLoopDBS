@@ -1,4 +1,4 @@
-function bgArgOut = bg_PhaseDetect(UQ, DQ, SQ, ...
+function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
     InitializeRecording, ShutdownRecording, GetNewRawData, selRaw)
 % 
 % Run brain recording with phase detection/prediction for PDS.
@@ -21,13 +21,6 @@ bgArgOut = [];
 cont_fullfunc = true; % run or wait for user input
 while cont_fullfunc
 try
-%% poll queue(s) for data 
-poll_timeout_sec = 3600;
-[UserArgs, ok] = poll(UQ, poll_timeout_sec);
-if ~ok
-    error('Background process timed out without user input.')
-end
-
 %% import filter and model details, etc
 % change names according to front-end handles/app/struct!!
 cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop; 
@@ -40,7 +33,7 @@ if FilterSetUp
     filtObjs = {UserArgs.BPF}; % cell with rows {a; b}; chans as cols
     hico = UserArgs.hicutoff; loco = UserArgs.locutoff; % Hz 
 else
-    filtOrds = {};
+    filtOrds = [];
 end
 if MdlSetUp
     mdls = {UserArgs.Mdl};
@@ -68,15 +61,17 @@ selRaw2Flt = chID; selRaw2For = []; selFlt2For = 1;
 [rawD, fltD, forD, timeBuffs] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
     selRaw, selRaw2Flt, selRaw2For, selFlt2For);
-rawN = rawD(1,:); fltN = fltD(1,:); forN = forD(1,:);
+rawN = rawD(1,:); 
 % to do: double width of forD and implement sine wave
 
 Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
 if FilterSetUp
+    fltN = fltD(1,:); 
     fIC = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
     filtArgs.fltInit = fIC; filtArgs.fltObj = filtObjs;
     filtArgs.TimeShift = filtords(1)/Fs; 
     if MdlSetUp
+        forN = forD(1,:);
         foreArgs.K = forecastwin; foreArgs.k = forecastpad;
         foreArgs.TimeStart = nan(size(forN));
         foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];

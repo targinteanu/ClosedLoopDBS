@@ -120,6 +120,14 @@ handles.SaveFileLoc = svloc;
 handles.SaveFileName = [svloc,filesep,'SaveFile'];
 handles.SaveFileN = 1;
 
+% default values 
+handles.channelIndex = get(handles.pop_channels,'Value'); 
+PDSwin = str2double(get(handles.txt_PDSwin,'String'));
+PDSwin = ceil(PDSwin*1000); handles.PDSwin1 = PDSwin;
+handles.PDSwin2 = ceil(.02*PDSwin); 
+handles.bufferSize = str2double(get(handles.txt_display,'String')) * 1000;
+handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
+
 % start parallel pool(s) 
 handles.pool = gcp('nocreate');
 if isempty(handles.pool)
@@ -127,14 +135,15 @@ if isempty(handles.pool)
 end
 
 % Set up a data queue(s)
-handles.userQueue = parallel.pool.PollableDataQueue;
+%handles.userQueue = parallel.pool.PollableDataQueue;
 handles.dataQueue = parallel.pool.PollableDataQueue;
 handles.stimQueue = parallel.pool.PollableDataQueue;
 %handles.modlQueue = parallel.pool.PollableDataQueue;
+handles.f_PhaseDetect = [];
 
 % remove these fields when sending handles over the userQueue
 handles.rmfieldList = {...
-    'userQueue', 'dataQueue', 'stimQueue', 'modlQueue', ...
+    'dataQueue', 'stimQueue', ...
     'f_PhaseDetect'};
 
 % Update handles structure
@@ -168,26 +177,31 @@ function cmd_cbmexOpen_Callback(hObject, eventdata, handles)
 % hObject    handle to cmd_cbmexOpen (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+try
+
+if handles.DAQstatus
+    error('DSP already connected. Please disconnect first.')
+end
 
 connect_cbmex();
 handles.time0 = datetime - seconds(cbmex('time'));
 disconnect_cbmex();
 
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
-    handles.userQueue, handles.dataQueue, handles.stimQueue, ...
+    rmfield(handles, handles.rmfieldList), ...
+    handles.dataQueue, handles.stimQueue, ...
     @InitializeRecording_cbmex, @disconnect_cbmex, @getNewRawData_cbmex, []);
 
 handles.DAQstatus = true;
 
 % Acquire some data to get channel information. Determine which channels
 % are enabled
-send(handles.userQueue, rmfield(handles, handles.rmfieldList));
 [dataRecd, handles.SaveFileN, ~,~, ~,~,~,~, rawInfo] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
     handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
 if ~dataRecd
     handles.DAQstatus = false;
-    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+    cancel(handles.f_PhaseDetect);
     warning('Data aquisition timed out.')
 else
 
@@ -230,13 +244,24 @@ set(handles.tgl_StartStop,'String','Start', 'Value',0)
 
 guidata(hObject,handles)
 
+catch ME
+    getReport(ME)
+    errordlg(ME.message, 'Connect cbmex issue')
+end
+
 % --- Executes on button press in cmd_cbmexClose.
 function cmd_cbmexClose_Callback(hObject, eventdata, handles)
 % hObject    handle to cmd_cbmexClose (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 handles.DAQstatus = false;
-send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+[dataRecd, handles.SaveFileN] = ...
+    pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
+        handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
+if ~dataRecd
+    warning('Polling data queue timed out.')
+end
+cancel(handles.f_PhaseDetect); 
 guidata(hObject,handles)
 
 function txt_display_Callback(hObject, eventdata, handles)
@@ -344,7 +369,13 @@ end
 try
 cbmex('close')
 handles.DAQstatus = false;
-send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+[dataRecd, handles.SaveFileN] = ...
+    pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
+        handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
+if ~dataRecd
+    warning('Polling data queue timed out.')
+end
+cancel(handles.f_PhaseDetect); 
 guidata(hObject, handles)
 %stop(handles.timer)
 StopMainLoop(hObject,eventdata,handles)
@@ -631,7 +662,7 @@ try
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
 
     % get data from Central
-    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+    requeryPhaseDetect(hObject, 10);
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
@@ -709,20 +740,20 @@ try
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
             handles.FilterSetUp = false;
-            send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+            requeryPhaseDetect(hObject, 1);
             pause(.01);
         end
     end
 
     handles.RunMainLoop = true; 
-    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+    requeryPhaseDetect(hObject, 10);
     guidata(hObject,handles)
     updateDisplay(hObject,eventdata)
     
 catch ME
     getReport(ME)
     handles.RunMainLoop = false; 
-    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+    requeryPhaseDetect(hObject, 1);
     guidata(hObject, handles);
     keyboard
 end
@@ -744,7 +775,7 @@ try
         stop(handles.QueuedStim)
     end
     handles.RunMainLoop = false;
-    send(handles.userQueue, rmfield(handles, handles.rmfieldList));
+    requeryPhaseDetect(hObject, 1);
     guidata(hObject, handles)
 catch ME
     getReport(ME)
@@ -775,6 +806,30 @@ end
 
 
 % --- New Helpers ---
+
+
+function requeryPhaseDetect(hObject, timeoutdur)
+handles = guidata(hObject);
+[dataRecd, handles.SaveFileN] = ...
+    pollDataQueue_PhaseDetect_v1(handles.dataQueue, ...
+        handles.SaveFileName, handles.SaveFileN, handles.time0, timeoutdur);
+if ~dataRecd
+    warning('Polling data queue timed out.')
+end
+try 
+    cancel(handles.f_PhaseDetect); 
+catch ME1
+    warning(ME1.message);
+end
+try
+handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
+    rmfield(handles, handles.rmfieldList), ...
+    handles.dataQueue, handles.stimQueue, ...
+    @InitializeRecording_cbmex, @disconnect_cbmex, @getNewRawData_cbmex, []);
+catch ME2
+    warning(ME2.message);
+end
+guidata(hObject, handles);
 
 
 function plotData = plotLogical(logData)
