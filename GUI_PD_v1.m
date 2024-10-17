@@ -442,6 +442,13 @@ try
     end
     lastSampleProcTime = timeBuff(end);
 
+    % x axes alignment 
+    common_xlim = tPltRng - tNow;
+    common_xdiff = diff(common_xlim); 
+    ext_xdiff = common_xdiff * handles.ax_filt.InnerPosition(3) / ...
+        handles.ax_raw.InnerPosition(3); 
+    ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left 
+
     % update serial log 
     % TO DO: there should be a better way to do this; serial callback
     % should trigger an event or listener that logs the info 
@@ -496,6 +503,7 @@ try
         try
         set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
         set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
+        axes(handles.ax_filt); xlim(ext_xlim);
 
         % update model-forecasted data plot
         if handles.MdlSetUp
@@ -626,6 +634,8 @@ try
     set(handles.h_timeDispTrace,'YData',[nan; diff(handles.timeDispBuff)]);
     set(handles.h_timeDispTrace,'XData', ...
         handles.time0 + seconds(handles.timeDispBuff) - tNow );
+    axes(handles.ax_raw); xlim(common_xlim);
+    axes(handles.ax_timing); xlim(common_xlim);
 
     guidata(hObject,handles)
 
@@ -689,14 +699,14 @@ try
     end
 
     % initiate timing stem plot
-    axes(handles.ax_timing); 
+    axes(handles.ax_timing); hold off;
     handles.h_timingTrace = ...
         stem(handles.time0 + seconds(timeBuff) - tNow, ...
         [nan; diff(timeBuff)], 's');
     hold on;
     handles.h_timeDispTrace = ...
         stem(handles.time0 + seconds(handles.timeDispBuff) - tNow, ...
-        [nan; diff(handles.timeDispBuff)], 's');
+        [nan; diff(handles.timeDispBuff)], 'o');
     grid on; title('Update Duration'); xlabel('time (s)'); ylabel('s');
     xlim(common_xlim);
 
