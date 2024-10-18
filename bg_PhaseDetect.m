@@ -3,6 +3,11 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 % 
 % Run brain recording with phase detection/prediction for PDS.
 % 
+% UserArgs can be e.g. a handles object from GUIDE or an app object. 
+% 
+% DQ and SQ are data and stimulus queues (respectively), i.e. 
+% Q = parallel.pool.(Pollable)DataQueue.  
+% 
 % InitializeRecording takes arguments:
 % ( buffer size(s) , filter order(s) , forecast window(s) , 
 %   raw channel ID(s) selected , raw channel ID(s) to filter , 
@@ -22,7 +27,6 @@ cont_fullfunc = true; % run or wait for user input
 %while cont_fullfunc
 try
 %% import filter and model details, etc
-% change names according to front-end handles/app/struct!!
 cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop; 
     % if false, loop should only run once
 
@@ -38,7 +42,9 @@ end
 if MdlSetUp
     mdls = {UserArgs.Mdl};
 end
-chInd = UserArgs.channelIndex;
+chInd = UserArgs.channelIndex; 
+    % index (NOT ID NUMBER) of the recording channel/column; 
+    % may be empty if unselected on startup
 forecastwin = UserArgs.PDSwin1; % # samples ahead to forecast
 forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
 buffSize = UserArgs.bufferSizeGrid;

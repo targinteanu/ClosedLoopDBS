@@ -121,7 +121,7 @@ handles.SaveFileName = [svloc,filesep,'SaveFile'];
 handles.SaveFileN = 1;
 
 % default values 
-handles.channelIndex = get(handles.pop_channels,'Value'); 
+%handles.channelIndex = get(handles.pop_channels,'Value'); 
 PDSwin = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(PDSwin*1000); handles.PDSwin1 = PDSwin;
 handles.PDSwin2 = ceil(.02*PDSwin); 
