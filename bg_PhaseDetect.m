@@ -1,5 +1,6 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
-    InitializeRecording, ShutdownRecording, GetNewRawData, selRaw)
+    InitializeRecording, ShutdownRecording, ...
+    InitializeRawData, GetNewRawData, selRaw)
 % 
 % Run brain recording with phase detection/prediction for PDS.
 % 
@@ -18,6 +19,9 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 % 
 % ShutdownRecording takes no arguments.
 % 
+% InitializeRawData takes ( selRaw , BufferSize ) as input arguments and
+% returns [ EmptyDataStruct , Tail , Combined , ChannelInfo ]
+% 
 % GetNewRawData takes selRaw as an argument and returns new raw tails. 
 % 
 
@@ -27,6 +31,11 @@ cont_fullfunc = true; % run or wait for user input
 %while cont_fullfunc
 try
 %% import filter and model details, etc
+
+if ~UserArgs.DAQstatus
+    error('Data Acquisition has not been enabled.')
+end
+
 cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop; 
     % if false, loop should only run once
 
@@ -45,6 +54,9 @@ end
 chInd = UserArgs.channelIndex; 
     % index (NOT ID NUMBER) of the recording channel/column; 
     % may be empty if unselected on startup
+    if isempty(chInd)
+        chInd = 1; % default to first listed channel
+    end
 forecastwin = UserArgs.PDSwin1; % # samples ahead to forecast
 forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
 buffSize = UserArgs.bufferSizeGrid;
@@ -54,30 +66,30 @@ PhaseOfInterest = UserArgs.PhaseOfInterest;
 
 dT = .001; % s between data requests 
 
-[rawD, ~, ~, ~] = ...
-    InitializeRecording(buffSize, filtOrds, forecastwin, ...
-    [], [], [], []);
-rawN = rawD(1,:); 
+% first request for raw data to get details only 
+[~,~,~,rawN] = InitializeRawData(selRaw, buffSize);
 chID = cellfun(@(s) s.IDnumber, rawN); chID = chID(chInd);
 buffSize = UserArgs.bufferSizeGrid .* ones(size(rawN)); % samples
 buffSize(chInd) = UserArgs.bufferSize;
 
-selRaw2Flt = [];selFlt2For = []; 
+% assign channel indexes (NOT IDs!) to use for filtering and forecasting
+selRaw2Flt = []; selFlt2For = []; 
 if FilterSetUp
-    selRaw2Flt = chID; 
+    selRaw2Flt = chInd; 
     if MdlSetUp
         selFlt2For = 1;
     end
 end
 selRaw2For = []; 
 
-
+% initialize data structs for real
 [rawD, fltD, forD, timeBuffs] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
     selRaw, selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); 
-% to do: double width of forD and implement sine wave
+% to do: double width of forD and implement sine wave !!
 
+% define input args for filtering/forecasting funcs 
 Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
 if FilterSetUp
     fltN = fltD(1,:); 
@@ -101,9 +113,11 @@ else
     foreArgs = [];
 end
 
+% init forecast-output buffers, i.e. times to/of next phase(s) of interest
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = forBuffs(chInd); forBuffRow = ones(size(forBuffs));
 
+% enable defined filtering/forecasting funcs only if ready
 if FilterSetUp
     filtfun = @filtFun;
 else
