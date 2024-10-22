@@ -187,13 +187,13 @@ connect_cbmex();
 handles.time0 = datetime - seconds(cbmex('time'));
 disconnect_cbmex();
 
+handles.DAQstatus = true;
+
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
     @InitializeRecording_cbmex, @disconnect_cbmex, ...
     @initRawData_cbmex, @getNewRawData_cbmex, []);
-
-handles.DAQstatus = true;
 
 % Acquire some data to get channel information. Determine which channels
 % are enabled
