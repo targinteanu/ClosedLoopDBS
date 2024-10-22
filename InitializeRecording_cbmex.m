@@ -16,9 +16,6 @@ function [rawD, fltD, forD, timeBuffs] = ...
 IndShiftFIR = ceil(filtorder/2); % samples
 selFor = [selRaw2For, selFlt2For];
 
-connect_cbmex(); 
-pause(1);
-
 %% defining the data structures
 % much of this is generic; can it be replaced with a non-cbmex-exclusive
 % function that gets called?

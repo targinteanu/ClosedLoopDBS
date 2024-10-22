@@ -14,6 +14,9 @@ function [emptyData, contData, buffData, chanInfo] = ...
 
 %% access cbmex 
 
+connect_cbmex(); 
+pause(1);
+
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
 
 if isempty(continuousData)
