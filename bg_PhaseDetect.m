@@ -152,9 +152,16 @@ while cont_loop
     % DataQueue is empty when the User polls it, which means the
     % User is ready for new data. 
     if DQ.QueueLength == 0
-        send(DQ, [rawD(1,chInd), fltD(1,1), forD(1,1); ...
-                  rawD(4,chInd), fltD(4,1), forD(4,1); ...
-                  timeBuffs(chInd), forBuffedOut(1), forBuffs(1)]);
+        if isempty(selRaw)
+            rawD_ = rawD;
+            timeBuffs_ = timeBuffs;
+        else
+            rawD_ = rawD(:,selRaw);
+            timeBuffs_ = timeBuffs(selRaw);
+        end
+        send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
+                  {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
+                  {timeBuffs_}, forBuffedOut(1), forBuffs(1)]);
     end
 
     cont_loop = cont_loop && cont_loop_2;

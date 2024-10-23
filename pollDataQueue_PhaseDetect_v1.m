@@ -1,7 +1,7 @@
 function [dataReceived, svN, timeBuff, forBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
-    pollDataQueue_PhaseDetect_v1(dataQueue, svname, svN, t0, pollTimeOut)
+    pollDataQueue_PhaseDetect_v1(dataQueue, chInd, svname, svN, t0, pollTimeOut)
 % 
 % Poll dataQueue as sent by PhaseDetect function and interpret the results.
 % 
@@ -11,9 +11,16 @@ function [dataReceived, svN, timeBuff, forBuff, ...
 % If there is data to save, it will be saved as <svname_svN.mat> and svN
 % will be incremented. 
 % 
+% chInd is the index (NOT ID number or name) of the raw channel being
+% displayed, filtered, etc. 
+% 
 
-if nargin < 5
+if nargin < 6
     pollTimeOut = 1; % s
+end
+
+if isempty(chInd)
+    chInd = 1; % default to first listed channel
 end
 
     [sentData, dataReceived] = poll(dataQueue, pollTimeOut);
@@ -22,11 +29,13 @@ end
             rethrow(sentData)
         else
 
-        rawD1 = sentData(1,1); rawD4 = sentData(2,1);
+        rawD1 = sentData{1,1}; rawD4 = sentData{2,1};
         fltD1 = sentData(1,2); fltD4 = sentData(2,2);
         forD1 = sentData(1,3); forD4 = sentData(2,3);
-        timeBuff = sentData{3,1}; forBuff = sentData{3,3}; 
+        timeBuffs = sentData{3,1}; forBuff = sentData{3,3}; 
         forBuffSv = sentData{3,2};
+
+        timeBuff = timeBuffs{chInd};
 
         if ~isempty(forBuffSv)
             PeakTrough = forBuffSv;
@@ -35,7 +44,7 @@ end
             forBuff = [forBuffSv; forBuff];
         end
 
-        rawPlt = data2timetable(rawD4,rawD1,t0); rawPlt = rawPlt{1};
+        rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),t0); rawPlt = rawPlt{1};
         fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
         forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
         tPltRng = [gettimes(rawPlt); gettimes(fltPlt); gettimes(forPlt)];
