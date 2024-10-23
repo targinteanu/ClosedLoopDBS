@@ -43,7 +43,7 @@ FilterSetUp = UserArgs.FilterSetUp; % t/f
 MdlSetUp = UserArgs.MdlSetUp; % t/f
 if FilterSetUp
     filtOrds = [UserArgs.filtorder]; % array with chans as cols
-    filtObjs = {UserArgs.BPF}; % cell with rows {a; b}; chans as cols
+    filtObjs = {1; UserArgs.BPF}; % cell with rows {a; b}; chans as cols
     hico = UserArgs.hicutoff; loco = UserArgs.locutoff; % Hz 
 else
     filtOrds = [];
@@ -71,6 +71,7 @@ dT = .001; % s between data requests
 chID = cellfun(@(s) s.IDnumber, rawN); chID = chID(chInd);
 buffSize = UserArgs.bufferSizeGrid .* ones(size(rawN)); % samples
 buffSize(chInd) = UserArgs.bufferSize;
+ShutdownRecording();
 
 % assign channel indexes (NOT IDs!) to use for filtering and forecasting
 selRaw2Flt = []; selFlt2For = []; 
@@ -95,7 +96,7 @@ if FilterSetUp
     fltN = fltD(1,:); 
     fIC = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
     filtArgs.fltInit = fIC; filtArgs.fltObj = filtObjs;
-    filtArgs.TimeShift = filtords(1)/Fs; 
+    filtArgs.TimeShift = filtOrds(1)/Fs; 
     if MdlSetUp
         forN = forD(1,:);
         foreArgs.K = forecastwin; foreArgs.k = forecastpad;
@@ -161,9 +162,16 @@ while cont_loop
     % If there are any errors in the loop, stop looping and allow the
     % User to handle them. 
     catch ME_loop
-        cont_loop = false;
         getReport(ME_loop)
-        send(DQ, ME_loop);
+        if contains(ME_loop.message, 'No continuous data')
+            % do nothing; proceed to next loop iteration to allow more time
+            % for continuous data. 
+            % TO DO: should there be some limit; enough of these in a row
+            % and it stops cont_loop and sends the error? 
+        else
+            cont_loop = false;
+            send(DQ, ME_loop);
+        end
     end
 end
 
