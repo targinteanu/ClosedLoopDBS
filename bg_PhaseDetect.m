@@ -89,6 +89,7 @@ selRaw2For = [];
     selRaw, selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); 
 % to do: double width of forD and implement sine wave !!
+bgArgOut = UserArgs;
 
 % define input args for filtering/forecasting funcs 
 Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);

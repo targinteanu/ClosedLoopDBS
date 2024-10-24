@@ -23,6 +23,8 @@ if isempty(chInd)
     chInd = 1; % default to first listed channel
 end
 
+dataQueue.QueueLength
+
     [sentData, dataReceived] = poll(dataQueue, pollTimeOut);
     if dataReceived
         if strcmpi(class(sentData), 'MException')
