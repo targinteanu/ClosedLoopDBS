@@ -56,8 +56,10 @@ function GUI_PD_v1_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 % --- Begin My Code ---
+wb = waitbar(0, 'Starting up GUI...');
 
 % change ax_polar to polar axes 
+waitbar(0, wb, 'Setting up polar plot...')
 axes(handles.ax_polar);
 polarhistogram(pi/2);
 handles.ax_polar = gca;
@@ -73,10 +75,8 @@ handles.timer = timer(...
     'StopFcn',  {@stopTimer,hObject});     % callback to execute when timer starts
 %}
 
-
-handles.DAQstatus = false;
-
 % start receiver serial communication from paradigm computer
+waitbar(.03, wb, 'Setting up serial com...')
 handles.textSrl.String = 'attempting to start serial com here ...';
 thisportname = FindMySerialPort();
 noSerialSetup = isempty(thisportname);
@@ -93,7 +93,14 @@ configureCallback(receiverSerial,"terminator",...
 end
 handles.srl = receiverSerial; 
 
+ud.TimeStamp = nan;
+handles.udBlank = ud;
+handles.srlStorage1 = repmat(ud,[1000,1]);
+handles.srlP1 = 1; 
+
 % initiate other vars ...
+waitbar(.04, wb, 'Initiating variables...')
+handles.DAQstatus = false;
 handles.StimActive = false;
 handles.RunMainLoop = false;
 handles.FilterSetUp = false;
@@ -107,11 +114,8 @@ handles.bufferSizeGrid = 10;
 handles.channelIndex = [];
 handles.PhaseOfInterest = [0, pi];
 
-ud.TimeStamp = nan;
-handles.udBlank = ud;
-handles.srlStorage1 = repmat(ud,[1000,1]);
-handles.srlP1 = 1; 
-
+% file saving 
+waitbar(.04, wb, 'Setting file save location...')
 svloc = ['Saved Data PD',filesep,'Saved Data ',...
     datestr(datetime, 'yyyy-mm-dd HH.MM.SS')];
 pause(1)
@@ -121,6 +125,7 @@ handles.SaveFileName = [svloc,filesep,'SaveFile'];
 handles.SaveFileN = 1;
 
 % default values 
+waitbar(.08, wb, 'Setting default values...')
 %handles.channelIndex = get(handles.pop_channels,'Value'); 
 PDSwin = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(PDSwin*1000); handles.PDSwin1 = PDSwin;
@@ -129,12 +134,14 @@ handles.bufferSize = str2double(get(handles.txt_display,'String')) * 1000;
 handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
 
 % start parallel pool(s) 
+waitbar(.08, wb, 'Starting parallel pool...')
 handles.pool = gcp('nocreate');
 if isempty(handles.pool)
     handles.pool = parpool;
 end
 
 % Set up a data queue(s)
+waitbar(.99, 'Setting parallel data queue(s)...')
 %handles.userQueue = parallel.pool.PollableDataQueue;
 handles.dataQueue = parallel.pool.PollableDataQueue;
 handles.stimQueue = parallel.pool.PollableDataQueue;
@@ -147,6 +154,7 @@ handles.rmfieldList = {...
     'f_PhaseDetect'};
 
 % Update handles structure
+waitbar(1, wb, 'Updating GUI handles...')
 guidata(hObject, handles);
 
 clc
@@ -154,6 +162,9 @@ clc
 
 % UIWAIT makes GUI_PD_v1 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
+close(wb)
+delete(wb)
+pause(.1)
 
 
 % --- Outputs from this function are returned to the command line.
