@@ -6,6 +6,9 @@
  - Memory: patients with sEEG are tested on their ability to recall pictures, and phase-dependent stimulus is synchronized with the theta brainwave cycle.
  - Parkinson's Disease (PD): patients with cortical (ECoG) and/or deep brain stimulation (DBS) electrodes are directed to plan and execute motor tasks, and phase-dependent stimulus is synchronized with the beta brainwave cycle.
 
+# How to Run 
+ ...
+
 # Workflow 
  The following general steps are performed on loop in the background. The first three steps can be executed by iterReadBrain called on loop with appropriate imputs and functions determining the algorithm and protocol. The rest can be executed by ...
  - A batch of recorded raw brain data is obtained from the hardware and organized by channel. Channels can have different sample rates/properties and their data buffers can be different lengths.
@@ -20,4 +23,8 @@
 # Versions 
  - Version 0 (v0): the first version run successfully in the OR/EMU, built using MATLAB GUIDE; does not use parallel processing, and only supports Blackrock hardware. Due to delays caused by having all processes run on a single loop, timing accuracy and frequency of stimulus actually delivered are limited.
  - Version 1 (v1): updated MATLAB GUIDE-based interfaces that use parallel processing using Blackrock hardware.
- - Version 2 (planned) will be rebuilt in the mlapp format and will support phase-dependent stimulation using Blackrock or AlphaOmega hardware. 
+ - Version 2 (planned) will be rebuilt in the mlapp format and will support phase-dependent stimulation using Blackrock or AlphaOmega hardware.
+
+# Internal/Testing Scripts 
+ The following scripts are for internal testing purposes and should not be run generally: 
+ - scripts beginning with test_
