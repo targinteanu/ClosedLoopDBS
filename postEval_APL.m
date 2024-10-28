@@ -19,8 +19,12 @@ end
 [fn,fp] = uigetfile('*.csv'); 
 neuromodulation_output_visualization(fullfile(fp,fn)); % APL internal eval 
 tbl = readtable(fullfile(fp,fn));
+
+%% interpret APL data
 SamplingFreqAPL = 1000; % Hz
 dataAPL = (tbl.data)';
+tAPL = (tbl.dataTimestamp)'/SamplingFreqAPL; % s
+StimIndAPL = find(tbl.stimOut > 0);
 
 %% User selects channel
 channelNames = {ns.ElectrodesInfo.Label}; 
@@ -50,9 +54,11 @@ dataAPL = Myeegfilt(dataAPL,SamplingFreqAPL,13,30);
 %% align APL-ns timing 
 % assumes APL data is shorter-duration than blackrock recording 
 dataAPL1 = dataAPL; dataOneChannel1 = dataOneChannel;
+StimInd1 = StimIndAPL;
 if SamplingFreqAPL ~= SamplingFreq
     % resample APL to match ns
     dataAPL1 = resample(dataAPL1,SamplingFreq,SamplingFreqAPL);
+    StimInd1 = (StimInd1-1) * SamplingFreq/SamplingFreqAPL + 1;
 end
 if length(dataAPL1) > length(dataOneChannel1)
     warning('APL data is longer duration than recording; this might not work properly.')
@@ -71,3 +77,14 @@ plot(t1, dataAPL1);
 ylabel('aligned data'); legend('BlackRock', 'APL');
 subplot(3,1,3); plot(dataOneChannel1, dataAPL1, '.'); grid on; 
 xlabel('BlackRock'); ylabel('APL');
+
+%% plot time series 
+figure; plot(t1, dataOneChannel1); grid on; hold on; 
+plot(t1(StimInd1), dataOneChannel1(StimInd1), '^m'); 
+legend('Data', 'Intended Stim')
+
+%% plot polar histogram 
+[dataPhase, dataFreq] = instPhaseFreq(dataOneChannel1, SamplingFreq);
+figure; 
+polarhistogram(dataPhase(StimInd1),18); 
+title('Intended Stim');
