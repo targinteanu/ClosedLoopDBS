@@ -55,10 +55,17 @@ dataAPL = Myeegfilt(dataAPL,SamplingFreqAPL,13,30);
 % assumes APL data is shorter-duration than blackrock recording 
 dataAPL1 = dataAPL; dataOneChannel1 = dataOneChannel;
 StimInd1 = StimIndAPL;
+tRel1 = tRel; t1 = t;
 if SamplingFreqAPL ~= SamplingFreq
+    %{
     % resample APL to match ns
     dataAPL1 = resample(dataAPL1,SamplingFreq,SamplingFreqAPL);
     StimInd1 = (StimInd1-1) * SamplingFreq/SamplingFreqAPL + 1;
+    %}
+    % resample ns to match APL
+    dataOneChannel1 = resample(dataOneChannel1,SamplingFreqAPL,SamplingFreq);
+    tRel1 = resample(tRel1,SamplingFreqAPL,SamplingFreq);
+    t1 = seconds(tRel1) + t0;
 end
 if length(dataAPL1) > length(dataOneChannel1)
     warning('APL data is longer duration than recording; this might not work properly.')
@@ -67,8 +74,8 @@ end
 [R,ri] = max(r); L = l(ri);
 dataOneChannel1 = dataOneChannel1(L:end); 
 dataOneChannel1 = dataOneChannel1(1:length(dataAPL1));
-tRel1 = tRel(L:end); tRel1 = tRel1(1:length(dataAPL1));
-t1 = t(L:end); t1 = t1(1:length(dataAPL1));
+tRel1 = tRel1(L:end); tRel1 = tRel1(1:length(dataAPL1));
+t1 = t1(L:end); t1 = t1(1:length(dataAPL1));
 figure; 
 subplot(3,1,1); plot(l,r); grid on; hold on; plot(L,R,'o'); 
 xlabel('lag'); ylabel('corr'); 
@@ -80,11 +87,15 @@ xlabel('BlackRock'); ylabel('APL');
 
 %% plot time series 
 figure; plot(t1, dataOneChannel1); grid on; hold on; 
+plot(t1, dataAPL1);
 plot(t1(StimInd1), dataOneChannel1(StimInd1), '^m'); 
-legend('Data', 'Intended Stim')
+legend('Data - BlackRock', 'Data - APL', 'Intended Stim')
 
 %% plot polar histogram 
-[dataPhase, dataFreq] = instPhaseFreq(dataOneChannel1, SamplingFreq);
+[dataPhase, dataFreq] = instPhaseFreq(dataOneChannel1, SamplingFreqAPL);
+[dataPhAPL, dataFrAPL] = instPhaseFreq(dataAPL1, SamplingFreqAPL);
 figure; 
-polarhistogram(dataPhase(StimInd1),18); 
-title('Intended Stim');
+subplot(1,2,2); polarhistogram(dataPhase(StimInd1),18); 
+title('Intended Stim - BlackRock Data');
+subplot(1,2,1); polarhistogram(dataPhAPL(StimInd1),18); 
+title('Intended Stim - APL Data');
