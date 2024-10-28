@@ -47,12 +47,7 @@ t = seconds(tRel);
 t0 = datetime(ns.MetaTags.DateTime); 
 t = t+t0; 
 
-%% filter 
-dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,13,30);
-dataAPL = Myeegfilt(dataAPL,SamplingFreqAPL,13,30);
-
-%% align APL-ns timing 
-% assumes APL data is shorter-duration than blackrock recording 
+%% resample 
 dataAPL1 = dataAPL; dataOneChannel1 = dataOneChannel;
 StimInd1 = StimIndAPL;
 tRel1 = tRel; t1 = t;
@@ -67,6 +62,13 @@ if SamplingFreqAPL ~= SamplingFreq
     tRel1 = resample(tRel1,SamplingFreqAPL,SamplingFreq);
     t1 = seconds(tRel1) + t0;
 end
+
+%% filter 
+dataOneChannel1 = Myeegfilt(dataOneChannel1,SamplingFreqAPL,13,30);
+dataAPL1 = Myeegfilt(dataAPL1,SamplingFreqAPL,13,30);
+
+%% align APL-ns timing 
+% assumes APL data is shorter-duration than blackrock recording 
 if length(dataAPL1) > length(dataOneChannel1)
     warning('APL data is longer duration than recording; this might not work properly.')
 end
