@@ -24,7 +24,7 @@ tbl = readtable(fullfile(fp,fn));
 SamplingFreqAPL = 1000; % Hz
 dataAPL = (tbl.data)';
 tAPL = (tbl.dataTimestamp)'/SamplingFreqAPL; % s
-StimIndAPL = find(tbl.stimOut > 0);
+StimIndAPL = (tbl.stimOut > 0);
 
 %% User selects channel
 channelNames = {ns.ElectrodesInfo.Label}; 
@@ -74,10 +74,21 @@ if length(dataAPL1) > length(dataOneChannel1)
 end
 [r,l] = xcorr(dataOneChannel1, dataAPL1);
 [R,ri] = max(r); L = l(ri);
-dataOneChannel1 = dataOneChannel1(L:end); 
-dataOneChannel1 = dataOneChannel1(1:length(dataAPL1));
-tRel1 = tRel1(L:end); tRel1 = tRel1(1:length(dataAPL1));
-t1 = t1(L:end); t1 = t1(1:length(dataAPL1));
+if L > 0
+    dataOneChannel1 = dataOneChannel1(L:end); 
+    tRel1 = tRel1(L:end); 
+    t1 = t1(L:end); 
+elseif L < 0
+    dataAPL1 = dataAPL1(-L:end); 
+    StimInd1 = StimInd1(-L:end);
+end
+minlen = min(length(dataAPL1), length(dataOneChannel1));
+dataOneChannel1 = dataOneChannel1(1:minlen);
+tRel1 = tRel1(1:minlen);
+t1 = t1(1:minlen);
+dataAPL1 = dataAPL1(1:minlen); 
+StimInd1 = StimInd1(1:minlen);
+
 figure; 
 subplot(3,1,1); plot(l,r); grid on; hold on; plot(L,R,'o'); 
 xlabel('lag'); ylabel('corr'); 
