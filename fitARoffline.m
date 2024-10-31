@@ -9,7 +9,7 @@ if strcmpi(fe,'.mat')
         end
     end
 else
-    openNSx(fullfile(fp,fn,fe));
+    openNSx(fullfile(fp,[fn,fe]));
     ns = eval(['NS',fe(end)]);
 end
 
