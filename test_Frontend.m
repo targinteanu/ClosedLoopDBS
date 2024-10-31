@@ -46,7 +46,7 @@ end
 %forBuffs = cellfun(@(X) t0+seconds(nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 
-chIDnum = 131;
+chIDnum = 1;
 chIDnums = cellfun(@(s) s.IDnumber, rawN); 
 chInd = find(chIDnums == chIDnum);
 
@@ -103,7 +103,7 @@ while cont
     [ok, svN, timeBuff, forBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
-    pollDataQueue_PhaseDetect_v1(dataQueue, svname, svN, t0, .5);
+    pollDataQueue_PhaseDetect_v1(dataQueue, chInd, svname, svN, t0, .5);
     catch sentData
         getReport(sentData)
         cont = false;

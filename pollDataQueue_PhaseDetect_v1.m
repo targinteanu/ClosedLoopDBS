@@ -6,7 +6,7 @@ function [dataReceived, svN, timeBuff, forBuff, ...
 % Poll dataQueue as sent by PhaseDetect function and interpret the results.
 % 
 % If no data received by pollTimeOut (default 1s), dataReceived will be 
-% false and returns will be empty. 
+% false and returns will be empty. [This may no longer work!]
 % 
 % If there is data to save, it will be saved as <svname_svN.mat> and svN
 % will be incremented. 
@@ -23,21 +23,29 @@ if isempty(chInd)
     chInd = 1; % default to first listed channel
 end
 
-dataQueue.QueueLength
+        tPltRng = []; 
+        rawPlt = []; fltPlt = []; forPlt = [];
+        timeBuff = []; forBuff = []; 
+        rawD1 = []; rawD4 = []; 
+        fltD1 = []; fltD4 = []; 
+        forD1 = []; forD4 = [];
+        dataReceived = false;
 
-    [sentData, dataReceived] = poll(dataQueue, pollTimeOut);
-    if dataReceived
+dopoll = true;
+while dopoll
+    % poll until Q is empty to get most recent data
+    [sentData, dataReceivedNow] = poll(dataQueue, pollTimeOut);
+    dataReceived = dataReceived || dataReceivedNow;
+    QL = dataQueue.QueueLength
+    dopoll = QL > 0;
+
+    if dataReceivedNow
         if strcmpi(class(sentData), 'MException')
             rethrow(sentData)
-        else
+        end
 
-        rawD1 = sentData{1,1}; rawD4 = sentData{2,1};
-        fltD1 = sentData(1,2); fltD4 = sentData(2,2);
-        forD1 = sentData(1,3); forD4 = sentData(2,3);
-        timeBuffs = sentData{3,1}; forBuff = sentData{3,3}; 
+        forBuff = sentData{3,3}; 
         forBuffSv = sentData{3,2};
-
-        timeBuff = timeBuffs{chInd};
 
         if ~isempty(forBuffSv)
             PeakTrough = forBuffSv;
@@ -46,22 +54,21 @@ dataQueue.QueueLength
             forBuff = [forBuffSv; forBuff];
         end
 
+        rawD1 = sentData{1,1}; rawD4 = sentData{2,1};
+        fltD1 = sentData(1,2); fltD4 = sentData(2,2);
+        forD1 = sentData(1,3); forD4 = sentData(2,3);
+        timeBuffs = sentData{3,1}; 
+        timeBuff = timeBuffs{chInd};
+    end
+end
+
+    if dataReceived
         rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),t0); rawPlt = rawPlt{1};
         fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
         forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
         tPltRng = [gettimes(rawPlt); gettimes(fltPlt); gettimes(forPlt)];
         tPltRng = [min(tPltRng), max(tPltRng)];
         tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
-
-        end
-
-    else
-        tPltRng = []; 
-        rawPlt = []; fltPlt = []; forPlt = [];
-        timeBuff = []; forBuff = []; 
-        rawD1 = []; rawD4 = []; 
-        fltD1 = []; fltD4 = []; 
-        forD1 = []; forD4 = [];
     end
 
     function t = gettimes(tbl)
