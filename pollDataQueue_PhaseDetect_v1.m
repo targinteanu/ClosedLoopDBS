@@ -31,13 +31,13 @@ end
         forD1 = []; forD4 = [];
         dataReceived = false;
 
+[sentData, dataReceivedNow] = poll(dataQueue, pollTimeOut); 
+
 dopoll = true;
 while dopoll
     % poll until Q is empty to get most recent data
-    [sentData, dataReceivedNow] = poll(dataQueue, pollTimeOut);
+    dopoll = dataQueue.QueueLength > 0;
     dataReceived = dataReceived || dataReceivedNow;
-    QL = dataQueue.QueueLength
-    dopoll = QL > 0;
 
     if dataReceivedNow
         if strcmpi(class(sentData), 'MException')
@@ -60,6 +60,9 @@ while dopoll
         timeBuffs = sentData{3,1}; 
         timeBuff = timeBuffs{chInd};
     end
+
+    sentData = poll(dataQueue);
+    dataReceivedNow = ~isempty(sentData);
 end
 
     if dataReceived
