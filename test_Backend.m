@@ -18,7 +18,7 @@ TimeShiftFIR = filtorder/(2*srate); % seconds
 filtwts = fir1(filtorder, [loco, hico]./(srate/2));
 
 %% load AR model 
-load("Saved Data Test\PD24N007001_ARmdl.mat","ARmdl");
+load("20240829_ARmdl.mat");
 
 %% init 
 
