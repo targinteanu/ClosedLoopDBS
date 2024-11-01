@@ -231,9 +231,9 @@ handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
 if ~dataRecd
     handles.DAQstatus = false;
-    cancel(handles.f_PhaseDetect);
     warning('Data aquisition timed out.')
 else
+cancel(handles.f_PhaseDetect);
 
 % set channel popup menu to hold channels
 handles.fSamples = cellfun(@(ch) ch.SampleRate, rawInfo);
@@ -291,6 +291,7 @@ handles.DAQstatus = false;
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
 if ~dataRecd
     warning('Polling data queue timed out.')
+    keyboard
 end
 cancel(handles.f_PhaseDetect); 
 guidata(hObject,handles)
@@ -405,6 +406,7 @@ handles.DAQstatus = false;
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
 if ~dataRecd
     warning('Polling data queue timed out.')
+    keyboard
 end
 cancel(handles.f_PhaseDetect); 
 guidata(hObject, handles)
@@ -450,7 +452,7 @@ while handles.RunMainLoop
 try
 
     % timing 
-    pause(.1); % s between displays 
+    pause(1); % s between displays 
     tNow = datetime;
     timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
     handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
@@ -463,6 +465,10 @@ try
     end
     
     % get data from Central
+    if handles.dataQueue.QueueLength > 1000 
+        % LIMIT DATA QUEUE LENGTH
+        error('Data Queue Overflow');
+    end
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
@@ -703,7 +709,8 @@ try
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
 
     % get data from Central
-    requeryPhaseDetect(hObject, 10);
+    handles.FilterSetUp
+    requeryPhaseDetect(hObject, -1);
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
@@ -788,6 +795,7 @@ try
     end
 
     handles.RunMainLoop = true; 
+    guidata(hObject,handles)
     requeryPhaseDetect(hObject, 10);
     guidata(hObject,handles)
     updateDisplay(hObject,eventdata)
@@ -817,6 +825,7 @@ try
         stop(handles.QueuedStim)
     end
     handles.RunMainLoop = false;
+    guidata(hObject, handles)
     requeryPhaseDetect(hObject, 1);
     guidata(hObject, handles)
 catch ME
@@ -852,25 +861,31 @@ end
 
 function requeryPhaseDetect(hObject, timeoutdur)
 handles = guidata(hObject);
+handles.FilterSetUp
+if timeoutdur >= 0
 [dataRecd, handles.SaveFileN] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, timeoutdur);
 if ~dataRecd
     warning('Polling data queue timed out.')
+    keyboard
 end
-try 
-    cancel(handles.f_PhaseDetect); 
-catch ME1
-    warning(ME1.message);
 end
 try
+if ~isempty(handles.f_PhaseDetect)
+cancel(handles.f_PhaseDetect); 
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
     @InitializeRecording_cbmex, @disconnect_cbmex, ...
     @initRawData_cbmex, @getNewRawData_cbmex, []);
+%h = fetchOutputs(handles.f_PhaseDetect);
+%h.FilterSetUp
+end
 catch ME2
     warning(ME2.message);
+    % if there is a problem here, consider stopping everything 
+    keyboard
 end
 guidata(hObject, handles);
 
@@ -1119,6 +1134,7 @@ handles.FilterSetUp = true;
 %stop(handles.timer)
 StopMainLoop(hObject,eventdata,handles)
 guidata(hObject, handles)
+handles.FilterSetUp
 %start(handles.timer) % restart timer and plots 
 StartMainLoop(hObject,eventdata,handles)
 
