@@ -97,10 +97,11 @@ function StartButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.RunMainLoop = true;
 guidata(hObject, handles);
-f = parfeval(@bg_Data, 1, ...
+handles.f = parfeval(@bg_Data, 1, ...
     handles.dataQueue, handles.RunMainLoop, handles.dataMean, handles.dataStd);
+%guidata(hObject, handles);
 while handles.RunMainLoop && handles.checkEnable.Value
-    handles = guidata(hObject);
+    %handles = guidata(hObject);
     pause(.5);
     while handles.dataQueue.QueueLength > 0
         x = poll(handles.dataQueue);
@@ -115,7 +116,7 @@ while handles.RunMainLoop && handles.checkEnable.Value
         end
     end
 end
-cancel(f);
+cancel(handles.f);
 guidata(hObject, handles);
 
 
