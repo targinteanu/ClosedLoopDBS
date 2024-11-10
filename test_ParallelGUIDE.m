@@ -55,7 +55,6 @@ function test_ParallelGUIDE_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for test_ParallelGUIDE
 handles.output = hObject;
 
-handles.RunMainLoop = false;
 handles.dataBuffer = zeros(1000,1);
 handles.QLength = nan(1000,1);
 handles.dataMean = 0; handles.dataStd = 1;
@@ -95,13 +94,12 @@ function StartButton_Callback(hObject, eventdata, handles)
 % hObject    handle to StartButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.RunMainLoop = true;
 guidata(hObject, handles);
 handles.f = parfeval(@bg_Data, 1, ...
-    handles.dataQueue, handles.RunMainLoop, handles.dataMean, handles.dataStd);
-%guidata(hObject, handles);
-while handles.RunMainLoop && handles.checkEnable.Value
-    %handles = guidata(hObject);
+    handles.dataQueue, true, handles.dataMean, handles.dataStd);
+guidata(hObject, handles);
+while strcmp(handles.f.State, 'running') && handles.checkEnable.Value
+    handles = guidata(hObject);
     pause(.5);
     while handles.dataQueue.QueueLength > 0
         x = poll(handles.dataQueue);
@@ -116,7 +114,6 @@ while handles.RunMainLoop && handles.checkEnable.Value
         end
     end
 end
-cancel(handles.f);
 guidata(hObject, handles);
 
 
@@ -125,7 +122,7 @@ function StopButton_Callback(hObject, eventdata, handles)
 % hObject    handle to StopButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.RunMainLoop = false; 
+cancel(handles.f)
 guidata(hObject, handles);
 
 
