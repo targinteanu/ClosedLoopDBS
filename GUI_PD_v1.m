@@ -293,6 +293,7 @@ if ~dataRecd
     warning('Polling data queue timed out.')
     keyboard
 end
+cancelAll(handles.pool.FevalQueue);
 cancel(handles.f_PhaseDetect); 
 guidata(hObject,handles)
 
@@ -408,6 +409,7 @@ if ~dataRecd
     warning('Polling data queue timed out.')
     keyboard
 end
+cancelAll(handles.pool.FevalQueue);
 cancel(handles.f_PhaseDetect); 
 guidata(hObject, handles)
 %stop(handles.timer)
@@ -873,6 +875,7 @@ end
 end
 try
 if ~isempty(handles.f_PhaseDetect)
+cancelAll(handles.pool.FevalQueue);
 cancel(handles.f_PhaseDetect); 
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
