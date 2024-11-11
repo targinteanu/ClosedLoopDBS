@@ -29,7 +29,7 @@ chInd = 1;
 %% setup structure 
 UserArgs.DAQstatus = true; UserArgs.RunMainLoop = true; 
 UserArgs.FilterSetUp = true; UserArgs.MdlSetUp = true;
-UserArgs.filtorder = filtorder; UserArgs.BPF = filtwts; 
+UserArgs.FilterOrder = filtorder; UserArgs.BPF = filtwts; 
 UserArgs.hicutoff = hico; UserArgs.locutoff = loco; 
 UserArgs.Mdl = ARmdl; 
 UserArgs.channelIndex = chInd; 

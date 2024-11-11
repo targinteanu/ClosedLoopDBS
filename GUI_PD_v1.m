@@ -173,6 +173,10 @@ handles.rmfieldList = {...
 
 % Update handles structure
 waitbar(1, wb, 'Updating GUI handles...')
+close(wb)
+pause(.1)
+delete(wb)
+pause(.1)
 guidata(hObject, handles);
 
 clc
@@ -180,9 +184,6 @@ clc
 
 % UIWAIT makes GUI_PD_v1 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-close(wb)
-delete(wb)
-pause(.1)
 
 
 % --- Outputs from this function are returned to the command line.
@@ -711,7 +712,6 @@ try
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
 
     % get data from Central
-    handles.FilterSetUp
     requeryPhaseDetect(hObject, -1);
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
@@ -721,6 +721,7 @@ try
     if ~dataRecd
         error('Data aquisition timed out.')
     end
+    unitname = rawD1{handles.channelIndex}.Unit;
 
     % keep track of the display time 
     handles.timeDisp1 = tic; handles.timeDisp0 = timeBuff(end, :);
@@ -863,7 +864,6 @@ end
 
 function requeryPhaseDetect(hObject, timeoutdur)
 handles = guidata(hObject);
-handles.FilterSetUp
 if timeoutdur >= 0
 [dataRecd, handles.SaveFileN] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
@@ -882,8 +882,6 @@ handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     handles.dataQueue, handles.stimQueue, ...
     @InitializeRecording_cbmex, @disconnect_cbmex, ...
     @initRawData_cbmex, @getNewRawData_cbmex, []);
-%h = fetchOutputs(handles.f_PhaseDetect);
-%h.FilterSetUp
 end
 catch ME2
     warning(ME2.message);
@@ -1137,7 +1135,6 @@ handles.FilterSetUp = true;
 %stop(handles.timer)
 StopMainLoop(hObject,eventdata,handles)
 guidata(hObject, handles)
-handles.FilterSetUp
 %start(handles.timer) % restart timer and plots 
 StartMainLoop(hObject,eventdata,handles)
 

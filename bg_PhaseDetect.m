@@ -42,7 +42,7 @@ cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop;
 FilterSetUp = UserArgs.FilterSetUp; % t/f
 MdlSetUp = UserArgs.MdlSetUp; % t/f
 if FilterSetUp
-    filtOrds = [UserArgs.filtorder]; % array with chans as cols
+    filtOrds = [UserArgs.FilterOrder]; % array with chans as cols
     filtObjs = {1; UserArgs.BPF}; % cell with rows {a; b}; chans as cols
     hico = UserArgs.hicutoff; loco = UserArgs.locutoff; % Hz 
 else
