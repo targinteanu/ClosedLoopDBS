@@ -22,7 +22,7 @@ function varargout = test_ParallelGUIDE(varargin)
 
 % Edit the above text to modify the response to help test_ParallelGUIDE
 
-% Last Modified by GUIDE v2.5 01-Nov-2024 17:48:08
+% Last Modified by GUIDE v2.5 10-Nov-2024 18:53:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -182,6 +182,13 @@ while RunMainLoop
     send(DQ,x);
 end
 
+function doRefresh(hObject)
+handles = guidata(hObject);
+cancel(handles.f);
+handles.f = parfeval(@bg_Data, 1, ...
+    handles.dataQueue, true, handles.dataMean, handles.dataStd);
+guidata(hObject, handles);
+
 
 % --- Executes on button press in checkEnable.
 function checkEnable_Callback(hObject, eventdata, handles)
@@ -190,3 +197,11 @@ function checkEnable_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of checkEnable
+
+
+% --- Executes on button press in push_refresh.
+function push_refresh_Callback(hObject, eventdata, handles)
+% hObject    handle to push_refresh (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+doRefresh(hObject)
