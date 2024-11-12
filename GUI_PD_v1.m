@@ -450,22 +450,23 @@ delete(hObject);
 function updateDisplay(hObject, eventdata)
 
 handles = guidata(hObject);
-while handles.RunMainLoop
+while handles.RunMainLoop && handles.tgl_StartStop.Value
 
 try
 
-    % timing 
-    pause(1); % s between displays 
-    tNow = datetime;
-    timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
-    handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
-    
     % ensure connection with hardware 
     handles = guidata(hObject);
     if ~handles.DAQstatus
         %stop(handles.timer)
         StopMainLoop(hObject,eventdata,handles)
     end
+
+    % timing 
+    pause(.01); % s between displays 
+    tNow = datetime;
+    timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
+    handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
+    guidata(hObject, handles);
     
     % get data from Central
     if handles.dataQueue.QueueLength > 1000 
@@ -543,7 +544,7 @@ try
         try
         set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
         set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
-        axes(handles.ax_filt); xlim(ext_xlim);
+        set(handles.ax_filt, 'XLim', ext_xlim);
 
         % update model-forecasted data plot
         if handles.MdlSetUp
@@ -674,8 +675,8 @@ try
     set(handles.h_timeDispTrace,'YData',[nan; diff(handles.timeDispBuff)]);
     set(handles.h_timeDispTrace,'XData', ...
         handles.time0 + seconds(handles.timeDispBuff) - tNow );
-    axes(handles.ax_raw); xlim(common_xlim);
-    axes(handles.ax_timing); xlim(common_xlim);
+    set(handles.ax_raw, 'XLim', common_xlim);
+    set(handles.ax_timing, 'XLim', common_xlim);
 
     guidata(hObject,handles)
 
@@ -799,7 +800,7 @@ try
 
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
-    requeryPhaseDetect(hObject, 10);
+    requeryPhaseDetect(hObject, 1);
     guidata(hObject,handles)
     updateDisplay(hObject,eventdata)
     
@@ -870,7 +871,7 @@ if timeoutdur >= 0
         handles.SaveFileName, handles.SaveFileN, handles.time0, timeoutdur);
 if ~dataRecd
     warning('Polling data queue timed out.')
-    keyboard
+    %keyboard
 end
 end
 try
