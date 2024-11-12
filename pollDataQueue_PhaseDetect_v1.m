@@ -56,7 +56,7 @@ while dopoll
 
         rawD1 = sentData{1,1}; rawD4 = sentData{2,1};
         fltD1 = sentData(1,2); fltD4 = sentData(2,2);
-        forD1 = sentData(1,3); forD4 = sentData(2,3);
+        forD1 = sentData{1,3}; forD4 = sentData{2,3};
         timeBuffs = sentData{3,1}; 
         timeBuff = timeBuffs{chInd};
     end
@@ -68,7 +68,8 @@ end
     if dataReceived
         rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),t0); rawPlt = rawPlt{1};
         fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
-        forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
+        forPlt = data2timetable(forD4,forD1,t0); %forPlt = forPlt{1};
+        forPlt = wr_synchronize(forPlt);
         tPltRng = [gettimes(rawPlt); gettimes(fltPlt); gettimes(forPlt)];
         tPltRng = [min(tPltRng), max(tPltRng)];
         tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
@@ -79,6 +80,20 @@ end
             t = tbl.Time;
         else
             t = t0 + nan;
+        end
+    end
+
+%% helpers 
+    function TT = wr_synchronize(TTs)
+        TT1 = TTs{1};
+        if ~isempty(TT1)
+            if width(TTs) > 1
+                TT = synchronize(TT1, TTs{2});
+            else
+                TT = TT1;
+            end
+        else
+            TT = TT1;
         end
     end
 

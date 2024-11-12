@@ -141,6 +141,8 @@ if doFor
 [forTails, forBuffsAdd, forArgs] = forFun(forArgs, ...
     [rawAllData(selRaw2For), fltAllData(selFlt2For)]);
 lenFor = [lenRaw(selRaw2For), lenFlt(selFlt2For)];
+rpt = ceil(width(forData)/width(lenFor));
+lenFor = repmat(lenFor, [1,rpt]);
 if ~(size(forTails,2) == size(forData,2))
     error('Forecast channels are inconsistent.');
 end
