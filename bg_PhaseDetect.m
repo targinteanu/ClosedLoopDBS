@@ -87,9 +87,9 @@ selRaw2For = [];
 [rawD, fltD, forD, timeBuffs] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
     selRaw, selRaw2Flt, selRaw2For, selFlt2For);
-forD = [forD, forD]; % [forecast, sine wave]
 rawN = rawD(1,:); 
 % to do: double width of forD and implement sine wave !!
+bgArgOut = UserArgs;
 
 % define input args for filtering/forecasting funcs 
 Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
@@ -136,8 +136,6 @@ cont_loop = true;
 while cont_loop
     pause(dT)
 
-    bgArgOut = foreArgs;
-
     try
     % main iteration 
     [...
@@ -162,8 +160,8 @@ while cont_loop
             rawD_ = rawD(:,selRaw);
             timeBuffs_ = timeBuffs(selRaw);
         end
-        send(DQ, [{rawD_(1,:)}, fltD(1,1), {forD(1,1)}; ...
-                  {rawD_(4,:)}, fltD(4,1), {forD(4,1)}; ...
+        send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
+                  {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
                   {timeBuffs_}, forBuffedOut(1), forBuffs(1)]);
     %end
 
@@ -208,17 +206,12 @@ Ts = foreArgs.TimeShift;
 Fco = foreArgs.FreqRange;
 phis = foreArgs.PhaseOfInterest;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
-sineTails = foreTails;
 for ch_fore = 1:size(inData,2)
-
-    % ar model-predicted data 
     armdl = ARmdls{ch_fore};
     FT = myFastForecastAR(armdl, inData{ch_fore}(:,2), K);
     foreTails{ch_fore} = [nan(height(FT),1), FT];
     foreTails{ch_fore}(1,1) = foreArgs.TimeStart(ch_fore);
-    t = (1:height(FT))'; t = (t-1)./fs(ch_fore); 
 
-    % inst phase/freq; time to next peak/trough 
     FT = FT(1:k,:); % use limited duration for hilbert padding
     [t2,i2,phi_inst,f_inst] = blockPDS(...
         inData{ch_fore}(:,2), FT, fs(ch_fore), phis, ...
@@ -226,13 +219,7 @@ for ch_fore = 1:size(inData,2)
     t2 = t2-Ts(ch_fore); % [t2peak, t2trough]
     t2 = max(t2,0);
     foreBuffsAdd{ch_fore} = t2; 
-
-    % sine wave showing inst phase/freq 
-    s = cos(2*pi*f_inst*t + phi_inst);
-    sineTails{ch_fore} = [nan(height(s),1), s];
-    sineTails{ch_fore}(1,1) = foreArgs.TimeStart(ch_fore);
 end
-foreTails = [foreTails, sineTails];
 end
 
 function [fltTails, fltArgs] = filtFun(fltArgs, rawTails)
