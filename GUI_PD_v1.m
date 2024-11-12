@@ -1208,7 +1208,16 @@ try
         error('Forecast length does not overcome filter delay.')
     end
 
-    y = handles.filtDataBuffer; 
+    [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
+    tPltRng, rawPlt, fltPlt, forPlt, ...
+    rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
+    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
+        handles.SaveFileName, handles.SaveFileN, handles.time0, 10);
+    if ~dataRecd
+        error('Data aquisition timed out.')
+    end
+
+    y = fltD4{1}(:,2); 
     L = min(length(y), 3*PDSwin) - 1;
     y = y((end-L):end);
     y = iddata(y,[],1/handles.fSample);
