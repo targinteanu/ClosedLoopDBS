@@ -553,7 +553,7 @@ try
                 set(handles.h_predTrace,'YData',forPlt.Variables);
                 set(handles.h_predTrace,'XData',forPlt.Time - tNow);
             end
-            tPk = forBuff(:,1); tTr = forBuff(:,2);
+            tPk = forBuff(:,1); tTr = forBuff(:,2); % time to peak, trough (s)
             set(handles.h_peakTrace,'YData',zeros(size(tPk)));
             set(handles.h_peakTrace,'XData',handles.time0 + seconds(tPk) - tNow);
             set(handles.h_trouTrace,'YData',zeros(size(tTr)));
@@ -621,8 +621,8 @@ try
                 rowPk = nan(size(tPk)); 
                 for r = 1:height(tPk)
                     % find time of current event relative to time now
-                    tPk_r = handles.time0 + seconds(tPk(r)) - tNow ;
-                    if (tPk_r >= fltPlt.Time(1)) && (tPk_r <= fltPlt.Time(end))
+                    tPk_r = handles.time0 + seconds(tPk(r)) ;
+                    if (tPk_r >= min(fltPlt.Time)) && (tPk_r <= max(fltPlt.Time))
                         % current event is in time range shown on screen,
                         % so let row index be the nearest 
                         [~,rowPk(r)] = min(abs( tPk_r - fltPlt.Time ));
@@ -634,8 +634,8 @@ try
                 rowTr = nan(size(tTr)); 
                 for r = 1:height(tTr)
                     % find time of current event relative to time now
-                    tTr_r = handles.time0 + seconds(tTr(r)) - tNow ;
-                    if (tTr_r >= fltPlt.Time(1)) && (tTr_r <= fltPlt.Time(end))
+                    tTr_r = handles.time0 + seconds(tTr(r)) ;
+                    if (tTr_r >= min(fltPlt.Time)) && (tTr_r <= max(fltPlt.Time))
                         % current event is in time range shown on screen,
                         % so let row index be the nearest 
                         [~,rowTr(r)] = min(abs( tTr_r - fltPlt.Time ));
