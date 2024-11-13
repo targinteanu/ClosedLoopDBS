@@ -25,6 +25,20 @@ SamplingFreqAPL = 1000; % Hz
 dataAPL = (tbl.data)';
 tAPL = (tbl.dataTimestamp)'/SamplingFreqAPL; % s
 StimIndAPL = (tbl.stimOut > 0);
+phaseAPL = (tbl.projPhase)';
+
+%% compare predicted phase, frequency with actual - APL data 
+dataAPL_H = hilbert(dataAPL);
+dataAPL_Phase = angle(dataAPL_H);
+dataAPL_Freq = gradient(unwrap(dataAPL_Phase)')' *SamplingFreqAPL/(2*pi);
+freqAPL = gradient(unwrap(phaseAPL)')' *SamplingFreqAPL/(2*pi);
+figure; 
+subplot(1,2,1); plot(dataAPL_Phase, phaseAPL, '.'); 
+grid on; title('Phase Accuracy'); 
+xlabel('Offline Calc. Phase (rad)'); ylabel('Real-Time Pred. Phase (rad)'); 
+subplot(1,2,2); plot(dataAPL_Freq, freqAPL, '.'); 
+grid on; title('Frequency Accuracy'); 
+xlabel('Offline Calc. Freq. (Hz)'); ylabel('Real-Time Pred. Freq. (Hz)'); 
 
 %% User selects channel
 channelNames = {ns.ElectrodesInfo.Label}; 
