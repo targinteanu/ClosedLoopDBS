@@ -4,9 +4,9 @@
 [fn,fp] = uigetfile({'*.ns*'; '*.mat'});
 [~,fn,fe] = fileparts(fn);
 if strcmpi(fe,'.mat')
-    load(fullfile(fp,fn,fe), 'NS2', 'ns2', 'NS5', 'ns5', 'NS', 'ns');
+    load(fullfile(fp,[fn,fe]), 'NS2', 'ns2', 'NS5', 'ns5', 'NS', 'ns');
     for vtry = {'NS2', 'ns2', 'NS5', 'ns5', 'NS'}
-        if exist(vtry{:})
+        if exist(vtry{:}, 'var')
             ns = eval(vtry{:});
         end
     end
