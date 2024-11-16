@@ -36,12 +36,17 @@ PeakInd = trimToSize(PeakInd,t); TroughInd = trimToSize(TroughInd,t); StimInd = 
 
 %% artifact detection
 artExtend = 10; % extend artifact by __ samples 
-%io = isoutlier(dataOneChannel, 'mean');
-StimTrainRec = dataAllChannels(channelIndexStim,:) > 1e4;
-%artIndAll = io | StimTrainRec; 
-artIndAll = StimTrainRec;
+if numel(channelIndexStim)
+    artIndAll = dataAllChannels(channelIndexStim,:) > 1e4; % cerestim trigs
+    % no other sources of artifact in the memory protocol
+else
+    warning('Stimulus channel ainp1 was not connected.')
+    % assume there are cerestim trigs, but they are not recorded
+    artIndAll = isoutlier(dataOneChannel, 'mean');
+end 
 artIndAll(StimInd) = true;
 artIndAll = movsum(artIndAll, artExtend) > 0;
+artIndAll_PulseTrain = artIndAll;
 artIndAll = find(artIndAll);
 [~,baselineStartInd] = max(diff(artIndAll));
 baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(baselineStartInd); 
@@ -75,8 +80,13 @@ grid on; hold on;
 plot(t, dataOneChannel, 'b'); 
 title('Artifact Removal'); ylabel(channelName);
 ax(2) = subplot(212); 
-plot(t, dataAllChannels(channelIndexStim,:)); 
-ylabel('ainp1');
+if numel(channelIndexStim)
+    plot(t, dataAllChannels(channelIndexStim,:)); 
+    ylabel('ainp1');
+else
+    plot(t, artIndAll_PulseTrain);
+    ylabel('outlier?');
+end
 grid on; linkaxes(ax, 'x'); 
 end
 
