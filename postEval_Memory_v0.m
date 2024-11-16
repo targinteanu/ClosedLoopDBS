@@ -93,13 +93,28 @@ end
 %% filter 
 dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,13,30);
 
+%% select time of interest (manually)
+% TO DO: make this automatic, pulled from notes.txt ?
+selind = true(size(t)); % no selection
+%selind = t >= datetime(2024,10,9,16,35,0) + hours(4);
+tSel = t(selind); tRelSel = tRel(selind);
+dataOneChannelSel = dataOneChannel(selind);
+selind = find(selind); 
+trimToInd = @(inds, x) x((x <= max(inds)) & (x >= min(inds))) - min(inds);
+PeakIndSel = trimToInd(selind, PeakInd);
+TroughIndSel = trimToInd(selind, TroughInd);
+StimIndSel = trimToInd(selind, StimInd);
+
 %% determine encode/decode phases of experiment 
 expStates = {SerialLog.ParadigmPhase}';
 SrlTimes = [SerialLog.TimeStamp]';
+SrlTimesSel = (SrlTimes <= max(tRelSel)) & (SrlTimes >= min(tRelSel));
+expStates = expStates(SrlTimesSel);
+SrlTimesSel = SrlTimes(SrlTimesSel);
 [indEncode, encodeStart, encodeEnd] = ...
-    findExpState('ENCODE', expStates, SrlTimes, tRel);
+    findExpState('ENCODE', expStates, SrlTimesSel, tRelSel);
 [indDecode, decodeStart, decodeEnd] = ...
-    findExpState('DECODE', expStates, SrlTimes, tRel);
+    findExpState('DECODE', expStates, SrlTimesSel, tRelSel);
 indNeither = (~indEncode)&(~indDecode);
 
 % convert times to absolute 
@@ -110,25 +125,25 @@ for V = varnames
 end
 
 % is each stimulus during encode or decode? 
-StimEncodeInd = StimInd(indEncode(StimInd)); 
-StimDecodeInd = StimInd(indDecode(StimInd));
-StimNeitherInd = StimInd(indNeither(StimInd)); % there should be none 
+StimEncodeInd = StimIndSel(indEncode(StimIndSel)); 
+StimDecodeInd = StimIndSel(indDecode(StimIndSel));
+StimNeitherInd = StimIndSel(indNeither(StimIndSel)); % there should be none 
 disp(' ... ')
-disp([num2str(length(StimNeitherInd)),' out of ',num2str(length(StimInd)), ...
+disp([num2str(length(StimNeitherInd)),' out of ',num2str(length(StimIndSel)), ...
     ' stimuli during neither encode nor decode.'])
 
 %% Plot time series 
 
 % select the data to plot 
-dataMinMax = [min(dataOneChannel), max(dataOneChannel)];
+dataMinMax = [min(dataOneChannelSel), max(dataOneChannelSel)];
 dataMinMax = dataMinMax + [-1,1]*.01*diff(dataMinMax);
 dataMin = dataMinMax(1); dataMax = dataMinMax(2); 
 
 % plot data and indicate recorded peaks, troughs, stimuli 
-figure; plot(t,dataOneChannel); grid on; hold on; 
-plot(t(PeakInd),   dataOneChannel(PeakInd),   '^m'); 
-plot(t(TroughInd), dataOneChannel(TroughInd), 'vm'); 
-plot(t(StimInd),   dataOneChannel(StimInd),   '*r');
+figure; plot(tSel,dataOneChannelSel); grid on; hold on; 
+plot(tSel(PeakIndSel),   dataOneChannelSel(PeakIndSel),   '^m'); 
+plot(tSel(TroughIndSel), dataOneChannelSel(TroughIndSel), 'vm'); 
+plot(tSel(StimIndSel),   dataOneChannelSel(StimIndSel),   '*r');
 
 % shade plot regions indicating encode and decode state of paradigm 
 patch([encodeStart, encodeEnd, encodeEnd, encodeStart]', ...
@@ -142,13 +157,13 @@ patch([decodeStart, decodeEnd, decodeEnd, decodeStart]', ...
 legend('Data', 'Peaks', 'Troughs', 'Stimulus', 'Encode', 'Decode')
 
 %% Get inst. freq. and phase 
-[dataPhase, dataFreq] = instPhaseFreq(dataOneChannel, SamplingFreq);
+[dataPhase, dataFreq] = instPhaseFreq(dataOneChannelSel, SamplingFreq);
 
 %% Plot polar histogram 
 figure; 
-subplot(221); polarhistogram(dataPhase(PeakInd),18); 
+subplot(221); polarhistogram(dataPhase(PeakIndSel),18); 
 title('Predicted Peaks');
-subplot(222); polarhistogram(dataPhase(TroughInd),18); 
+subplot(222); polarhistogram(dataPhase(TroughIndSel),18); 
 title('Predicted Troughs');
 subplot(223); polarhistogram(dataPhase(StimEncodeInd),18); 
 title('Stim during Encode');
