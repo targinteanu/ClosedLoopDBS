@@ -95,8 +95,8 @@ dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,13,30);
 
 %% select time of interest (manually)
 % TO DO: make this automatic, pulled from notes.txt ?
-selind = true(size(t)); % no selection
-%selind = t >= datetime(2024,10,9,16,35,0) + hours(4);
+% selind = true(size(t)); % no selection
+selind = t >= datetime(2024,10,9,16,35,0) + hours(4);
 tSel = t(selind); tRelSel = tRel(selind);
 dataOneChannelSel = dataOneChannel(selind);
 selind = find(selind); 
@@ -140,21 +140,36 @@ dataMinMax = dataMinMax + [-1,1]*.01*diff(dataMinMax);
 dataMin = dataMinMax(1); dataMax = dataMinMax(2); 
 
 % plot data and indicate recorded peaks, troughs, stimuli 
-figure; plot(tSel,dataOneChannelSel); grid on; hold on; 
-plot(tSel(PeakIndSel),   dataOneChannelSel(PeakIndSel),   '^m'); 
-plot(tSel(TroughIndSel), dataOneChannelSel(TroughIndSel), 'vm'); 
-plot(tSel(StimIndSel),   dataOneChannelSel(StimIndSel),   '*r');
+figure; plot(tSel,dataOneChannelSel); grid on; hold on; lgd = ["data"];
+if numel(PeakIndSel)
+    plot(tSel(PeakIndSel),   dataOneChannelSel(PeakIndSel),   '^m'); 
+    lgd = [lgd, "Peaks"];
+end
+if numel(TroughIndSel)
+    plot(tSel(TroughIndSel), dataOneChannelSel(TroughIndSel), 'vm'); 
+    lgd = [lgd, "Troughs"];
+end
+if numel(StimIndSel)
+    plot(tSel(StimIndSel),   dataOneChannelSel(StimIndSel),   '*r');
+    lgd = [lgd, "Stimulus"];
+end
 
 % shade plot regions indicating encode and decode state of paradigm 
+if numel(encodeStart)
 patch([encodeStart, encodeEnd, encodeEnd, encodeStart]', ...
     repmat([dataMax; dataMax; dataMin; dataMin],1,length(encodeStart)), ...
     'c', 'FaceAlpha', .2); 
+lgd = [lgd, "Encode"];
+end
+if numel(decodeStart)
 patch([decodeStart, decodeEnd, decodeEnd, decodeStart]', ...
     repmat([dataMax; dataMax; dataMin; dataMin],1,length(decodeStart)), ...
     'g', 'FaceAlpha', .2); 
+lgd = [lgd, "Decode"];
+end
 
 % label the plot 
-legend('Data', 'Peaks', 'Troughs', 'Stimulus', 'Encode', 'Decode')
+legend(lgd)
 
 %% Get inst. freq. and phase 
 [dataPhase, dataFreq] = instPhaseFreq(dataOneChannelSel, SamplingFreq);
