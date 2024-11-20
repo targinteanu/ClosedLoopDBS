@@ -203,8 +203,10 @@ grid on; linkaxes(ax, 'x');
 
 % compare instantaneous phase, frequency: estimated vs actual
 [phAll, frAll] = instPhaseFreq(dataOneChannelFilt, SamplingFreq);
+frAll = min(frAll, hico); frAll = max(frAll, loco);
+phAll2 = cos(phAll); phEst2 = cos(phEst);
 figure; 
-subplot(1,2,1); plot(phAll, phEst, '.'); 
+subplot(1,2,1); plot(phAll2, phEst2, '.'); 
 grid on; title('Phase Accuracy'); 
 xlabel('Offline Calc. Phase (rad)'); ylabel('Real-Time Pred. Phase (rad)'); 
 subplot(1,2,2); plot(frAll, frEst, '.'); 
