@@ -89,7 +89,6 @@ SamplingFreq = ns.MetaTags.SamplingFreq;
 dataAllChannels = double(ns.Data); 
 dataOneChannel = dataAllChannels(channelIndex,:);
 dataOneChannelWithArtifact = dataOneChannel; 
-dataOneChannelFilt = zeros(size(dataOneChannel));
 
 % Get indexes of stimulus: 
 % find when artifacts are believed to occur 
@@ -128,7 +127,8 @@ ARmdl_unfilt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 % filtered data. 
 [dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
 filtord = length(filtwts); % filter order 
-filtinit = zeros(filtord,1); % FIR filter Initial Condition
+filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
+filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 ARmdl_filt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 
@@ -139,6 +139,7 @@ toStim = false(size(dataOneChannel)); % intended stimulus trigger pulses
 phEst = nan(size(dataOneChannel)); % instantaneous phase estimate (rad)
 frEst = nan(size(dataOneChannel)); % instantaneous frequency estimate (Hz)
 i2nextStim_prev = Inf; % #samples to next stim pulse 
+dataOneChannelFilt = zeros(size(dataOneChannel));
 
 progTick = .05; prog = 0; % track progress
 
@@ -180,7 +181,7 @@ for tind = 1:length(dataOneChannel)
         % PhaseOfInterest will likely occur. 
         [t2nextStim,i2nextStim, phEst(tind),frEst(tind)] = blockPDS(...
             dataPast, dataFuture, SamplingFreq, PhaseOfInterest, ...
-            filtord/SamplingFreq, ... FIR filter imposes this delay (s)
+            filtdelay/SamplingFreq, ... FIR filter imposes this delay (s)
             loco, hico);
 
         % Step 5: Send a stimulus pulse when appropriate 
@@ -188,9 +189,14 @@ for tind = 1:length(dataOneChannel)
         if i2nextStim_prev == 0
             toStim(tind) = true;
         end
-        i2nextStim_prev = i2nextStim - filtord;
+        i2nextStim_prev = i2nextStim - filtdelay;
     end
 end
+
+% re-align timing; correct for filter delay 
+dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
+phEst = [phEst(filtdelay:end), nan(1,filtdelay-1)]; 
+frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)]; 
 
 %% Part C: Evaluate Real-Time results 
 % Compare simulated real-time output with offline-computed ground truth 
