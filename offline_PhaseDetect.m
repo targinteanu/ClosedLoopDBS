@@ -123,10 +123,28 @@ baselineWin(2) = min(length(dataBaseline),baselineWin(2));
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 ARmdl_unfilt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 
+%% A.4 Band-Pass Filtering setup 
 % Get FIR filter weights, filter the signal, and train another AR model on
 % filtered data. 
-[dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
-filtord = length(filtwts); % filter order 
+
+% filtering bound rules 
+minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+min_filtorder  = 15;   % minimum filter length
+
+% filter order 
+if loco>0
+    filtord = minfac*fix(SamplingFreq/loco);
+elseif hico>0
+    filtord = minfac*fix(SamplingFreq/hico);
+end
+if filtord < min_filtorder
+    filtord = min_filtorder;
+end
+
+filtwts = fir1(filtord, [loco, hico]./(SamplingFreq/2));
+dataBaseline = filtfilt(filtwts,1,dataBaseline);
+%[dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
+filtord = length(filtwts);
 filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
 filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
@@ -217,7 +235,8 @@ ylabel('ainp1');
 grid on; linkaxes(ax, 'x'); 
 
 % compare instantaneous phase, frequency: estimated vs actual
-dataOneChannelFilt2 = Myeegfilt(dataOneChannel,SamplingFreq,loco,hico);
+%dataOneChannelFilt2 = Myeegfilt(dataOneChannel,SamplingFreq,loco,hico);
+dataOneChannelFilt2 = filtfilt(filtwts,1,dataOneChannel);
 [phAll, frAll] = instPhaseFreq(dataOneChannelFilt2, SamplingFreq);
 frAll = min(frAll, hico); frAll = max(frAll, loco);
 %phAll2 = sin(phAll); phEst2 = sin(phEst);
