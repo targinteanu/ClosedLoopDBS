@@ -140,7 +140,16 @@ phEst = nan(size(dataOneChannel)); % instantaneous phase estimate (rad)
 frEst = nan(size(dataOneChannel)); % instantaneous frequency estimate (Hz)
 i2nextStim_prev = Inf; % #samples to next stim pulse 
 
+progTick = .05; prog = 0; % track progress
+
 for tind = 1:length(dataOneChannel)
+
+    % track progress
+    prog = prog + 1/length(dataOneChannel);
+    if prog > progTick
+        prog = prog - progTick; 
+        disp(['Progress: ',num2str(100*tind/length(dataOneChannel)),'%']);
+    end
 
     % Step 1: Remove Artifact 
     % Replace artifact-corrupted signal with AR model-forecasted data.  
@@ -155,7 +164,7 @@ for tind = 1:length(dataOneChannel)
     % Step 2: Filter 
     % Extract data within desired frequency band, e.g. beta
     [dataOneChannelFilt(tind),filtinit] = filter(filtwts,1, ...
-        dataOneChannel(tind));
+        dataOneChannel(tind), filtinit);
 
     ind0 = tind - ARwin;
     if ind0 > 0
@@ -192,7 +201,7 @@ ax(1) = subplot(211);
 plot(t, dataOneChannelWithArtifact, 'k'); 
 grid on; hold on; 
 plot(t, dataOneChannel, 'b'); 
-hold on; plot(t(isArt), dataOneChannel(isArt), '--r');
+hold on; plot(t, dataOneChannel.*(isArt), '--r');
 title('Artifact Removal'); ylabel(channelName);
 ax(2) = subplot(212); 
 if numel(channelIndexStim)
@@ -201,8 +210,9 @@ end
 ylabel('ainp1');
 grid on; linkaxes(ax, 'x'); 
 
-%% compare instantaneous phase, frequency: estimated vs actual
-[phAll, frAll] = instPhaseFreq(dataOneChannelFilt, SamplingFreq);
+% compare instantaneous phase, frequency: estimated vs actual
+dataOneChannelFilt2 = Myeegfilt(dataOneChannel,SamplingFreq,loco,hico);
+[phAll, frAll] = instPhaseFreq(dataOneChannelFilt2, SamplingFreq);
 frAll = min(frAll, hico); frAll = max(frAll, loco);
 %phAll2 = sin(phAll); phEst2 = sin(phEst);
 phErr = phEst - phAll; % [-2*pi -> 2*pi];
@@ -217,7 +227,7 @@ subplot(2,2,2); plot(frAll, frEst, '.');
 grid on; title('Frequency Accuracy'); 
 xlabel('Offline Calc. Freq. (Hz)'); ylabel('Real-Time Pred. Freq. (Hz)'); 
 
-%% show true phase of intended stim
+% show true phase of intended stim
 figure; sgtitle(['Goal = ',num2str(PhaseOfInterest*180/pi),' degrees'])
 subplot(2,2,1); polarhistogram(phAll(toStim), 18); 
 title('Actual Phase of Stim'); 
