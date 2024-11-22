@@ -227,6 +227,13 @@ subplot(2,2,2); plot(frAll, frEst, '.');
 grid on; title('Frequency Accuracy'); 
 xlabel('Offline Calc. Freq. (Hz)'); ylabel('Real-Time Pred. Freq. (Hz)'); 
 
+% show time-series of intended stim 
+figure; 
+plot(t, dataOneChannelFilt2); hold on; grid on; 
+stem(t(toStim), dataOneChannelFilt2(toStim));
+title('Stimulus Timing');
+legend('Data', 'Stim', 'Location','westoutside')
+
 % show true phase of intended stim
 figure; sgtitle(['Goal = ',num2str(PhaseOfInterest*180/pi),' degrees'])
 subplot(2,2,1); polarhistogram(phAll(toStim), 18); 
