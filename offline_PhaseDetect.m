@@ -201,19 +201,23 @@ end
 ylabel('ainp1');
 grid on; linkaxes(ax, 'x'); 
 
-% compare instantaneous phase, frequency: estimated vs actual
+%% compare instantaneous phase, frequency: estimated vs actual
 [phAll, frAll] = instPhaseFreq(dataOneChannelFilt, SamplingFreq);
 frAll = min(frAll, hico); frAll = max(frAll, loco);
-phAll2 = cos(phAll); phEst2 = cos(phEst);
+%phAll2 = sin(phAll); phEst2 = sin(phEst);
+phErr = phEst - phAll; % [-2*pi -> 2*pi];
+%phErr = mod(phErr + 2*pi, 2*pi); % [0 -> 2*pi];
+%phErr = phErr - 2*pi*(phErr >= pi); % [-pi -> pi]
 figure; 
-subplot(1,2,1); plot(phAll2, phEst2, '.'); 
+subplot(2,2,1); plot(phAll, phEst, '.'); 
 grid on; title('Phase Accuracy'); 
 xlabel('Offline Calc. Phase (rad)'); ylabel('Real-Time Pred. Phase (rad)'); 
-subplot(1,2,2); plot(frAll, frEst, '.'); 
+subplot(2,2,3); polarhistogram(phErr); title('Phase Error (Offline-RealTime)');
+subplot(2,2,2); plot(frAll, frEst, '.'); 
 grid on; title('Frequency Accuracy'); 
 xlabel('Offline Calc. Freq. (Hz)'); ylabel('Real-Time Pred. Freq. (Hz)'); 
 
-% show true phase of intended stim
+%% show true phase of intended stim
 figure; sgtitle(['Goal = ',num2str(PhaseOfInterest*180/pi),' degrees'])
 subplot(2,2,1); polarhistogram(phAll(toStim), 18); 
 title('Actual Phase of Stim'); 
