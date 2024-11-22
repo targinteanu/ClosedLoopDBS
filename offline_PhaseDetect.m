@@ -228,12 +228,14 @@ frErr = frEst - frAll;
 figure; 
 subplot(2,2,1); plot(phAll, phEst, '.'); 
 grid on; title('Phase Accuracy'); 
-xlabel('Offline Calc. Phase (rad)'); ylabel('Real-Time Pred. Phase (rad)'); 
-subplot(2,2,3); polarhistogram(phErr); title('Phase Error (Offline-RealTime)');
+xlabel('Offline Calc. Phase (rad)'); ylabel('RealTime Pred. Phase (rad)'); 
+xlim([-pi pi]); ylim([-pi pi]);
+subplot(2,2,3); polarhistogram(phErr); title('Phase Error (RealTime-Offline)');
 subplot(2,2,2); plot(frAll, frEst, '.'); 
+xlim([loco hico]); ylim([loco hico]);
 grid on; title('Frequency Accuracy'); 
-xlabel('Offline Calc. Freq. (Hz)'); ylabel('Real-Time Pred. Freq. (Hz)'); 
-subplot(2,2,4); histogram(frErr); title('Freq. Error (Offline-RealTime)');
+xlabel('Offline Calc. Freq. (Hz)'); ylabel('RealTime Pred. Freq. (Hz)'); 
+subplot(2,2,4); histogram(frErr); title('Freq. Error (RealTime-Offline)');
 ylabel('Count'); xlabel('Freq. Error (Hz)'); grid on;
 
 % show time-series of intended stim 
