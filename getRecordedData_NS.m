@@ -1,26 +1,40 @@
-function [dataOneChannel, dataAllChannels, SamplingFreq, t, tRel, ...
+function [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
     channelName, channelIndex, channelIndexStim, channelNames]...
-    = getRecordedData_NS()
+    = getRecordedData_NS(nsOrFilename)
+
+if nargin < 1
+    nsOrFilename = [];
+end
+cl = class(nsOrFilename);
 
 %% Select file and channel with user input
 
 % Access file:  
 % Find and load a blackrock ns2 or ns5 file or a mat file with recorded
 % brain data. 
-[fn,fp] = uigetfile({'*.ns*'; '*.mat'});
-[~,fn,fe] = fileparts(fn);
-if strcmpi(fe,'.mat')
-    load(fullfile(fp,[fn,fe]), 'NS2', 'ns2', 'NS5', 'ns5', 'NS', 'ns');
-    for vtry = {'NS2', 'ns2', 'NS5', 'ns5', 'NS'}
-        if exist(vtry{:}, 'var')
-            ns = eval(vtry{:});
-        end
-    end
+
+if isstruct(nsOrFilename)
+    ns = nsOrFilename;
 else
-    openNSx(fullfile(fp,[fn,fe]));
-    ns = eval(['NS',fe(end)]);
+    if isempty(nsOrFilename)
+        [fn,fp] = uigetfile({'*.ns*'; '*.mat'});
+        [~,fn,fe] = fileparts(fn);
+    elseif ischar(nsOrFilename) || isstring(nsOrFilename)
+        [fp,fn,fe] = fileparts(nsOrFilename);
+    end
+    if strcmpi(fe,'.mat')
+        load(fullfile(fp,[fn,fe]), 'NS2', 'ns2', 'NS5', 'ns5', 'NS', 'ns');
+        for vtry = {'NS2', 'ns2', 'NS5', 'ns5', 'NS'}
+            if exist(vtry{:}, 'var')
+                ns = eval(vtry{:});
+            end
+        end
+    else
+        openNSx(fullfile(fp,[fn,fe]));
+        ns = eval(['NS',fe(end)]);
+    end
+    clear vtry
 end
-clear vtry
 
 % User selects channel: 
 % The user selects the recording channel. The stimulus trigger channel is
@@ -50,5 +64,9 @@ t = t+t0;
 SamplingFreq = ns.MetaTags.SamplingFreq;
 dataAllChannels = double(ns.Data); 
 dataOneChannel = dataAllChannels(channelIndex,:);
+StimTrainRec = dataAllChannels(channelIndexStim,:) > 1e4;
+if ~numel(channelIndexStim)
+    StimTrainRec = false(size(isOut));
+end
 
 end

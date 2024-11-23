@@ -17,6 +17,7 @@
 % 
 % An overview of the phase detection algorithm is as follows: ...
 
+function offline_PhaseDetect(dataOneChannel, StimTrainRec, SamplingFreq, t, channelName)
 %% Constants: 
 
 % Simulate phase-dependent stimulation at this phase: 
@@ -40,20 +41,27 @@ predWin = 20; % #samples ahead to predict at each time step
 % Setup the signals, filter, and AR model that will be used to simulate the
 % real-time process. 
 
-[dataOneChannel, dataAllChannels, SamplingFreq, t, tRel, ...
-    channelName, channelIndex, channelIndexStim, channelNames]...
-    = getRecordedData_NS();
+if nargin < 1
+    [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
+        channelName, channelIndex, channelIndexStim, channelNames]...
+        = getRecordedData_NS();
+else
+    if isempty(StimTrainRec)
+        StimTrainRec = false(size(dataOneChannel));
+    end
+    if isempty(t)
+        t = 1:length(dataOneChannel); t = (t-1)/SamplingFreq;
+    end
+    if isempty(channelName)
+        channelName = ' ';
+    end
+end
 
 dataOneChannelWithArtifact = dataOneChannel; 
 
 % Get indexes of stimulus: 
 % find when artifacts are believed to occur 
 isOut = isoutlier(dataOneChannel, 'mean');
-if numel(channelIndexStim)
-    StimTrainRec = dataAllChannels(channelIndexStim,:) > 1e4;
-else
-    StimTrainRec = false(size(isOut));
-end
 isArt = isOut | StimTrainRec; 
 isArt = movsum(isArt, artExtend) > 0;
 
@@ -184,9 +192,7 @@ plot(t, dataOneChannel, 'b');
 hold on; plot(t, dataOneChannel.*(isArt), '--r');
 title('Artifact Removal'); ylabel(channelName);
 ax(2) = subplot(212); 
-if numel(channelIndexStim)
-    plot(t, dataAllChannels(channelIndexStim,:)); 
-end
+plot(t, StimTrainRec); 
 ylabel('ainp1');
 grid on; linkaxes(ax, 'x'); 
 
@@ -228,3 +234,5 @@ subplot(2,2,2); polarhistogram(phEst(toStim), 18);
 title('Est. Phase of Stim');
 subplot(2,2,3); polarhistogram(phAll(StimTrainRec), 18);
 title('Actual Phase of Recorded Stim');
+
+end
