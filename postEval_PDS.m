@@ -1,19 +1,9 @@
 %% access files 
 
 % ns file
-[fn,fp] = uigetfile({'*.ns*'; '*.mat'});
-[~,fn,fe] = fileparts(fn);
-if strcmpi(fe,'.mat')
-    load(fullfile(fp,[fn,fe]), 'NS2', 'ns2', 'NS5', 'ns5', 'NS', 'ns');
-    for vtry = {'NS2', 'ns2', 'NS5', 'ns5', 'NS'}
-        if exist(vtry{:}, 'var')
-            ns = eval(vtry{:});
-        end
-    end
-else
-    openNSx(fullfile(fp,[fn,fe]));
-    ns = eval(['NS',fe(end)]);
-end
+[dataOneChannel, dataAllChannels, SamplingFreq, t, tRel, ...
+    channelName, channelIndex, channelIndexStim, channelNames]...
+    = getRecordedData_NS();
 
 % output file 
 [fn,fp] = uigetfile('*SaveFile*.mat');
@@ -21,28 +11,6 @@ load([fp,filesep,fn])
 PeakTime = PeakTrough(:,1); TroughTime = PeakTrough(:,2);
 trimNan = @(x) x(~isnan(x));
 PeakTime = trimNan(PeakTime); TroughTime = trimNan(TroughTime);
-
-%% User selects channel
-channelNames = {ns.ElectrodesInfo.Label}; 
-channelIndex = listdlg('ListString', channelNames);
-channelName = channelNames{channelIndex};
-channelIndexStim = find(contains(channelNames, 'ainp1'));
-
-%% interpret data from ns structure 
-SamplingFreq = ns.MetaTags.SamplingFreq;
-dataAllChannels = double(ns.Data); 
-dataOneChannel = dataAllChannels(channelIndex,:);
-dataOneChannelWithArtifact = dataOneChannel; 
-
-%% Get timing data
-try
-    tRel = linspace(0,ns.MetaTags.DataPointsSec,ns.MetaTags.DataPoints);
-catch
-    tRel = linspace(0,ns.MetaTags.DataPoints/SamplingFreq,ns.MetaTags.DataPoints);
-end
-t = seconds(tRel);
-t0 = datetime(ns.MetaTags.DateTime); 
-t = t+t0; 
 
 %% Get indexes of peaks, troughs, and stimulus pulses 
 PeakInd = PeakTime*SamplingFreq; 

@@ -40,54 +40,10 @@ predWin = 20; % #samples ahead to predict at each time step
 % Setup the signals, filter, and AR model that will be used to simulate the
 % real-time process. 
 
-%% A.1 Select file and channel with user input
+[dataOneChannel, dataAllChannels, SamplingFreq, t, tRel, ...
+    channelName, channelIndex, channelIndexStim, channelNames]...
+    = getRecordedData_NS();
 
-% Access file:  
-% Find and load a blackrock ns2 or ns5 file or a mat file with recorded
-% brain data. 
-[fn,fp] = uigetfile({'*.ns*'; '*.mat'});
-[~,fn,fe] = fileparts(fn);
-if strcmpi(fe,'.mat')
-    load(fullfile(fp,[fn,fe]), 'NS2', 'ns2', 'NS5', 'ns5', 'NS', 'ns');
-    for vtry = {'NS2', 'ns2', 'NS5', 'ns5', 'NS'}
-        if exist(vtry{:}, 'var')
-            ns = eval(vtry{:});
-        end
-    end
-else
-    openNSx(fullfile(fp,[fn,fe]));
-    ns = eval(['NS',fe(end)]);
-end
-clear vtry
-
-% User selects channel: 
-% The user selects the recording channel. The stimulus trigger channel is
-% assumed to be 'ainp1'
-channelNames = {ns.ElectrodesInfo.Label}; 
-channelIndex = listdlg('ListString', channelNames);
-channelName = channelNames{channelIndex};
-channelIndexStim = find(contains(channelNames, 'ainp1'));
-
-%% A.2 interpret data from loaded file 
-% obtain usable data variables and other information from the file. 
-
-% Get timing data:
-% tRel = time relative to start of recording, in seconds 
-% t = absolute date/time 
-% t0 = date/time at start of recording 
-try
-    tRel = linspace(0,ns.MetaTags.DataPointsSec,ns.MetaTags.DataPoints);
-catch
-    tRel = linspace(0,ns.MetaTags.DataPoints/SamplingFreq,ns.MetaTags.DataPoints);
-end
-t = seconds(tRel);
-t0 = datetime(ns.MetaTags.DateTime); 
-t = t+t0; 
-
-% Interpret data from ns structure: 
-SamplingFreq = ns.MetaTags.SamplingFreq;
-dataAllChannels = double(ns.Data); 
-dataOneChannel = dataAllChannels(channelIndex,:);
 dataOneChannelWithArtifact = dataOneChannel; 
 
 % Get indexes of stimulus: 
@@ -101,7 +57,7 @@ end
 isArt = isOut | StimTrainRec; 
 isArt = movsum(isArt, artExtend) > 0;
 
-%% A.3 Identify baseline and fit AR model
+%% A.2 Identify baseline and fit AR model
 % In real time, this would be determined by the research team at some point
 % during the procedure, preferably when the electrodes have been inserted
 % into a stable location but the stimulus has not yet begun. 
@@ -123,7 +79,7 @@ baselineWin(2) = min(length(dataBaseline),baselineWin(2));
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 ARmdl_unfilt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 
-%% A.4 Band-Pass Filtering setup 
+%% A.3 Band-Pass Filtering setup 
 % Get FIR filter weights, filter the signal, and train another AR model on
 % filtered data. 
 
