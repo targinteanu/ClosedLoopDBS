@@ -27,6 +27,9 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 
 bgArgOut = [];
 
+looptime = .01; % starting estimate loop time (s)
+guitime = .1; % estimate of gui update time (s)
+
 cont_fullfunc = true; % run or wait for user input
 %while cont_fullfunc
 try
@@ -132,8 +135,15 @@ else
 end
 
 %% loop 
-cont_loop = true;
+cont_loop = true; first_loop = true; looptime_meas1 = tic; loopcount = 0;
 while cont_loop
+    looptime_meas2 = toc(looptime_meas1); 
+    looptime_meas1 = tic; 
+    if ~first_loop
+        looptime = .9*looptime + .1*looptime_meas2;
+    end
+    loopcount = loopcount+1;
+    loopsendnum = guitime/looptime;
     pause(dT)
 
     try
@@ -150,9 +160,10 @@ while cont_loop
         fltD, filtfun, filtArgs, ...
         forBuffs, forBuffRow, forD, forefun, foreArgs);
 
-    % DataQueue is empty when the User polls it, which means the
-    % User is ready for new data. 
-    %if DQ.QueueLength == 0
+    % User should be ready for new data when loopcount = loopsendum
+    % send data AT LEAST that frequently so the user never waits for data
+    if first_loop || (loopcount >= .5*loopsendnum)
+        loopcount = 0;
         if isempty(selRaw)
             rawD_ = rawD;
             timeBuffs_ = timeBuffs;
@@ -163,9 +174,10 @@ while cont_loop
         send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
                   {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
                   {timeBuffs_}, forBuffedOut(1), forBuffs(1)]);
-    %end
+    end
 
     cont_loop = cont_loop && cont_loop_2;
+    first_loop = false;
 
     % If there are any errors in the loop, stop looping and allow the
     % User to handle them. 
