@@ -28,7 +28,7 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 bgArgOut = [];
 
 looptime = .01; % starting estimate loop time (s)
-guitime = .1; % estimate of gui update time (s)
+guitime = .05; % estimate of gui update time (s)
 
 cont_fullfunc = true; % run or wait for user input
 %while cont_fullfunc

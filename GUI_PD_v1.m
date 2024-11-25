@@ -174,6 +174,7 @@ handles.rmfieldList = {...
 
 % Update handles structure
 waitbar(1, wb, 'Updating GUI handles...')
+pause(.1)
 close(wb)
 pause(.1)
 delete(wb)
@@ -463,7 +464,7 @@ try
     end
 
     % timing 
-    pause(.01); % s between displays 
+    pause(.05); % s between displays 
     tNow = datetime;
     timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
     handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
@@ -472,6 +473,8 @@ try
     % get data from Central
     if handles.dataQueue.QueueLength > 1000 
         % LIMIT DATA QUEUE LENGTH
+        cancelAll(handles.pool.FevalQueue);
+        cancel(handles.f_PhaseDetect);
         error('Data Queue Overflow');
     end
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
