@@ -1,6 +1,6 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
     InitializeRecording, ShutdownRecording, ...
-    InitializeRawData, GetNewRawData, selRaw)
+    InitializeRawData, GetNewRawData)
 % 
 % Run brain recording with phase detection/prediction for PDS.
 % 
@@ -54,6 +54,7 @@ end
 if MdlSetUp
     mdls = {UserArgs.Mdl};
 end
+selRaw = UserArgs.allChannelIDs;
 chInd = UserArgs.channelIndex; 
     % index (NOT ID NUMBER) of the recording channel/column; 
     % may be empty if unselected on startup

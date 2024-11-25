@@ -33,6 +33,7 @@ UserArgs.FilterOrder = filtorder; UserArgs.BPF = filtwts;
 UserArgs.hicutoff = hico; UserArgs.locutoff = loco; 
 UserArgs.Mdl = ARmdl; 
 UserArgs.channelIndex = chInd; 
+UserArgs.allChannelIDs = [];
 UserArgs.PDSwin1 = forecastwin; UserArgs.PDSwin2 = ceil(.02*forecastwin);
 UserArgs.bufferSize = buffSize; UserArgs.bufferSizeGrid = ceil(.02*buffSize);
 UserArgs.PhaseOfInterest = [0 pi];
@@ -40,7 +41,7 @@ UserArgs.PhaseOfInterest = [0 pi];
 %% loop 
 bg_PhaseDetect(UserArgs, DQ, [], ...
     @InitializeRecording_cbmex, @disconnect_cbmex, ...
-    @initRawData_cbmex, @getNewRawData_cbmex, []);
+    @initRawData_cbmex, @getNewRawData_cbmex);
 
 catch ME
     getReport(ME)
