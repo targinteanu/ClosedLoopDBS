@@ -15,7 +15,7 @@ else
     ns = eval(['NS',fe(end)]);
 end
 
-% output CSV file 
+%% output CSV file 
 [fn,fp] = uigetfile('*.csv'); 
 neuromodulation_output_visualization(fullfile(fp,fn)); % APL internal eval 
 tbl = readtable(fullfile(fp,fn));
