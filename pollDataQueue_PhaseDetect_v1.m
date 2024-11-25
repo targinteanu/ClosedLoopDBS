@@ -1,4 +1,4 @@
-function [dataReceived, svN, timeBuff, forBuff, ...
+function [dataReceived, svN, timeBuff, forBuff, stimBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
     pollDataQueue_PhaseDetect_v1(dataQueue, chInd, svname, svN, t0, pollTimeOut)
@@ -25,7 +25,7 @@ end
 
         tPltRng = []; 
         rawPlt = []; fltPlt = []; forPlt = [];
-        timeBuff = []; forBuff = []; 
+        timeBuff = []; forBuff = []; stimBuff = [];
         rawD1 = []; rawD4 = []; 
         fltD1 = []; fltD4 = []; 
         forD1 = []; forD4 = [];
@@ -44,14 +44,22 @@ while dopoll
             rethrow(sentData)
         end
 
-        forBuff = sentData{3,3}; 
-        forBuffSv = sentData{3,2};
+        ForStim = sentData{3,3}; 
+        ForStimSv = sentData{3,2};
+        forBuff = ForStim{1}; stimBuff = ForStim{2};
+        forBuffSv = ForStimSv{1}; stimBuffSv = forBuffSv{2};
 
         if ~isempty(forBuffSv)
             PeakTrough = forBuffSv;
             save([svname,num2str(svN),'.mat'], 'PeakTrough');
             svN = svN+1;
             forBuff = [forBuffSv; forBuff];
+        end
+        if ~isempty(stimBuffSv)
+            Stim = stimBuffSv;
+            save([svname,num2str(svN),'.mat'], 'Stim');
+            svN = svN+1;
+            stimBuff = [stimBuffSv; stimBuff];
         end
 
         rawD1 = sentData{1,1}; rawD4 = sentData{2,1};

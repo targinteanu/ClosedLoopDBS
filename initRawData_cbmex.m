@@ -1,4 +1,4 @@
-function [emptyData, contData, buffData, chanInfo] = ...
+function [emptyData, contData, buffData, chanInfo, startTic] = ...
     initRawData_cbmex(chsel, bufferSize)
 % Initialize the multichannel raw data structure using BlackRock cbmex
 % interface. 
@@ -14,7 +14,7 @@ function [emptyData, contData, buffData, chanInfo] = ...
 
 %% access cbmex 
 
-connect_cbmex(); 
+connect_cbmex(); startTic = tic;
 pause(1);
 
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);

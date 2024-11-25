@@ -1,6 +1,6 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
     InitializeRecording, ShutdownRecording, ...
-    InitializeRawData, GetNewRawData)
+    InitializeRawData, GetNewRawData, GetTime, StimController)
 % 
 % Run brain recording with phase detection/prediction for PDS.
 % 
@@ -15,14 +15,20 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 %   raw channel ID(s) to use for forecasting , 
 %   filtered channel ID(s) to use for forecasting ) 
 % and returns data structures for: 
-% [ raw , filtered , forecast, timing buffer ] data
+% [ raw , filtered , forecast, timing buffer ] data and starting tic
 % 
 % ShutdownRecording takes no arguments.
 % 
 % InitializeRawData takes ( selRaw , BufferSize ) as input arguments and
-% returns [ EmptyDataStruct , Tail , Combined , ChannelInfo ]
+% returns [ EmptyDataStruct , Tail , Combined , ChannelInfo, StartTic ]
 % 
 % GetNewRawData takes selRaw as an argument and returns new raw tails. 
+%
+% GetTime takes Start Tic and returns elapsed time (s); intended to be
+% machine time of recording device. 
+% 
+% StimController takes in UserArgs, Past Data, and Time to Peak/Trough 
+% and outputs time to next stimulus. 
 % 
 
 bgArgOut = [];
@@ -88,7 +94,7 @@ end
 selRaw2For = []; 
 
 % initialize data structs for real
-[rawD, fltD, forD, timeBuffs] = ...
+[rawD, fltD, forD, timeBuffs, initTic] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
     selRaw, selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); 
@@ -122,6 +128,7 @@ end
 % init forecast-output buffers, i.e. times to/of next phase(s) of interest
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = forBuffs(chInd); forBuffRow = ones(size(forBuffs));
+stimBuff = nan(size(timeBuffs{chInd},1),1); stimBuffRow = ones(size(stimBuff));
 
 % enable defined filtering/forecasting funcs only if ready
 if FilterSetUp
@@ -134,9 +141,11 @@ if MdlSetUp
 else
     forefun = [];
 end
+doStim = ~isempty(StimController);
 
 %% loop 
 cont_loop = true; first_loop = true; looptime_meas1 = tic; loopcount = 0;
+stimLastTime = -inf;
 while cont_loop
     looptime_meas2 = toc(looptime_meas1); 
     looptime_meas1 = tic; 
@@ -161,6 +170,30 @@ while cont_loop
         fltD, filtfun, filtArgs, ...
         forBuffs, forBuffRow, forD, forefun, foreArgs);
 
+    % do stimulus 
+    forBuff = forBuffs{1}; 
+    forBuffNew = forBuff(end,:); 
+    forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
+    if doStim
+        [t2stim, stim2q] = StimController(UserArgs, fltD{4,1}(:,2), forBuffNew);
+        if stim2q && (t2stim < 2*looptime)
+            t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
+            % ensure below max freq
+            if 1/(t2stim + timeBuffs{chInd}(end,:) - stimLastTime) <= UserArgs.stimMaxFreq
+            % check if stimulator is ready here?
+            % assume stim should occur before completion of next loop
+            pause(t2stim);
+            stimtime1 = GetTime(initTic);
+            % *** do stimulus here ***
+            stimtime2 = GetTime(initTic);
+            stimtime = .5*(stimtime1 + stimtime2);
+            [~,stimBuff,stimBuffRow,stimBuffedOut] = ...
+                bufferStorage(stimBuff, stimBuffRow, stimtime);
+            stimLastTime = stimtime;
+            end
+        end
+    end
+
     % User should be ready for new data when loopcount = loopsendum
     % send data AT LEAST that frequently so the user never waits for data
     if first_loop || (loopcount >= .5*loopsendnum)
@@ -174,7 +207,7 @@ while cont_loop
         end
         send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
                   {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
-                  {timeBuffs_}, forBuffedOut(1), forBuffs(1)]);
+                  {timeBuffs_}, [forBuffedOut(1), stimBuffedOut], {forBuff, stimBuff}]);
     end
 
     cont_loop = cont_loop && cont_loop_2;

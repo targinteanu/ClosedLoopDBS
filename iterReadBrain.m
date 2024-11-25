@@ -120,10 +120,11 @@ if doFlt
 if ~(size(fltTails,2) == size(fltData,2))
     error('Filtered channels are inconsistent.');
 end
+curTimeFlt = curTime(selRaw2Flt);
 for CH = 1:size(fltData,2)
     [fltData{2,CH}, fltData{3,CH}, fltData{4,CH}] = ...
         bufferjuggle(fltData{2,CH},fltData{3,CH},fltTails{CH},@bufferData);
-    forArgs.TimeStart(CH) = curTime(CH) - fltArgs.TimeShift(CH);
+    forArgs.TimeStart(CH) = curTimeFlt(CH) - fltArgs.TimeShift(CH);
 end
 fltTails = fltData(3,:); fltAllData = fltData(4,:);
 
@@ -144,12 +145,13 @@ lenFor = [lenRaw(selRaw2For), lenFlt(selFlt2For)];
 if ~(size(forTails,2) == size(forData,2))
     error('Forecast channels are inconsistent.');
 end
+curTimeFor = [curTime(selRaw2For), curTimeFlt(selFlt2For)];
 for CH = 1:size(forData,2)
     [forData{2,CH}, forData{3,CH}, forData{4,CH}] = ...
         bufferjuggle(forData{2,CH},forData{3,CH},forTails{CH}, ...
         @(old, new) bufferDataOverwrite(old, new, lenFor(CH)));
     [~, forBuffs{1,CH}, forBuffRow(1,CH), forBuffedOut{1,CH}] = ...
-        bufferStorage(forBuffs{1,CH}, forBuffRow(1,CH), forBuffsAdd{1,CH} + curTime(CH));
+        bufferStorage(forBuffs{1,CH}, forBuffRow(1,CH), forBuffsAdd{1,CH} + curTimeFor(CH));
 end
 
 end

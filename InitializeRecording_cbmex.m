@@ -1,4 +1,4 @@
-function [rawD, fltD, forD, timeBuffs] = ...
+function [rawD, fltD, forD, timeBuffs, startTic] = ...
     InitializeRecording_cbmex(buffSize, filtorder, forecastwin, ...
     selRawID, selRaw2Flt, selRaw2For, selFlt2For)
 % Initialize the multichannel data structures used in ClosedLoopDBS using
@@ -23,11 +23,11 @@ selFor = [selRaw2For, selFlt2For];
 emptyOut = {[]; []; []; []};
 
 try
-    [rawH, rawT, rawB, rawN] = initRawData_cbmex(selRawID, buffSize);
+    [rawH, rawT, rawB, rawN, startTic] = initRawData_cbmex(selRawID, buffSize);
 catch ME
     warning(['Error on first attempt: ',ME.message]);
     pause(1);
-    [rawH, rawT, rawB, rawN] = initRawData_cbmex(selRawID, buffSize);
+    [rawH, rawT, rawB, rawN, startTic] = initRawData_cbmex(selRawID, buffSize);
 end
 rawD = [rawN; rawH; rawT; rawB]; 
 
@@ -53,7 +53,7 @@ end
 % this is generic; can it be replaced with a non-cbmex-exclusive
 % function that gets called?
 timeBuffs = cell(size(rawH));
-for ch = 1:length(rawH)
+for ch = 1:width(rawH)
     t_ch = rawH{ch}(:,1);
     dt_ch = 1/rawN{ch}.SampleRate;
     for it = 2:length(t_ch)
