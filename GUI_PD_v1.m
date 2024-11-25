@@ -22,7 +22,7 @@ function varargout = GUI_PD_v1(varargin)
 
 % Edit the above text to modify the response to help GUI_PD_v1
 
-% Last Modified by GUIDE v2.5 16-Oct-2024 01:07:30
+% Last Modified by GUIDE v2.5 24-Nov-2024 23:44:10
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -483,6 +483,7 @@ try
         error('Data aquisition timed out.')
     end
     lastSampleProcTime = timeBuff(end);
+    rawIDs = cellfun(@(s) s.IDnumber, rawD1);
 
     % x axes alignment 
     common_xlim = tPltRng - tNow;
@@ -520,16 +521,24 @@ try
     if handles.showElecGrid
         try
             elecimg = handles.elecGridImg.CData;
-            for ch = 1:63
-                x = rawD4{ch}(:,2); L = handles.bufferSizeGrid(ch);
-                if height(x) > L
-                    x = x((end-L+1):end, :);
+            for ch = 1:numel(elecimg)
+                chID = handles.channelIDlist(ch); 
+                xInd = find(rawIDs == chID); 
+                if numel(xInd)
+                    x = rawD4{xInd}(:,2); L = handles.bufferSizeGrid(xInd);
+                    if height(x) > L
+                        x = x((end-L+1):end, :);
+                    end
+                    if height(x) < L
+                        warning(['Channel ',num2str(ch),...
+                            ' / ID ',num2str(chID),...
+                            ' Electrode Grid buffer is not full length!'])
+                    end
+                    fSample_ch = handles.fSamples(xInd);
+                    elecimg(ch) = handles.elecGridFunc(x, fSample_ch);
+                else
+                    elecimg(ch) = nan;
                 end
-                if height(x) < L
-                    warning(['Channel ',num2str(ch),' Electrode Grid buffer is not full length!'])
-                end
-                fSample_ch = handles.fSamples(ch);
-                elecimg(ch) = handles.elecGridFunc(x, fSample_ch);
             end
             handles.elecGridImg.CData = elecimg;
         catch ME4 
@@ -714,7 +723,7 @@ try
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
 
     % get data from Central
-    requeryPhaseDetect(hObject, -1);
+    requeryPhaseDetect(hObject, eventdata, -1);
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
@@ -794,21 +803,21 @@ try
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
             handles.FilterSetUp = false;
-            requeryPhaseDetect(hObject, 1);
+            requeryPhaseDetect(hObject, eventdata, 1);
             pause(.01);
         end
     end
 
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
-    requeryPhaseDetect(hObject, 1);
+    requeryPhaseDetect(hObject, eventdata, 1);
     guidata(hObject,handles)
     updateDisplay(hObject,eventdata)
     
 catch ME
     getReport(ME)
     handles.RunMainLoop = false; 
-    requeryPhaseDetect(hObject, 1);
+    requeryPhaseDetect(hObject, eventdata, 1);
     guidata(hObject, handles);
     keyboard
 end
@@ -831,7 +840,7 @@ try
     end
     handles.RunMainLoop = false;
     guidata(hObject, handles)
-    requeryPhaseDetect(hObject, 1);
+    requeryPhaseDetect(hObject, eventdata, 1);
     guidata(hObject, handles)
 catch ME
     getReport(ME)
@@ -864,7 +873,7 @@ end
 % --- New Helpers ---
 
 
-function requeryPhaseDetect(hObject, timeoutdur)
+function requeryPhaseDetect(hObject, eventdata, timeoutdur)
 handles = guidata(hObject);
 if timeoutdur >= 0
 [dataRecd, handles.SaveFileN] = ...
@@ -872,6 +881,8 @@ if timeoutdur >= 0
         handles.SaveFileName, handles.SaveFileN, handles.time0, timeoutdur);
 if ~dataRecd
     warning('Polling data queue timed out.')
+    hObject
+    eventdata
     %keyboard
 end
 end
@@ -1743,4 +1754,20 @@ function txt_gridmin_CreateFcn(hObject, eventdata, handles)
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in push_remchan.
+function push_remchan_Callback(hObject, eventdata, handles)
+% hObject    handle to push_remchan (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+[remind, ok] = listdlg("ListString",handles.channelList, ...
+    "PromptString", 'REMOVE these channels:');
+if ok
+    channelIDlist = handles.channelIDlist;
+    remtf = false(size(channelIDlist)); remtf(remind) = true;
+    handles.allChannelIDs = channelIDlist(~remtf);
+    guidata(hObject, handles);
+    settingChange(hObject);
 end
