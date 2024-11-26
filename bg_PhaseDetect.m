@@ -192,18 +192,10 @@ while cont_loop
                 stimtime = .5*(stimtime1 + stimtime2);
                 [~,stimBuff,stimBuffRow,stimBuffedOut] = ...
                     bufferStorage(stimBuff, stimBuffRow, stimtime);
-                %stimLastTime = stimtime;
+                stimLastTime = stimtime;
             end
         end
     end
-
-    if loopcount > 2
-        %error(num2str(size(stimBuff)))
-        %x = t2stim + timeBuffs{chInd}(end,:); y = stimLastTime;
-        %error([num2str(x),' - ',num2str(y),' = ',num2str(x-y)])
-        %error(['Stimtime = ',num2str(stimtime),'; size buff = ',num2str(size(stimBuff))])
-    end
-    stimLastTime = stimtime;
 
     % User should be ready for new data when loopcount = loopsendum
     % send data AT LEAST that frequently so the user never waits for data
