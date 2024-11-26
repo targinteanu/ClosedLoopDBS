@@ -28,6 +28,9 @@ for myfile = myfiles'
         PeakTime = PeakTrough(:,1);
         TroughTime = PeakTrough(:,2);
     end
+    if exist('Stim')
+        StimTime = Stim;
+    end
     for V = 1:length(varnames)
         v = varnames{V};
         if exist(v) == 1

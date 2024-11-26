@@ -72,8 +72,6 @@ forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
 buffSize = UserArgs.bufferSizeGrid;
 PhaseOfInterest = UserArgs.PhaseOfInterest;
 
-UserArgs.StimActive = true;
-
 %% init 
 
 dT = .001; % s between data requests 
@@ -131,6 +129,11 @@ end
 forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
 forBuffs = forBuffs(chInd); forBuffRow = ones(size(forBuffs));
 stimBuff = nan(size(timeBuffs{chInd},1),1); stimBuffRow = ones(size(stimBuff));
+
+% stimulator 
+if UserArgs.StimActive
+    stimulator = SetupStimulator(UserArgs);
+end
 
 % enable defined filtering/forecasting funcs only if ready
 if FilterSetUp

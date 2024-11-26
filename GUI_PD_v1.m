@@ -395,7 +395,6 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 try
 % stop stim
 if handles.StimActive
-    stop(handles.QueuedStim)
     handles.StimActive = false;
     guidata(hObject, handles)
     setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 0);
@@ -422,7 +421,6 @@ StopMainLoop(hObject,eventdata,handles)
 %delete(handles.timer)
 delete(handles.srl);
 if handles.StimActive
-    stop(handles.QueuedStim)
     handles.stimulator.stop();
     handles.stimulator.disconnect;
 end
@@ -838,9 +836,6 @@ function  StopMainLoop(hObject, eventdata, handles)
 % Command Window
 
 try
-    if handles.StimActive
-        stop(handles.QueuedStim)
-    end
     handles.RunMainLoop = false;
     guidata(hObject, handles)
     requeryPhaseDetect(hObject, eventdata, 1);
@@ -1485,39 +1480,6 @@ if get(hObject, 'Value') == 1
     try
 
     handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
-
-    amp1 = eval(handles.txt_amp1.String); 
-    amp2 = eval(handles.txt_amp2.String); 
-    width1 = eval(handles.txt_width1.String); 
-    width2 = eval(handles.txt_width2.String); 
-    interphase = eval(handles.txt_interphase.String); 
-    frequency = 100; 
-    pulses = 1;
-
-    channel = nan(1,5); p = 1;
-    for pop_ = [handles.pop_channel1, ...
-                handles.pop_channel2, ...
-                handles.pop_channel3, ...
-                handles.pop_channel4, ...
-                handles.pop_channel5]
-        chanind = pop_.Value;
-        if chanind <= size(pop_.String,1)
-            channel(p) = str2double(pop_.String(chanind,:));
-        end
-        p = p+1;
-    end
-    channel1 = channel(1)
-    channel2 = channel(2:end)
-
-    handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
-        width1, width2, interphase, frequency, pulses);
-
-    handles.QueuedStim = timer(...
-        'StartDelay', 10, ...
-        'TimerFcn',   {@myPULSE, hObject}, ...
-        'StopFcn',    {@finishPULSE, hObject}, ...
-        'StartFcn',   {@schedulePULSE, hObject}, ...
-        'UserData',   -1);
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
