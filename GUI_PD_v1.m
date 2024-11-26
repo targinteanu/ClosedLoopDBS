@@ -133,6 +133,7 @@ PDSwin = ceil(PDSwin*1000); handles.PDSwin1 = PDSwin;
 handles.PDSwin2 = ceil(.02*PDSwin); 
 handles.bufferSize = str2double(get(handles.txt_display,'String')) * 1000;
 handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
+handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
 
 % start parallel pool(s) 
 waitbar(.08, wb, 'Starting parallel pool...')
@@ -573,7 +574,7 @@ try
             set(handles.h_trouTrace,'YData',zeros(size(tTr)));
             set(handles.h_trouTrace,'XData',handles.time0 + seconds(tTr) - tNow);
             set(handles.h_stimTrace,'YData',zeros(size(tSt)));
-            set(handles.h_stimTrace,'YData',handles.time0 + seconds(tSt) - tNow);
+            set(handles.h_stimTrace,'XData',handles.time0 + seconds(tSt) - tNow);
 
             % time of stimulus 
             if handles.stimNewTime > 0
@@ -883,8 +884,8 @@ if timeoutdur >= 0
         handles.SaveFileName, handles.SaveFileN, handles.time0, timeoutdur);
 if ~dataRecd
     warning('Polling data queue timed out.')
-    hObject
-    eventdata
+    %hObject
+    %eventdata
     %keyboard
 end
 end

@@ -44,10 +44,24 @@ while dopoll
             rethrow(sentData)
         end
 
+        % This relies on the forecast buffers being 2xN and the stim buffer
+        % being 1xN; should be made more robust. 
         ForStim = sentData{3,3}; 
         ForStimSv = sentData{3,2};
-        forBuff = ForStim{1}; stimBuff = ForStim{2};
-        forBuffSv = ForStimSv{1}; stimBuffSv = forBuffSv{2};
+        if width(ForStim) > 2
+            stimBuff = ForStim(:,3:end); forBuff = ForStim(:,1:2);
+        else
+            stimBuff = []; forBuff = ForStim;
+        end
+        if isempty(ForStimSv)
+            stimBuffSv = ForStimSv; forBuffSv = ForStimSv; 
+        elseif width(ForStimSv) < 2
+            stimBuffSv = ForStimSv; forBuffSv = [];
+        elseif width(ForStimSv) > 2
+            stimBuffSv = ForStimSv(:,3:end); forBuffSv = ForStimSv(:,1:2);
+        else
+            stimBuffSv = []; forBuffSv = ForStimSv;
+        end
 
         if ~isempty(forBuffSv)
             PeakTrough = forBuffSv;

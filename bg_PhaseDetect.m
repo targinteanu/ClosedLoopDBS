@@ -34,7 +34,7 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 bgArgOut = [];
 
 looptime = .01; % starting estimate loop time (s)
-guitime = .05; % estimate of gui update time (s)
+guitime = .4; % estimate of gui update time (s)
 
 cont_fullfunc = true; % run or wait for user input
 %while cont_fullfunc
@@ -71,6 +71,8 @@ forecastwin = UserArgs.PDSwin1; % # samples ahead to forecast
 forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
 buffSize = UserArgs.bufferSizeGrid;
 PhaseOfInterest = UserArgs.PhaseOfInterest;
+
+UserArgs.StimActive = true;
 
 %% init 
 
@@ -141,11 +143,11 @@ if MdlSetUp
 else
     forefun = [];
 end
-doStim = ~isempty(StimController);
+doStim = (~isempty(StimController)) && (FilterSetUp && MdlSetUp);
 
 %% loop 
 cont_loop = true; first_loop = true; looptime_meas1 = tic; loopcount = 0;
-stimLastTime = -inf;
+stimLastTime = -inf; stimtime = -inf;
 while cont_loop
     looptime_meas2 = toc(looptime_meas1); 
     looptime_meas1 = tic; 
@@ -171,8 +173,9 @@ while cont_loop
         forBuffs, forBuffRow, forD, forefun, foreArgs);
 
     % do stimulus 
+    stimBuffedOut = [];
     forBuff = forBuffs{1}; 
-    forBuffNew = forBuff(end,:); 
+    forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
     forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
     if doStim
         [t2stim, stim2q] = StimController(UserArgs, fltD{4,1}(:,2), forBuffNew);
@@ -180,19 +183,27 @@ while cont_loop
             t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
             % ensure below max freq
             if 1/(t2stim + timeBuffs{chInd}(end,:) - stimLastTime) <= UserArgs.stimMaxFreq
-            % check if stimulator is ready here?
-            % assume stim should occur before completion of next loop
-            pause(t2stim);
-            stimtime1 = GetTime(initTic);
-            % *** do stimulus here ***
-            stimtime2 = GetTime(initTic);
-            stimtime = .5*(stimtime1 + stimtime2);
-            [~,stimBuff,stimBuffRow,stimBuffedOut] = ...
-                bufferStorage(stimBuff, stimBuffRow, stimtime);
-            stimLastTime = stimtime;
+                % check if stimulator is ready here?
+                % assume stim should occur before completion of next loop
+                pause(t2stim);
+                stimtime1 = GetTime(initTic);
+                % *** do stimulus here ***
+                stimtime2 = GetTime(initTic);
+                stimtime = .5*(stimtime1 + stimtime2);
+                [~,stimBuff,stimBuffRow,stimBuffedOut] = ...
+                    bufferStorage(stimBuff, stimBuffRow, stimtime);
+                %stimLastTime = stimtime;
             end
         end
     end
+
+    if loopcount > 2
+        %error(num2str(size(stimBuff)))
+        %x = t2stim + timeBuffs{chInd}(end,:); y = stimLastTime;
+        %error([num2str(x),' - ',num2str(y),' = ',num2str(x-y)])
+        %error(['Stimtime = ',num2str(stimtime),'; size buff = ',num2str(size(stimBuff))])
+    end
+    stimLastTime = stimtime;
 
     % User should be ready for new data when loopcount = loopsendum
     % send data AT LEAST that frequently so the user never waits for data
@@ -205,9 +216,11 @@ while cont_loop
             rawD_ = rawD(:,selRaw);
             timeBuffs_ = timeBuffs(selRaw);
         end
+        % This relies on the forecast buffers being 2xN and the stim buffer
+        % being 1xN; should be made more robust. 
         send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
                   {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
-                  {timeBuffs_}, [forBuffedOut(1), stimBuffedOut], {forBuff, stimBuff}]);
+                  {timeBuffs_}, {[forBuffedOut{1}, stimBuffedOut]}, {[forBuff, stimBuff]}]);
     end
 
     cont_loop = cont_loop && cont_loop_2;
