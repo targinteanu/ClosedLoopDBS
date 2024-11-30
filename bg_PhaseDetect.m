@@ -1,5 +1,6 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
     InitializeRecording, ShutdownRecording, ...
+    SetupStimulator, ShutdownStimulator, PulseStimulator, ...
     InitializeRawData, GetNewRawData, GetTime, StimController)
 % 
 % Run brain recording with phase detection/prediction for PDS.
@@ -18,6 +19,10 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 % [ raw , filtered , forecast, timing buffer ] data and starting tic
 % 
 % ShutdownRecording takes no arguments.
+% 
+% SetupStimulator takes UserArgs and initiates/returns StimArgs;
+% ShutdownStimulator and PulseStimulator take StimArgs and UserArgs and
+% return StimArgs. 
 % 
 % InitializeRawData takes ( selRaw , BufferSize ) as input arguments and
 % returns [ EmptyDataStruct , Tail , Combined , ChannelInfo, StartTic ]
@@ -132,7 +137,7 @@ stimBuff = nan(size(timeBuffs{chInd},1),1); stimBuffRow = ones(size(stimBuff));
 
 % stimulator 
 if UserArgs.StimActive
-    stimulator = SetupStimulator(UserArgs);
+    StimArgs = SetupStimulator(UserArgs);
 end
 
 % enable defined filtering/forecasting funcs only if ready
@@ -146,7 +151,7 @@ if MdlSetUp
 else
     forefun = [];
 end
-doStim = (~isempty(StimController)) && (FilterSetUp && MdlSetUp);
+doStim = ((~isempty(StimController)) && UserArgs.StimActive) && (FilterSetUp && MdlSetUp);
 
 %% loop 
 cont_loop = true; first_loop = true; looptime_meas1 = tic; loopcount = 0;
@@ -190,7 +195,7 @@ while cont_loop
                 % assume stim should occur before completion of next loop
                 pause(t2stim);
                 stimtime1 = GetTime(initTic);
-                % *** do stimulus here ***
+                StimArgs = PulseStimulator(StimArgs, UserArgs);
                 stimtime2 = GetTime(initTic);
                 stimtime = .5*(stimtime1 + stimtime2);
                 [~,stimBuff,stimBuffRow,stimBuffedOut] = ...
@@ -239,6 +244,11 @@ end
 
 %% stop 
 ShutdownRecording();
+
+% stimulator 
+if UserArgs.StimActive
+    StimArgs = ShutdownStimulator(StimArgs, UserArgs);
+end
 
 % If there are any errors in the full func, stop looping and allow the User
 % to handle them. 

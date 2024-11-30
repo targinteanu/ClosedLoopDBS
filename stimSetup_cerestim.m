@@ -1,4 +1,4 @@
-function stimulator = setupStimulator_cerestim(UserArgs)
+function stimulator = stimSetup_cerestim(UserArgs)
 
     amp1 = eval(UserArgs.txt_amp1.String); 
     amp2 = eval(UserArgs.txt_amp2.String); 
