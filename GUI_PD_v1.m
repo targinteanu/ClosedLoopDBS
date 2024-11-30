@@ -421,10 +421,6 @@ guidata(hObject, handles)
 StopMainLoop(hObject,eventdata,handles)
 %delete(handles.timer)
 delete(handles.srl);
-if handles.StimActive
-    handles.stimulator.stop();
-    handles.stimulator.disconnect;
-end
 catch ME3
     getReport(ME3)
 end
@@ -1463,19 +1459,6 @@ function tgl_stim_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of tgl_stim
 
-% if there is a stimulator, stop it 
-if handles.StimActive
-    try
-        handles.stimulator.stop();
-        handles.stimulator.disconnect;
-        pause(.1)
-    catch ME0
-        getReport(ME0)
-        keyboard
-        % should not get here because StimActive should be false
-    end
-end
-
 if get(hObject, 'Value') == 1
     % start stimulus 
 
@@ -1500,6 +1483,7 @@ else
 end
 
 guidata(hObject, handles)
+settingChange(hObject);
 
 
 % --- Executes during object creation, after setting all properties.
