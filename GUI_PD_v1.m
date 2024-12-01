@@ -66,14 +66,12 @@ handles.ax_polar = gca;
 
 % Create a timer object that will be used to grab data and refresh
 % analysis/plotting
-%{
 handles.timer = timer(...
     'ExecutionMode', 'fixedSpacing', ...       % Run timer repeatedly
     'Period', 0.01, ...                      % Initial period is 100 ms
     'TimerFcn', {@updateDisplay,hObject}, ... % callback function.  Pass the figure handle
-    'StartFcn', {@startTimer,hObject}, ...
-    'StopFcn',  {@stopTimer,hObject});     % callback to execute when timer starts
-%}
+    'StartFcn', {@StartMainLoop,hObject}, ...
+    'StopFcn',  {@StopMainLoop,hObject});     % callback to execute when timer starts
 
 % start receiver serial communication from paradigm computer
 waitbar(.03, wb, 'Setting up serial com...')
@@ -155,6 +153,7 @@ handles.rmfieldList = {...
     'dataQueue', 'stimQueue', ...
     'f_PhaseDetect', ...
     'udBlank', 'srlStorage1', 'srlP1', ...
+    'timer', ...
     'figure1', 'scribeOverlay', 'output', ...
     'pnl_elecgrid', 'pnl_stim', 'pnl_filt', 'pnl_controls', ...
     'check_artifact', 'check_polar', ...
@@ -354,14 +353,12 @@ if get(hObject,'Value') == 1
 
     % This starts the timer and also executes the StartFnc which grabs the
     % data, creates the buffer and plots the first bit of data
-    % start(handles.timer)
-    StartMainLoop(hObject, eventdata, handles);
+    start(handles.timer)
     
 % Stop
 else
     set(hObject,'String','Start')
-    % stop(handles.timer)
-    StopMainLoop(hObject, eventdata, handles);
+    stop(handles.timer)
 end
 
 % --- Executes on selection change in pop_channels.
@@ -417,9 +414,8 @@ end
 cancelAll(handles.pool.FevalQueue);
 cancel(handles.f_PhaseDetect); 
 guidata(hObject, handles)
-%stop(handles.timer)
-StopMainLoop(hObject,eventdata,handles)
-%delete(handles.timer)
+stop(handles.timer)
+delete(handles.timer)
 delete(handles.srl);
 catch ME3
     getReport(ME3)
@@ -446,18 +442,16 @@ delete(hObject);
 % ----          Main Loop, Runs every time the timer fires            --- %
 % ----                                                                --- %
 % ----------------------------------------------------------------------- %
-function updateDisplay(hObject, eventdata)
+function updateDisplay(obj, evt, hObject)
 
 handles = guidata(hObject);
-while handles.RunMainLoop && handles.tgl_StartStop.Value
 
 try
 
     % ensure connection with hardware 
     handles = guidata(hObject);
     if ~handles.DAQstatus
-        %stop(handles.timer)
-        StopMainLoop(hObject,eventdata,handles)
+        stop(handles.timer)
     end
 
     % timing 
@@ -692,11 +686,11 @@ try
 
 catch ME 
     getReport(ME)
-    StopMainLoop(hObject,eventdata,handles)
+    guidata(hObject, handles)
+    stop(handles.timer)
     keyboard
 end
 
-end
     
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
@@ -706,10 +700,12 @@ end
 
 % Runs once when timer starts.  It initializes plot and buffer and
 % accommodates any new selection by user.
-function  StartMainLoop(hObject, eventdata, handles)
+function  StartMainLoop(obj, evt, hObject)
 % Put the whole function in a try-catch block.  This makes debugging much
 % easier because it captures the error and displays a report to the Matlab
 % Command Window
+
+handles = guidata(hObject);
 
 try
 
@@ -723,7 +719,7 @@ try
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
 
     % get data from Central
-    requeryPhaseDetect(hObject, eventdata, -1);
+    requeryPhaseDetect(hObject, -1);
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
@@ -801,21 +797,20 @@ try
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
             handles.FilterSetUp = false;
-            requeryPhaseDetect(hObject, eventdata, 1);
+            requeryPhaseDetect(hObject, 1);
             pause(.01);
         end
     end
 
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
-    requeryPhaseDetect(hObject, eventdata, 1);
+    requeryPhaseDetect(hObject, 1);
     guidata(hObject,handles)
-    updateDisplay(hObject,eventdata)
     
 catch ME
     getReport(ME)
     handles.RunMainLoop = false; 
-    requeryPhaseDetect(hObject, eventdata, 1);
+    requeryPhaseDetect(hObject, 1);
     guidata(hObject, handles);
     keyboard
 end
@@ -827,15 +822,17 @@ end
 % ----------------------------------------------------------------------- %
 
 % Runs once when timer stops.
-function  StopMainLoop(hObject, eventdata, handles)
+function  StopMainLoop(obj, evt, hObject)
 % Put the whole function in a try-catch block.  This makes debugging much
 % easier because it captures the error and displays a report to the Matlab
 % Command Window
 
+handles = guidata(hObject); 
+
 try
     handles.RunMainLoop = false;
     guidata(hObject, handles)
-    requeryPhaseDetect(hObject, eventdata, 1);
+    requeryPhaseDetect(hObject, 1);
     guidata(hObject, handles)
 catch ME
     getReport(ME)
@@ -853,22 +850,16 @@ handles = guidata(hObject);
 
 % if the timer is running, stop it and restart it (which will use the newly
 % selected channel.  If the timer isn't running, don't do anything.
-%{
 if strcmp(handles.timer.Running,'on')
     stop(handles.timer)
     start(handles.timer)
-end
-%}
-if handles.RunMainLoop
-    StopMainLoop(hObject,[],handles)
-    StartMainLoop(hObject,[],handles)
 end
 
 
 % --- New Helpers ---
 
 
-function requeryPhaseDetect(hObject, eventdata, timeoutdur)
+function requeryPhaseDetect(hObject, timeoutdur)
 handles = guidata(hObject);
 if timeoutdur >= 0
 [dataRecd, handles.SaveFileN] = ...
@@ -1142,11 +1133,10 @@ filtwts = fir1(filtorder, [locutoff, hicutoff]./(srate/2));
 handles.BPF = filtwts; 
 handles.FilterSetUp = true;
 
-%stop(handles.timer)
-StopMainLoop(hObject,eventdata,handles)
 guidata(hObject, handles)
-%start(handles.timer) % restart timer and plots 
-StartMainLoop(hObject,eventdata,handles)
+stop(handles.timer)
+guidata(hObject, handles)
+start(handles.timer) % restart timer and plots 
 
 
 
@@ -1235,12 +1225,11 @@ try
     handles.Mdl = ARmdl; 
     handles.MdlSetUp = true;
     
-    %stop(handles.timer)
-    StopMainLoop(hObject,eventdata,handles)
+    guidata(hObject, handles)
+    stop(handles.timer)
     pause(.01)
     guidata(hObject, handles)
-    %start(handles.timer) % restart timer and plots
-    StartMainLoop(hObject,eventdata,handles)
+    start(handles.timer) % restart timer and plots
     pause(.001)
 
 catch ME
