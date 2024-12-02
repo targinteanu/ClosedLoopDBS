@@ -1216,7 +1216,6 @@ function push_AR_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-handles0 = handles;
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
@@ -1254,7 +1253,6 @@ try
 stop(handles.timer);
 %setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 0);
 pause(.01);
-handles.FilterSetUp = true;
 guidata(hObject, handles)
 pause(.01);
 start(handles.timer);
