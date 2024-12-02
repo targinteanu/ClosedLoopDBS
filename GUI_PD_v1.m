@@ -115,6 +115,18 @@ handles.allChannelIDs = [];
 handles.channelIndex = [];
 handles.PhaseOfInterest = [0, pi];
 
+% init empty plot handles to avoid errors later 
+handles.h_rawDataTrace = [];
+handles.h_filtDataTrace = []; 
+handles.h_timingTrace = [];
+handles.h_timeDispTrace = [];
+handles.h_predTrace = [];
+handles.h_peakTrace = [];
+handles.h_trouTrace = [];
+handles.h_stimTrace = [];
+handles.h_peakPhase = [];
+handles.h_trouPhase = [];
+
 % file saving 
 waitbar(.04, wb, 'Setting file save location...')
 svloc = ['Saved Data PD',filesep,'Saved Data ',...
@@ -152,10 +164,13 @@ handles.f_PhaseDetect = [];
 
 % remove these fields when sending handles over the userQueue
 handles.rmfieldList = {...
-    'dataQueue', 'stimQueue', ...
+    'dataQueue', 'stimQueue', 'pool', ...
     'f_PhaseDetect', ...
     'udBlank', 'srlStorage1', 'srlP1', ...
     'timer', ...
+    'h_rawDataTrace', 'h_filtDataTrace', 'h_timingTrace', 'h_timeDispTrace', ...
+    'h_predTrace', 'h_peakTrace', 'h_trouTrace', 'h_stimTrace', ...
+    'h_peakPhase', 'h_trouPhase', ...
     'figure1', 'scribeOverlay', 'output', ...
     'pnl_elecgrid', 'pnl_stim', 'pnl_filt', 'pnl_controls', ...
     'check_artifact', 'check_polar', ...
@@ -171,7 +186,7 @@ handles.rmfieldList = {...
     'pop_elecgrid', 'pop_GreenStim', 'pop_YellowStim', 'pop_RedStim', 'pop_StopStim', ...
     'pop_channel5', 'pop_channel4', 'pop_channel3', 'pop_channel2', 'pop_channel1', 'pop_channels', ...
     'tgl_stim', 'tgl_StartStop', ...
-    'push_AR', 'push_filter', ...
+    'push_AR', 'push_filter', 'push_remchan', ...
     'cmd_cbmexOpen', 'cmd_cbmexClose'};
 
 % Update handles structure
@@ -1100,6 +1115,8 @@ function push_filter_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+stop(handles.timer); % to avoid dataQueue overflow 
+
 % details from data 
 srate = handles.fSample;
 nyq            = srate*0.5;  % Nyquist frequency
@@ -1153,14 +1170,11 @@ filtwts = fir1(filtorder, [locutoff, hicutoff]./(srate/2));
 handles.BPF = filtwts; 
 
 % restart timer and plots
-stop(handles.timer);
-%setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 0);
 pause(.01);
 handles.FilterSetUp = true;
 guidata(hObject, handles)
 pause(.01);
 start(handles.timer);
-%setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 1);  
 
 
 
@@ -1216,6 +1230,8 @@ function push_AR_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+stop(handles.timer); % to avoid dataQueue overflow 
+
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
@@ -1250,13 +1266,10 @@ try
     handles.MdlSetUp = true;
     
 % restart timer and plots
-stop(handles.timer);
-%setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 0);
 pause(.01);
 guidata(hObject, handles)
 pause(.01);
 start(handles.timer);
-%setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 1); 
 
 catch ME
     getReport(ME)
