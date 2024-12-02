@@ -68,10 +68,12 @@ handles.ax_polar = gca;
 % analysis/plotting
 handles.timer = timer(...
     'ExecutionMode', 'fixedSpacing', ...       % Run timer repeatedly
-    'Period', 0.01, ...                      % Initial period is 100 ms
+    'Period', 0.2, ...                      % Initial period is 100 ms
     'TimerFcn', {@updateDisplay,hObject}, ... % callback function.  Pass the figure handle
     'StartFcn', {@StartMainLoop,hObject}, ...
-    'StopFcn',  {@StopMainLoop,hObject});     % callback to execute when timer starts
+    'StopFcn',  {@StopMainLoop,hObject}, ...
+    'ErrorFcn', {@TimerError,hObject}, ...
+    'BusyMode', 'error');     % callback to execute when timer starts
 
 % start receiver serial communication from paradigm computer
 waitbar(.03, wb, 'Setting up serial com...')
@@ -455,7 +457,8 @@ try
     end
 
     % timing 
-    pause(.05); % s between displays 
+    % pause(.05); % s between displays - is this necessary since timer has
+    %                                    fixed spacing period?
     tNow = datetime;
     timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
     handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
@@ -539,6 +542,7 @@ try
             getReport(ME4);
             errordlg(ME4.message, 'Electrode Grid Issue');
             handles.showElecGrid = false;
+            guidata(hObject, handles);
             pause(.01);
         end
     end
@@ -585,6 +589,7 @@ try
                         % keyboard
                         errordlg(ME3.message, 'Artifact Removal Issue');
                         handles.check_artifact.Value = false;
+                        guidata(hObject, handles);
                         pause(.01);
                     end
                 end
@@ -658,6 +663,7 @@ try
                 getReport(ME2)
                 errordlg(ME2.message, 'Model Prediction Issue');
                 handles.MdlSetUp = false;
+                guidata(hObject, handles);
                 pause(.01);
             end
         end
@@ -666,6 +672,7 @@ try
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
             handles.FilterSetUp = false;
+            guidata(hObject, handles);
             pause(.01);
         end
     end
@@ -717,9 +724,11 @@ try
     handles.fSample = handles.fSamples(handles.channelIndex);
     handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
+    guidata(hObject, handles)
 
     % get data from Central
     requeryPhaseDetect(hObject, -1);
+    pause(5) % This must be at least 4s to work. Unclear why. Might have to do with loopsendnum
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
@@ -766,6 +775,10 @@ try
             handles.ax_raw.InnerPosition(3); 
         ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left 
         axes(handles.ax_filt); hold off; 
+        if isempty(fltPlt)
+            keyboard
+            error('Filter was not actually set up. Something is wrong in the code.')
+        end
         handles.h_filtDataTrace = plot(fltPlt.Time - tNow, fltPlt.Variables); 
         grid on; hold on; 
         title('Filtered & Predicted Data'); xlabel('time (s)'); ylabel(unitname);
@@ -797,6 +810,7 @@ try
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
             handles.FilterSetUp = false;
+            guidata(hObject, handles);
             requeryPhaseDetect(hObject, 1);
             pause(.01);
         end
@@ -805,13 +819,13 @@ try
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
     requeryPhaseDetect(hObject, 1);
-    guidata(hObject,handles)
+    %guidata(hObject,handles)
     
 catch ME
     getReport(ME)
     handles.RunMainLoop = false; 
-    requeryPhaseDetect(hObject, 1);
     guidata(hObject, handles);
+    requeryPhaseDetect(hObject, 1);
     keyboard
 end
 
@@ -838,6 +852,12 @@ catch ME
     getReport(ME)
     keyboard
 end
+
+
+function TimerError(obj, evt, hObject)
+% timer has encountered an error!
+handles = guidata(hObject);
+keyboard
 
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
@@ -1131,12 +1151,16 @@ handles.IndShiftFIR = ceil(filtorder/2); % samples ???
 % >> filteredSignal = filtfilt(filtwts, 1, unfilteredSignal)
 filtwts = fir1(filtorder, [locutoff, hicutoff]./(srate/2));
 handles.BPF = filtwts; 
-handles.FilterSetUp = true;
 
+% restart timer and plots
+stop(handles.timer);
+%setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 0);
+pause(.01);
+handles.FilterSetUp = true;
 guidata(hObject, handles)
-stop(handles.timer)
-guidata(hObject, handles)
-start(handles.timer) % restart timer and plots 
+pause(.01);
+start(handles.timer);
+%setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 1);  
 
 
 
@@ -1192,6 +1216,7 @@ function push_AR_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+handles0 = handles;
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
@@ -1225,12 +1250,15 @@ try
     handles.Mdl = ARmdl; 
     handles.MdlSetUp = true;
     
-    guidata(hObject, handles)
-    stop(handles.timer)
-    pause(.01)
-    guidata(hObject, handles)
-    start(handles.timer) % restart timer and plots
-    pause(.001)
+% restart timer and plots
+stop(handles.timer);
+%setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 0);
+pause(.01);
+handles.FilterSetUp = true;
+guidata(hObject, handles)
+pause(.01);
+start(handles.timer);
+%setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 1); 
 
 catch ME
     getReport(ME)
@@ -1461,6 +1489,7 @@ if get(hObject, 'Value') == 1
     catch ME
         hObject.Value = 0;
         handles.StimActive = false;
+        guidata(hObject, handles);
         getReport(ME)
         errordlg(ME.message, 'Stim Setup Issue');
     end
@@ -1536,6 +1565,7 @@ catch ME4
     getReport(ME4);
     errordlg(ME4.message, 'Electrode Grid Selection Issue');
     handles.showElecGrid = false;
+    guidata(hObject, handles);
     pause(.01);
 end
 guidata(hObject, handles)
