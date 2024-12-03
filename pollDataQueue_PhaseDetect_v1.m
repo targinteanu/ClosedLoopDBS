@@ -53,28 +53,8 @@ while dopoll
         else
             stimBuff = []; forBuff = ForStim;
         end
-        if isempty(ForStimSv)
-            stimBuffSv = ForStimSv; forBuffSv = ForStimSv; 
-        elseif width(ForStimSv) < 2
-            stimBuffSv = ForStimSv; forBuffSv = [];
-        elseif width(ForStimSv) > 2
-            stimBuffSv = ForStimSv(:,3:end); forBuffSv = ForStimSv(:,1:2);
-        else
-            stimBuffSv = []; forBuffSv = ForStimSv;
-        end
-
-        if ~isempty(forBuffSv)
-            PeakTrough = forBuffSv;
-            save([svname,num2str(svN),'.mat'], 'PeakTrough');
-            svN = svN+1;
-            forBuff = [forBuffSv; forBuff];
-        end
-        if ~isempty(stimBuffSv)
-            Stim = stimBuffSv;
-            save([svname,num2str(svN),'.mat'], 'Stim');
-            svN = svN+1;
-            stimBuff = [stimBuffSv; stimBuff];
-        end
+        [svN, forBuff, stimBuff] = ...
+            savebg_PhaseDetect_v1(ForStimSv, forBuff, stimBuff, svname, svN);
 
         rawD1 = sentData{1,1}; rawD4 = sentData{2,1};
         fltD1 = sentData(1,2); fltD4 = sentData(2,2);
