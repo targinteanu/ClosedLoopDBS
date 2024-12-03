@@ -680,6 +680,8 @@ try
 
     guidata(hObject,handles)
     pause(.001)
+    drawnow 
+    pause(.001)
 
     end
     end
