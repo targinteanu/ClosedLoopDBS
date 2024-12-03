@@ -1,4 +1,12 @@
 function stimulator = stimSetup_cerestim(UserArgs)
+%
+% Intended to extract relevant details from GUI v1 and construct cerestim
+% stimulator object using defineSTIM4. 
+% 
+% Input UserArgs can be e.g. GUIDE handles.
+% The popup channel lists in UserArgs (i.e. UserArgs.pop_channel1, etc.)
+% MUST have list entries in the format: '<Channel ID [int]>: <Channel Name>'
+% 
 
     amp1 = eval(UserArgs.txt_amp1.String); 
     amp2 = eval(UserArgs.txt_amp2.String); 
@@ -16,7 +24,11 @@ function stimulator = stimSetup_cerestim(UserArgs)
                 UserArgs.pop_channel5]
         chanind = pop_.Value;
         if chanind <= size(pop_.String,1)
-            channel(p) = str2double(pop_.String(chanind,:));
+            chPname = pop_.String{chanind};
+            chPid = sscanf(chPname, '%d: '); 
+            if numel(chPid)
+                channel(p) = chPid(1);
+            end
         end
         p = p+1;
     end

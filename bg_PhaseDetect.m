@@ -54,7 +54,7 @@ cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop;
     % if false, loop should only run once
 
 FilterSetUp = UserArgs.FilterSetUp; % t/f
-MdlSetUp = UserArgs.MdlSetUp; % t/f
+MdlSetUp = FilterSetUp && UserArgs.MdlSetUp; % t/f
 if FilterSetUp
     filtOrds = [UserArgs.FilterOrder]; % array with chans as cols
     filtObjs = {1; UserArgs.BPF}; % cell with rows {a; b}; chans as cols
@@ -207,7 +207,10 @@ while cont_loop
 
     % User should be ready for new data when loopcount = loopsendum
     % send data AT LEAST that frequently so the user never waits for data
-    if first_loop || (loopcount >= .5*loopsendnum)
+    ForStimBuff = [forBuff, stimBuff];
+    ForStimBuffedOut = [forBuffedOut{1}, stimBuffedOut];
+    NeedToSave = ~isempty(ForStimBuffedOut);
+    if ( first_loop || (loopcount >= .5*loopsendnum) ) || NeedToSave
         loopcount = 0;
         if isempty(selRaw)
             rawD_ = rawD;
@@ -220,7 +223,12 @@ while cont_loop
         % being 1xN; should be made more robust. 
         send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
                   {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
-                  {timeBuffs_}, {[forBuffedOut{1}, stimBuffedOut]}, {[forBuff, stimBuff]}]);
+                  {timeBuffs_}, {ForStimBuffedOut}, {ForStimBuff}]);
+    end
+    if NeedToSave
+        bgArgOut = ForStimBuffedOut;
+    else
+        bgArgOut = ForStimBuff;
     end
 
     cont_loop = cont_loop && cont_loop_2;
@@ -263,6 +271,9 @@ end
 
 function [foreTails, foreBuffsAdd, foreArgs] = foreFun(foreArgs, inData)
 % inData should just be the filtered channel of interest
+if isempty(foreArgs)
+    error('Attempted forecast function with empty arguments.')
+end
 K = foreArgs.K; k = foreArgs.k;
 ARmdls = foreArgs.ARmdls;
 fs = foreArgs.SampleRates;
