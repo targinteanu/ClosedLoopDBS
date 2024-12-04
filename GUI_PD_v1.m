@@ -107,8 +107,6 @@ handles.FilterSetUp = false;
 handles.MdlSetUp    = false;
 handles.showElecGrid = false;
 handles.srlLastMsg  = ud.ReceivedData;
-handles.stimLastTime = -inf;
-handles.stimNewTime  = -inf;
 handles.bufferSize     = 10; 
 handles.bufferSizeGrid = 10;
 handles.allChannelIDs = [];
@@ -583,54 +581,6 @@ try
             set(handles.h_trouTrace,'XData',handles.time0 + seconds(tTr) - tNow);
             set(handles.h_stimTrace,'YData',zeros(size(tSt)));
             set(handles.h_stimTrace,'XData',handles.time0 + seconds(tSt) - tNow);
-
-            % time of stimulus 
-            if handles.stimNewTime > 0
-            stimtimerel = handles.stimNewTime - handles.lastSampleProcTime; 
-                % rel to 0 on screen
-                % lastSampleProcTime should be time 0 on the screen
-            stimind = round(stimtimerel*handles.fSample); % ind rel to END of buffer
-            stimind = stimind + handles.bufferSize; % ind rel to START of buffer 
-            handles.stimNewTime = -inf;
-            if stimind > 0
-                handles.stimDataBuffer(stimind) = true;
-
-                % artifact removal 
-                %{
-                if handles.check_artifact.Value
-                    try
-                    catch ME3
-                        getReport(ME3)
-                        % keyboard
-                        errordlg(ME3.message, 'Artifact Removal Issue');
-                        handles.check_artifact.Value = false;
-                        guidata(hObject, handles);
-                        pause(.01);
-                    end
-                end
-                %}
-            end
-            end
-
-            % queue stimulus pulse, if applicable 
-            %{
-            % ***** TO DO: can this be moved elsewhere to avoid delays?  
-            if handles.StimActive
-                ParadigmPhase = handles.srl.UserData.ParadigmPhase;
-                if ~strcmpi(ParadigmPhase,'WAIT')
-                    if strcmpi(ParadigmPhase, 'Started') || strcmp(ParadigmPhase, 'gray')
-                        % Started, gray, and red should all be the same.
-                        ParadigmPhase = 'red';
-                    end
-                    try
-                        StimMode = getfield(handles.StimMode, ParadigmPhase);
-                    catch
-                        warning(['ParadigmPhase ',ParadigmPhase,' unrecognized.'])
-                        StimMode = 'None';
-                    end
-                end
-            end
-            %}
 
             % plot sine wave 
             if handles.check_polar.Value
