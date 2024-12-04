@@ -1,14 +1,16 @@
 function [dataReceived, svN, timeBuff, forBuff, stimBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
-    rawD1, rawD4, fltD1, fltD4, forD1, forD4] = ...
-    pollDataQueue_PhaseDetect_v1(dataQueue, chInd, svname, svN, t0, pollTimeOut)
+    rawD1, rawD4, fltD1, fltD4, forD1, forD4, ...
+    forStore, forP, stimStore, stimP] = ...
+    pollDataQueue_PhaseDetect_v1(dataQueue, chInd, svname, svN, t0, pollTimeOut, ...
+    forStore, forP, stimStore, stimP)
 % 
 % Poll dataQueue as sent by PhaseDetect function and interpret the results.
 % 
 % If no data received by pollTimeOut (default 1s), dataReceived will be 
 % false and returns will be empty. [This may no longer work!]
 % 
-% If there is data to save, it will be saved as <svname_svN.mat> and svN
+% If needed to save, data will be saved as <svname_svN.mat> and svN
 % will be incremented. 
 % 
 % chInd is the index (NOT ID number or name) of the raw channel being
@@ -17,6 +19,12 @@ function [dataReceived, svN, timeBuff, forBuff, stimBuff, ...
 
 if nargin < 6
     pollTimeOut = 1; % s
+end
+if nargin < 7
+    forStore = [];
+end
+if nargin < 9
+    stimStore = [];
 end
 
 if isempty(chInd)
@@ -44,17 +52,35 @@ while dopoll
             rethrow(sentData)
         end
 
-        % This relies on the forecast buffers being 2xN and the stim buffer
-        % being 1xN; should be made more robust. 
-        ForStim = sentData{3,3}; 
-        ForStimSv = sentData{3,2};
-        if width(ForStim) > 2
-            stimBuff = ForStim(:,3:end); forBuff = ForStim(:,1:2);
-        else
-            stimBuff = []; forBuff = ForStim;
+        forBuff = sentData{3,3}; stimBuff = sentData{3,2};
+        
+        if ~isempty(stimStore)
+            stimBuffAll = [stimStore; stimBuff];
+            [~,stimU] = unique(stimBuffAll, 'stable');
+            stimU = stimU( stimU > height(stimStore) );
+            stimBuff = stimBuffAll(stimU, :);
+            [stimFull, stimStore, stimP, stimBuffSv] = bufferStorage(...
+                stimStore, stimP, stimBuff);
+            if stimFull
+                Stim = stimBuffSv;
+                save([svname,num2str(svN),'.mat'], 'Stim');
+                svN = svN+1;
+            end
         end
-        [svN, forBuff, stimBuff] = ...
-            savebg_PhaseDetect_v1(ForStimSv, forBuff, stimBuff, svname, svN);
+
+        if ~isempty(forStore)
+            forBuffAll = [forStore; forBuff];
+            [~,forU] = unique(stimBuffAll, 'stable', 'rows');
+            forU = forU( forU > height(forStore) );
+            forBuff = forBuffAll(forU, :);
+            [forFull, forStore, forP, forBuffSv] = bufferStorage(...
+                forStore, forP, forBuff);
+            if forFull
+                PeakTrough = forBuffSv;
+                save([svname,num2str(svN),'.mat'], 'PeakTrough');
+                svN = svN+1;
+            end
+        end
 
         rawD1 = sentData{1,1}; rawD4 = sentData{2,1};
         fltD1 = sentData(1,2); fltD4 = sentData(2,2);

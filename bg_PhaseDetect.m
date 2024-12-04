@@ -205,7 +205,6 @@ while cont_loop
 
     % User should be ready for new data when loopcount = loopsendum
     % send data AT LEAST that frequently so the user never waits for data
-    ForStimBuff = [forBuff, stimBuff];
     if first_loop || (loopcount >= .5*loopsendnum)
         loopcount = 0;
         if isempty(selRaw)
@@ -219,9 +218,9 @@ while cont_loop
         % being 1xN; should be made more robust. 
         send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
                   {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
-                  {timeBuffs_}, {[]}, {ForStimBuff}]);
+                  {timeBuffs_}, {stimBuff}, {forBuff}]);
     end
-    % bgArgOut = ForStimBuff;
+    % bgArgOut = [forBuff, stimBuff];
 
     cont_loop = cont_loop && cont_loop_2;
     first_loop = false;
