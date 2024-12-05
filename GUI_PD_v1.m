@@ -436,7 +436,7 @@ handles.DAQstatus = false;
         handles.phStorage, handles.phP, handles.stStorage, handles.stP);
 if ~dataRecd
     warning('Polling data queue timed out.')
-    keyboard
+    %keyboard
 end
 cancelAll(handles.pool.FevalQueue);
 cancel(handles.f_PhaseDetect); 

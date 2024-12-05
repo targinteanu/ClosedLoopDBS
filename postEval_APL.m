@@ -32,9 +32,10 @@ offline_PhaseDetect(dataAPL,[],SamplingFreqAPL,tAPL,'APL');
 
 %% User selects channel
 channelNames = {ns.ElectrodesInfo.Label}; 
-channelIndex = listdlg('ListString', channelNames);
+channelIndex = listdlg('ListString', channelNames, 'PromptString', 'Data Channel:');
 channelName = channelNames{channelIndex};
-channelIndexStim = find(contains(channelNames, 'ainp1'));
+channelIndexStim = ...
+    listdlg('ListString', channelNames, 'PromptString', 'Stim Channel:');
 
 %% interpret data from ns structure 
 SamplingFreq = ns.MetaTags.SamplingFreq;

@@ -51,6 +51,7 @@ channelIndexStim = find(contains(channelNames, 'ainp1'));
 % tRel = time relative to start of recording, in seconds 
 % t = absolute date/time 
 % t0 = date/time at start of recording 
+SamplingFreq = ns.MetaTags.SamplingFreq;
 try
     tRel = linspace(0,ns.MetaTags.DataPointsSec,ns.MetaTags.DataPoints);
 catch
@@ -61,7 +62,6 @@ t0 = datetime(ns.MetaTags.DateTime);
 t = t+t0; 
 
 % Interpret data from ns structure: 
-SamplingFreq = ns.MetaTags.SamplingFreq;
 dataAllChannels = double(ns.Data); 
 dataOneChannel = dataAllChannels(channelIndex,:);
 StimTrainRec = dataAllChannels(channelIndexStim,:) > 1e4;
