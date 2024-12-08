@@ -60,7 +60,7 @@ while dopoll
             stimU = stimU( stimU > height(stimStore) );
             stimBuff = stimBuffAll(stimU, :);
             [stimFull, stimStore, stimP, stimBuffSv] = bufferStorage(...
-                stimStore, stimP, stimBuff);
+                stimStore, stimP, removenan(stimBuff) );
             if stimFull
                 Stim = stimBuffSv;
                 save([svname,num2str(svN),'.mat'], 'Stim');
@@ -74,7 +74,7 @@ while dopoll
             forU = forU( forU > height(forStore) );
             forBuff = forBuffAll(forU, :);
             [forFull, forStore, forP, forBuffSv] = bufferStorage(...
-                forStore, forP, forBuff);
+                forStore, forP, removenan(forBuff) );
             if forFull
                 PeakTrough = forBuffSv;
                 save([svname,num2str(svN),'.mat'], 'PeakTrough');
@@ -108,6 +108,14 @@ end
         else
             t = t0 + nan;
         end
+    end
+
+    function y = removenan(x)
+        b = true(height(x),1);
+        for c = 1:width(x)
+            b = b & ~isnan(x(:,c));
+        end
+        y = x(b,:);
     end
 
 end
