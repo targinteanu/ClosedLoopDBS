@@ -63,6 +63,13 @@ t = t+t0;
 
 % Interpret data from ns structure: 
 dataAllChannels = double(ns.Data); 
+for ch = 1:height(dataAllChannels) % scale to reported unit 
+    x = dataAllChannels(ch,:); 
+    x = x - double( ns.ElectrodesInfo(ch).MinDigiValue ); 
+    x = x .* double( ns.ElectrodesInfo(ch).Resolution );
+    x = x + double( ns.ElectrodesInfo(ch).MinAnalogValue );
+    dataAllChannels(ch,:) = x;
+end
 dataOneChannel = dataAllChannels(channelIndex,:);
 StimTrainRec = dataAllChannels(channelIndexStim,:) > 1e4;
 if ~numel(channelIndexStim)
