@@ -7,7 +7,7 @@ if strcmp(yn, 'Yes')
     [dataOneChannel, ~, dataAllChannels, SamplingFreq, t, tRel, ...
     channelName, channelIndex, ~, channelNames]...
     = getRecordedData_NS();
-    [~, StimTrainRec, dataAllChannelsStim, SamplingFreqStim, tStim, tRelStim, ...
+    [StimTrainRec, ~, dataAllChannelsStim, SamplingFreqStim, tStim, tRelStim, ...
     channelNameStim, ~, channelIndexStim, channelNamesStim]...
     = getRecordedData_NS();
     resampleStim = true;
@@ -25,8 +25,8 @@ else
     % end/error here ?
 end
 
-t(1)
-tStim(1)
+[t(1) t(end)]
+[tStim(1) tStim(end)]
 
 %% output CSV file 
 [fn,fp] = uigetfile('*.csv'); 
@@ -60,8 +60,8 @@ end
 %% get stim indexes 
 StimInd1 = diff(StimTrainRec1); 
 StimInd1 = max(0, StimInd1);
-StimInd1 = isoutlier(StimInd1, 'quartiles');
-StimInd1 = [StimInd1, false];
+StimInd1 = StimInd1 > 1e3;
+StimInd1 = [false, StimInd1];
 figure; 
 plot(tStim1, StimTrainRec1); hold on; grid on; 
 plot(tStim1(StimInd1), StimTrainRec1(StimInd1), '*r');
@@ -81,16 +81,19 @@ if L > 0
     dataOneChannel1 = dataOneChannel1(L:end); 
     tRel1 = tRel1(L:end); 
     t1 = t1(L:end); 
+    tStim1 = tStim1(L:end);
+    StimInd1 = StimInd1(L:end);
+    StimTrainRec1 = StimTrainRec1(L:end);
 elseif L < 0
     dataAPL1 = dataAPL1(-L:end); 
     StimIndAPL1 = StimIndAPL1(-L:end);
 end
 minlen = min(length(dataAPL1), length(dataOneChannel1));
-dataOneChannel1 = dataOneChannel1(1:minlen);
-tRel1 = tRel1(1:minlen);
-t1 = t1(1:minlen);
-dataAPL1 = dataAPL1(1:minlen); 
-StimIndAPL1 = StimIndAPL1(1:minlen);
+for varn = {'dataOneChannel1', 'tRel1', 't1', 'dataAPL1', 'StimIndAPL1', ...
+        'tStim1', 'StimInd1', 'StimTrainRec1'}
+    v = varn{:};
+    eval([v,' = ',v,'(1:minlen);']);
+end
 
 figure; 
 subplot(3,1,1); plot(l,r); grid on; hold on; plot(L,R,'o'); 
@@ -120,3 +123,8 @@ subplot(2,2,4); polarhistogram(dataPhase(StimInd1),18);
 title('Received Stim - BlackRock Data');
 subplot(2,2,3); polarhistogram(dataPhAPL(StimInd1),18); 
 title('Received Stim - APL Data');
+figure; 
+subplot(1,2,1); polarhistogram(dataPhAPL(StimIndAPL1),18); 
+title('Intended Stim - APL Data');
+subplot(1,2,2); polarhistogram(dataPhase(StimInd1),18); 
+title('Received Stim - BlackRock Data');
