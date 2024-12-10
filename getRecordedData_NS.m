@@ -66,7 +66,7 @@ dataAllChannels = double(ns.Data);
 dataOneChannel = dataAllChannels(channelIndex,:);
 StimTrainRec = dataAllChannels(channelIndexStim,:) > 1e4;
 if ~numel(channelIndexStim)
-    StimTrainRec = false(size(isOut));
+    StimTrainRec = zeros(size(dataOneChannel));
 end
 
 end

@@ -178,7 +178,7 @@ end
 
 %% polar hist blocks of time 
 % to do: this should pull in data from notes.txt
-
+%{
 winTimes = [...
     datetime(2024,10,01,11,15,00), datetime(2024,10,01,11,17,00); ...
     datetime(2024,10,01,11,18,00), datetime(2024,10,01,11,20,00); ...
@@ -207,6 +207,7 @@ for w = 1:height(winTimes)
     polarhistogram(dataPhase(TroughInd(winInd)), 18); 
     title(['Predicted Troughs ',winNames{w}]);
 end 
+%}
 
 %% helper functions 
 
