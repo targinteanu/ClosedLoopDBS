@@ -5,7 +5,7 @@
     channelName, channelIndex, channelIndexStim, channelNames]...
     = getRecordedData_NS();
 
-% output file 
+%% output file 
 [fn,fp] = uigetfile('*SaveFile*.mat');
 load([fp,filesep,fn])
 PeakTime = PeakTrough(:,1); TroughTime = PeakTrough(:,2);

@@ -92,7 +92,8 @@ chanInfo = emptyData;
 if length(buffSize) < length(rawIDs)
     if length(buffSize) == 1
         % assume the one input applies to all channels.
-        bufferSize = repmat(buffSize, size(rawIDs));
+        buffSize = repmat(buffSize, size(rawIDs));
+        buffSize(chInd) = UserArgs.bufferSize;
     else
         error('Incompatible input dimensions.')
     end
@@ -102,19 +103,19 @@ end
 % assign raw data to the structure 
 
 for ch = 1:length(rawIDs)
-    chInd = find(chnum == rawIDs(ch)); 
+    indCH = find(chnum == rawIDs(ch)); 
 
-    if ~isempty(chInd)
+    if ~isempty(indCH)
 
         % Create raw data buffer of zeros of the correct length
-        L = length(continuousData{chInd,3}); 
-        rawH{ch} = [nan(bufferSize(ch),1), zeros(bufferSize(ch),1)];
-        rawH{ch}(end,1) = time - 1/Fs(chInd); 
-        rawT{ch} = [nan(L,1), continuousData{chInd,3}];
+        L = length(continuousData{indCH,3}); 
+        rawH{ch} = [nan(buffSize(ch),1), zeros(buffSize(ch),1)];
+        rawH{ch}(end,1) = time - 1/Fs(indCH); 
+        rawT{ch} = [nan(L,1), continuousData{indCH,3}];
         rawT{ch}(1,1) = time;
 
         % check units 
-        config = cbmex('config', chInd);
+        config = cbmex('config', indCH);
         unitname_is = lower(config{11,1});
         if contains(unitname_is, 'unit')
             unitname = config{11,2};
@@ -126,10 +127,10 @@ for ch = 1:length(rawIDs)
         end
 
         % Channel Info
-        ud.SampleRate = Fs(chInd);
-        ud.Name = chname{chInd};
+        ud.SampleRate = Fs(indCH);
+        ud.Name = chname{indCH};
         ud.Unit = unitname;
-        ud.IDnumber = chnum(chInd);
+        ud.IDnumber = chnum(indCH);
         chanInfo{ch} = ud;
 
         rawB{ch} = bufferData(rawH{ch}, rawT{ch});
@@ -141,8 +142,6 @@ end
 
 rawD = [chanInfo; rawH; rawT; rawB];
 chIDs = cellfun(@(s) s.IDnumber, chanInfo); chID = chIDs(chInd);
-buffSize = UserArgs.bufferSizeGrid .* ones(size(chanInfo)); % samples
-buffSize(chInd) = UserArgs.bufferSize;
 
 rawInds = nan(size(rawIDs));
 for ch = 1:length(rawInds)

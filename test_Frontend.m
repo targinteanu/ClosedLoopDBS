@@ -51,7 +51,7 @@ chIDnums = cellfun(@(s) s.IDnumber, rawN);
 chInd = find(chIDnums == chIDnum);
 
 forBuffs = forBuffs(chInd);
-forStore = nan(1000,2); forP = 1;
+forStore = nan(100000,2); forP = 1;
 
 fig = figure; 
 
