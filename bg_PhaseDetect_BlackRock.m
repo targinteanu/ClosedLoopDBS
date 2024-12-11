@@ -201,7 +201,7 @@ stimBuff = nan(size(timeBuffs{chInd},1),1);
 Fs = cellfun(@(s) s.SampleRate, chanInfo); fs = Fs(chInd);
 if FilterSetUp
     filtInit = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
-    TimeShift = filtOrds(1)/fs; 
+    TimeShift = IndShiftFIR(1)/fs; 
 end
 
 %% loop

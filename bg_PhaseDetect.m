@@ -124,7 +124,7 @@ if FilterSetUp
     fltN = fltD(1,:); 
     fIC = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
     filtArgs.fltInit = fIC; filtArgs.fltObj = filtObjs;
-    filtArgs.TimeShift = filtOrds(1)/Fs; 
+    filtArgs.TimeShift = filtOrds(1)/(2*Fs); 
     if MdlSetUp
         forN = forD(1,:);
         foreArgs.K = forecastwin; foreArgs.k = forecastpad;
