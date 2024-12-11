@@ -129,8 +129,8 @@ while cont
             pltTime.YData = [nan; diff(tPlt)]; pltTime.XData = t0 + seconds(tPlt);
             pltTimeDisp.YData = [nan; diff(tPltDisp)]; pltTimeDisp.XData = t0 + seconds(tPltDisp);
             if sum(~isnat(tPltRng))
-                subplot(2,1,1); xlim(tPltRng);
-                subplot(2,1,2); xlim(tPltRng);
+                ax(1).XLim = tPltRng; 
+                ax(2).XLim = tPltRng;
             end
         end
     end
