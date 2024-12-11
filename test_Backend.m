@@ -24,7 +24,7 @@ load("20240829_ARmdl.mat");
 
 forecastwin = 1000; % # samples ahead to forecast
 buffSize = 20000; % samples
-chInd = 1;
+chInd = 33;
 
 %% setup structure 
 UserArgs.DAQstatus = true; UserArgs.RunMainLoop = true; 
@@ -37,11 +37,13 @@ UserArgs.allChannelIDs = [];
 UserArgs.PDSwin1 = forecastwin; UserArgs.PDSwin2 = ceil(.02*forecastwin);
 UserArgs.bufferSize = buffSize; UserArgs.bufferSizeGrid = ceil(.02*buffSize);
 UserArgs.PhaseOfInterest = [0 pi];
+UserArgs.StimActive = false; UserArgs.stimMaxFreq = 50;
 
 %% loop 
 bg_PhaseDetect(UserArgs, DQ, [], ...
     @InitializeRecording_cbmex, @disconnect_cbmex, ...
-    @initRawData_cbmex, @getNewRawData_cbmex);
+    @stimSetup_cerestim, @stimShutdown_cerestim, @stimPulse_cerestim, ...
+    @initRawData_cbmex, @getNewRawData_cbmex, @getTime_cbmex, @Controller_PDS_PD);
 
 catch ME
     getReport(ME)

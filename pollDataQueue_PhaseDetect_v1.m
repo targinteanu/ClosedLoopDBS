@@ -70,7 +70,7 @@ while dopoll
 
         if ~isempty(forStore)
             forBuffAll = [forStore; forBuff];
-            [~,forU] = unique(stimBuffAll, 'stable', 'rows');
+            [~,forU] = unique(forBuffAll, 'stable', 'rows');
             forU = forU( forU > height(forStore) );
             forBuff = forBuffAll(forU, :);
             [forFull, forStore, forP, forBuffSv] = bufferStorage(...
