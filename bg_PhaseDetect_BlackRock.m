@@ -42,7 +42,7 @@ end
 if MdlSetUp
     mdls = UserArgs.Mdl;
 end
-selRaw = UserArgs.allChannelIDs;
+rawIDs = UserArgs.allChannelIDs;
 chInd = UserArgs.channelIndex; 
     % index (NOT ID NUMBER) of the recording channel/column; 
     % may be empty if unselected on startup
@@ -76,23 +76,23 @@ chnum = [continuousData{:,1}]';
 Fs = [continuousData{:,2}]';
 chname = spikeEvents(:,1);
 chname = chname(chnum);
-if isempty(selRaw)
+if isempty(rawIDs)
     % select all channels
-    selRaw = chnum;
+    rawIDs = chnum;
 end
 
 % initialize empty (for now)
-emptyData = cell(1,length(selRaw)); 
+emptyData = cell(1,length(rawIDs)); 
 rawH = emptyData; % "head" 
 rawT = emptyData; % "tail" 
 rawB = emptyData; % "buffer" 
 chanInfo = emptyData;
 
 % handle/check inputs 
-if length(buffSize) < length(selRaw)
+if length(buffSize) < length(rawIDs)
     if length(buffSize) == 1
         % assume the one input applies to all channels.
-        bufferSize = repmat(buffSize, size(selRaw));
+        bufferSize = repmat(buffSize, size(rawIDs));
     else
         error('Incompatible input dimensions.')
     end
@@ -101,8 +101,8 @@ end
 
 % assign raw data to the structure 
 
-for ch = 1:length(selRaw)
-    chInd = find(chnum == selRaw(ch)); 
+for ch = 1:length(rawIDs)
+    chInd = find(chnum == rawIDs(ch)); 
 
     if ~isempty(chInd)
 
@@ -143,6 +143,18 @@ rawD = [chanInfo; rawH; rawT; rawB];
 chIDs = cellfun(@(s) s.IDnumber, chanInfo); chID = chIDs(chInd);
 buffSize = UserArgs.bufferSizeGrid .* ones(size(chanInfo)); % samples
 buffSize(chInd) = UserArgs.bufferSize;
+
+rawInds = nan(size(rawIDs));
+for ch = 1:length(rawInds)
+    rawInd = find(rawIDs == chanInfo{ch}.IDnumber);
+    if ~isempty(rawInd)
+        rawInds(ch) = rawInd;
+    end
+end
+if sum(isnan(rawInds))
+    warning('Some of the requested IDs were not found.')
+    rawInds = rawInds(~isnan(rawInds));
+end
 
 %% initialize processed data structs 
 
@@ -215,7 +227,7 @@ while cont_loop
 
 curTime = nan(1,size(rawD,2));
 
-[newTails, tailNames, tailIDs] = getNewRawData_cbmex(selRaw); 
+[newTails, tailNames, tailIDs] = getNewRawData_cbmex(rawIDs); 
 for ch = 1:size(newTails,2)
     newTail = newTails{ch};
     tailName = tailNames{ch};
@@ -346,12 +358,12 @@ end
 % send data AT LEAST that frequently so the user never waits for data
 if first_loop || (loopcount >= .5*loopsendnum)
     loopcount = 0;
-    if isempty(selRaw)
+    if isempty(rawIDs)
         rawD_ = rawD;
         timeBuffs_ = timeBuffs;
     else
-        rawD_ = rawD(:,selRaw);
-        timeBuffs_ = timeBuffs(selRaw);
+        rawD_ = rawD(:,rawInds);
+        timeBuffs_ = timeBuffs(rawInds);
     end
     % This relies on the forecast buffers being 2xN and the stim buffer
     % being 1xN; should be made more robust. 

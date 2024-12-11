@@ -65,7 +65,7 @@ end
 if MdlSetUp
     mdls = {UserArgs.Mdl};
 end
-selRaw = UserArgs.allChannelIDs;
+rawIDs = UserArgs.allChannelIDs;
 chInd = UserArgs.channelIndex; 
     % index (NOT ID NUMBER) of the recording channel/column; 
     % may be empty if unselected on startup
@@ -82,11 +82,23 @@ PhaseOfInterest = UserArgs.PhaseOfInterest;
 dT = .001; % s between data requests 
 
 % first request for raw data to get details only 
-[~,~,~,rawN] = InitializeRawData(selRaw, buffSize);
+[~,~,~,rawN] = InitializeRawData(rawIDs, buffSize);
 chID = cellfun(@(s) s.IDnumber, rawN); chID = chID(chInd);
 buffSize = UserArgs.bufferSizeGrid .* ones(size(rawN)); % samples
 buffSize(chInd) = UserArgs.bufferSize;
 ShutdownRecording();
+
+rawInds = nan(size(rawIDs));
+for ch = 1:length(rawInds)
+    rawInd = find(rawIDs == rawN{ch}.IDnumber);
+    if ~isempty(rawInd)
+        rawInds(ch) = rawInd;
+    end
+end
+if sum(isnan(rawInds))
+    warning('Some of the requested IDs were not found.')
+    rawInds = rawInds(~isnan(rawInds));
+end
 
 % assign channel indexes (NOT IDs!) to use for filtering and forecasting
 selRaw2Flt = []; selFlt2For = []; 
@@ -101,7 +113,7 @@ selRaw2For = [];
 % initialize data structs for real
 [rawD, fltD, forD, timeBuffs, initTic] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
-    selRaw, selRaw2Flt, selRaw2For, selFlt2For);
+    rawIDs, selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); 
 % to do: double width of forD and implement sine wave !!
 bgArgOut = UserArgs;
@@ -174,7 +186,7 @@ while cont_loop
     fltD, filtArgs, ...
     forBuffs, forD, foreArgs] = ...
     iterReadBrain(...
-        timeBuffs, rawD, @() GetNewRawData(selRaw), ...
+        timeBuffs, rawD, @() GetNewRawData(rawIDs), ...
         selRaw2Flt, selRaw2For, selFlt2For, ...
         [], [], [], [], ...
         fltD, filtfun, filtArgs, ...
@@ -207,12 +219,12 @@ while cont_loop
     % send data AT LEAST that frequently so the user never waits for data
     if first_loop || (loopcount >= .5*loopsendnum)
         loopcount = 0;
-        if isempty(selRaw)
+        if isempty(rawIDs)
             rawD_ = rawD;
             timeBuffs_ = timeBuffs;
         else
-            rawD_ = rawD(:,selRaw);
-            timeBuffs_ = timeBuffs(selRaw);
+            rawD_ = rawD(:,rawInds);
+            timeBuffs_ = timeBuffs(rawInds);
         end
         % This relies on the forecast buffers being 2xN and the stim buffer
         % being 1xN; should be made more robust. 
