@@ -115,9 +115,9 @@ handles.channelIndex = [];
 handles.PhaseOfInterest = [0, pi];
 
 % init other storage buffers
-handles.phStorage = nan(1000,width(handles.PhaseOfInterest)); 
+handles.phStorage = nan(100000,width(handles.PhaseOfInterest)); 
 handles.phP = 1;
-handles.stStorage = nan(1000,1); handles.stP = 1;
+handles.stStorage = nan(100000,1); handles.stP = 1;
 
 % init empty plot handles to avoid errors later 
 handles.h_rawDataTrace = [];
@@ -159,7 +159,7 @@ if isempty(handles.pool)
 end
 
 % Set up a data queue(s)
-waitbar(.99, 'Setting parallel data queue(s)...')
+waitbar(.99, wb, 'Setting parallel data queue(s)...')
 %handles.userQueue = parallel.pool.PollableDataQueue;
 handles.dataQueue = parallel.pool.PollableDataQueue;
 handles.stimQueue = parallel.pool.PollableDataQueue;
@@ -197,8 +197,6 @@ handles.rmfieldList = {...
 waitbar(1, wb, 'Updating GUI handles...')
 pause(.1)
 close(wb)
-pause(.1)
-delete(wb)
 pause(.1)
 guidata(hObject, handles);
 
@@ -323,8 +321,8 @@ if ~dataRecd
     warning('Polling data queue timed out.')
     keyboard
 end
-cancelAll(handles.pool.FevalQueue);
 cancel(handles.f_PhaseDetect); 
+cancelAll(handles.pool.FevalQueue);
 guidata(hObject,handles)
 
 function txt_display_Callback(hObject, eventdata, handles)
@@ -438,8 +436,10 @@ if ~dataRecd
     warning('Polling data queue timed out.')
     %keyboard
 end
+if ~isempty(handles.f_PhaseDetect)
+    cancel(handles.f_PhaseDetect); 
+end
 cancelAll(handles.pool.FevalQueue);
-cancel(handles.f_PhaseDetect); 
 guidata(hObject, handles)
 stop(handles.timer)
 delete(handles.timer)
@@ -492,8 +492,8 @@ try
     % get data from Central
     if handles.dataQueue.QueueLength > 1000 
         % LIMIT DATA QUEUE LENGTH
-        cancelAll(handles.pool.FevalQueue);
         cancel(handles.f_PhaseDetect);
+        cancelAll(handles.pool.FevalQueue);
         error('Data Queue Overflow');
     end
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
@@ -708,6 +708,7 @@ try
 
     % get data from Central
     requeryPhaseDetect(hObject, -1);
+    handles = guidata(hObject); 
     pause(10) % This must be at least 4s to work. Unclear why. Might have to do with loopsendnum. TO DO: move to multi-level try 
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
@@ -794,6 +795,7 @@ try
             handles.FilterSetUp = false;
             guidata(hObject, handles);
             requeryPhaseDetect(hObject, 1);
+            handles = guidata(hObject);
             pause(.01);
         end
     end
@@ -801,7 +803,6 @@ try
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
     requeryPhaseDetect(hObject, 1);
-    %guidata(hObject,handles)
     
 catch ME
     getReport(ME)
@@ -829,7 +830,6 @@ try
     handles.RunMainLoop = false;
     guidata(hObject, handles)
     requeryPhaseDetect(hObject, 1);
-    guidata(hObject, handles)
 catch ME
     getReport(ME)
     keyboard
@@ -878,8 +878,8 @@ end
 end
 try
 if ~isempty(handles.f_PhaseDetect)
-cancelAll(handles.pool.FevalQueue);
 cancel(handles.f_PhaseDetect); 
+cancelAll(handles.pool.FevalQueue);
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
