@@ -793,6 +793,7 @@ try
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
             handles.FilterSetUp = false;
+            handles.MdlSetUp = false;
             guidata(hObject, handles);
             requeryPhaseDetect(hObject, 1);
             handles = guidata(hObject);
