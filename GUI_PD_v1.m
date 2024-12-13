@@ -130,6 +130,7 @@ handles.h_trouTrace = [];
 handles.h_stimTrace = [];
 handles.h_peakPhase = [];
 handles.h_trouPhase = [];
+handles.elecGridImg = [];
 
 % file saving 
 waitbar(.04, wb, 'Setting file save location...')
@@ -187,6 +188,7 @@ handles.rmfieldList = {...
     'text19', 'text17', 'text16', 'text15', ...
     'text14', 'text12', 'text13', 'text11', 'text9', 'text8', 'text7', 'text6', ...
     'ax_elecgrid', 'ax_polar', 'ax_timing', 'ax_filt', 'ax_raw', ...
+    'elecGridImg', ...
     'pop_elecgrid', 'pop_GreenStim', 'pop_YellowStim', 'pop_RedStim', 'pop_StopStim', ...
     ...'pop_channel5', 'pop_channel4', 'pop_channel3', 'pop_channel2', 'pop_channel1', 'pop_channels', ...
     'tgl_stim', 'tgl_StartStop', ...
@@ -413,6 +415,8 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+drawnow
+
 try
 % stop stim
 if handles.StimActive
@@ -450,10 +454,11 @@ end
 
 try
 % save stored data 
+Stim = handles.stStorage; PeakTrough = handles.phStorage;
 SerialLog = handles.srlStorage1;
 svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
-disp(['Saving Serial to ',svfn])
-save(svfn,'SerialLog');
+disp(['Saving Remaining Data to ',svfn])
+save(svfn, 'SerialLog', 'PeakTrough', 'Stim');
 disp('Saving all data...')
 ConsolidateSavedData_v1(handles.SaveFileLoc)
 catch ME2
@@ -738,7 +743,7 @@ try
                 redo = true;
             end
         end
-        redo = redo && redoWait < 11; % stop trying at some point
+        redo = redo && redoWait < 5; % stop trying at some point
     end
     unitname = rawD1{handles.channelIndex}.Unit;
 
