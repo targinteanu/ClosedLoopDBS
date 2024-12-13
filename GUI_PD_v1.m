@@ -709,16 +709,36 @@ try
     % get data from Central
     requeryPhaseDetect(hObject, -1);
     handles = guidata(hObject); 
-    pause(10) % This must be at least 4s to work. Unclear why. Might have to do with loopsendnum. TO DO: move to multi-level try 
-    [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
-    tPltRng, rawPlt, fltPlt, forPlt, ...
-    rawD1, rawD4, fltD1, fltD4, forD1, forD4, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
-    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-        handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
-    if ~dataRecd
-        error('Data aquisition timed out.')
+    % This may need 4-10 sec of waiting for the filtered data to send back.
+    % Unclear why. Might have to do with loopsendnum. 
+    redoWait = 0; redo = true; 
+    while redo
+        if redoWait > 0
+            pause(redoWait);
+        end
+        redoWait = redoWait + 1;
+        [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
+            tPltRng, rawPlt, fltPlt, forPlt, ...
+            rawD1, rawD4, fltD1, fltD4, forD1, forD4, ...
+            handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+            pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
+            handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
+            handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+        if ~dataRecd
+            error('Data aquisition timed out.')
+        end
+        redo = false; 
+        if handles.FilterSetUp
+            if isempty(fltPlt)
+                redo = true; 
+            end
+        end
+        if handles.MdlSetUp
+            if isempty(forPlt)
+                redo = true;
+            end
+        end
+        redo = redo && redoWait < 11; % stop trying at some point
     end
     unitname = rawD1{handles.channelIndex}.Unit;
 
@@ -759,7 +779,6 @@ try
         ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left 
         axes(handles.ax_filt); hold off; 
         if isempty(fltPlt)
-            keyboard
             error('Filter was not actually set up. Something is wrong in the code.')
         end
         handles.h_filtDataTrace = plot(fltPlt.Time - tNow, fltPlt.Variables); 
@@ -770,6 +789,9 @@ try
         % initiate prediction & peak/trough indicators overlayed on
         % filtered plot
         if handles.MdlSetUp
+            if isempty(forPlt)
+                error('Forecast was not actually set up. Something is wrong in the code.')
+            end
             tPk = forBuff(:,1); tTr = forBuff(:,2);
             handles.h_peakTrace = plot(handles.time0 + seconds(tPk) - tNow, zeros(size(tPk)), ...
                 '^', 'Color',"#EDB120"); 
@@ -838,7 +860,7 @@ end
 
 
 function TimerError(obj, evt, hObject)
-% timer has encountered an error!
+% timer has encountered an error! Why was it not caught?
 handles = guidata(hObject);
 keyboard
 
@@ -880,6 +902,14 @@ end
 try
 if ~isempty(handles.f_PhaseDetect)
 cancel(handles.f_PhaseDetect); 
+% For some reason, after push_filter, the above does not immediately cancel
+% all RunningFutures, but waiting at least 3 seconds will make them empty
+if handles.FilterSetUp
+    pause(10)
+end
+% cancellAll may be necessary in case anything is still running, but if the
+% FevalQueue is not empty, it causes annoying problems like extra GUI
+% windows trying to open or opening. 
 cancelAll(handles.pool.FevalQueue);
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
