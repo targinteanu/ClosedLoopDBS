@@ -18,13 +18,13 @@ TimeShiftFIR = filtorder/(2*srate); % seconds
 filtwts = fir1(filtorder, [loco, hico]./(srate/2));
 
 %% load AR model 
-load("20240829_ARmdl.mat");
+load("Saved Data Test\LargeConstFreqBaseline001_ARmdl.mat");
 
 %% init 
 
 forecastwin = 1000; % # samples ahead to forecast
 buffSize = 20000; % samples
-chInd = 33;
+chInd = 65;
 
 %% setup structure 
 UserArgs.DAQstatus = true; UserArgs.RunMainLoop = true; 
