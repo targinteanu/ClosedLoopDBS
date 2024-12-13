@@ -287,6 +287,7 @@ nrow = 21;
 img = nan(nrow, ncol);
 [X,Y] = meshgrid(1:ncol, 1:nrow);
 handles.elecGridImg = imagesc(img, [gridminval, gridmaxval]); 
+xticks([]); yticks([]);
 colormap('parula'); colorbar; hold on;
 chL_ = handles.channelList(1:(ncol*nrow));
 text(X(:),Y(:), chL_, ...
