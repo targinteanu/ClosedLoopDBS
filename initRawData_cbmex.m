@@ -67,9 +67,9 @@ for ch = 1:length(chsel)
 
         % check units 
         config = cbmex('config', chInd);
-        unitname_is = lower(config{11,1});
+        unitname_is = lower(config{10,1});
         if contains(unitname_is, 'unit')
-            unitname = config{11,2};
+            unitname = config{10,2};
         else
             unitname_is = contains(lower(config(:,1)), 'unit');
             unitname_is = find(unitname_is);
@@ -77,11 +77,44 @@ for ch = 1:length(chsel)
             unitname = config{unitname_is,2};
         end
 
+        % unit/scale conversion 
+        searchRow = [11; 12; 13; 14]; 
+        searchTerm = {'max', 'analog'; 
+                      'max', 'digi'; 
+                      'min', 'analog'; 
+                      'min', 'digi'};
+        searchResult = nan(size(searchRow)); 
+        for s = 1:length(searchResult)
+            searchRow(s) = min(searchRow(s), height(config));
+            searchres_is = lower(config{searchRow(s),1});
+            if contains(searchres_is, searchTerm{s,1}) && contains(searchres_is, searchTerm{s,2})
+                searchResult(s) = config{searchRow(s),2};
+            else
+                searchres_is = contains(lower(config(:,1)), searchTerm{s,1});
+                searchres_is = searchres_is & contains(lower(config(:,1)), searchTerm{s,2});
+                searchres_is = find(searchres_is); 
+                if ~isempty(searchres_is)
+                    if length(searchres_is) > 1
+                        warning(['Multiple config fields containing ',...
+                            searchTerm{s,1},' and ',searchTerm{s,2}])
+                    end
+                    searchResult(s) = config{searchres_is(1),2};
+                else
+                    warning(['No config fields containing ',...
+                        searchTerm{s,1},' and ',searchTerm{s,2}])
+                end
+            end
+        end
+
         % Channel Info
         ud.SampleRate = fs(chInd);
         ud.Name = chname{chInd};
         ud.Unit = unitname;
         ud.IDnumber = chnum(chInd);
+        ud.MinDigital = searchResult(4);
+        ud.MinAnalog = searchResult(3);
+        MaxDigital = searchResult(2); MaxAnalog = searchResult(1);
+        ud.Resolution = (MaxAnalog - ud.MinAnalog) / (MaxDigital - ud.MinDigital);
         chanInfo{ch} = ud;
 
         buffData{ch} = bufferData(emptyData{ch}, contData{ch});

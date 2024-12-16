@@ -13,13 +13,24 @@ for ch = 1:size(datas,2)
     if numel(data)
 
         chinfo = chaninfos{ch};
+        Unit = chinfo.Unit;
         t = data(:,1); 
+
+        scaleunits = ~isnan(chinfo.Resolution);
+        if ~scaleunits
+            Unit = [Unit,'[?]']; % indicate uncertainty 
+        end
     
         timestamps = ~isnan(t);
         timestamps = [1; find(timestamps); length(t)];
         for tsi = 1:(length(timestamps)-1)
             n1 = timestamps(tsi); n2 = timestamps(tsi+1)-1;
             Di = data(n1:n2,2);
+            if scaleunits
+                Di = Di - chinfo.MinDigital; 
+                Di = Di .* chinfo.Resolution; 
+                Di = Di + chinfo.MinAnalog;
+            end
             TTi = timetable(Di, ...
                 'SampleRate', chinfo.SampleRate, ...
                 'StartTime', seconds(t(n1)) + initTime, ...
@@ -27,7 +38,7 @@ for ch = 1:size(datas,2)
             TT = [TT; TTi];
         end
     
-        TT.Properties.VariableUnits = {chinfo.Unit};
+        TT.Properties.VariableUnits = {Unit};
         TT.Properties.UserData = chinfo;
         % retime to const sample rate and/or sort rows??
 

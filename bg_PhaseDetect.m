@@ -295,7 +295,7 @@ for ch_fore = 1:size(inData,2)
         inData{ch_fore}(:,2), FT, fs(ch_fore), phis, ...
         Ts(ch_fore), Fco(1), Fco(2));
     t2 = t2-Ts(ch_fore); % [t2peak, t2trough]
-    t2 = max(t2,0);
+    t2 = max(t2,0); % Should this be necessary? Will this cause problems?
     foreBuffsAdd{ch_fore} = t2; 
 end
 end
