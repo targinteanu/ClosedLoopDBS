@@ -143,9 +143,11 @@ else
 end
 
 % init forecast-output buffers, i.e. times to/of next phase(s) of interest
-forBuffs = cellfun(@(X) (nan(size(X,1),2)), timeBuffs, 'UniformOutput',false);
-forBuffs = forBuffs(chInd); 
-stimBuff = nan(size(timeBuffs{chInd},1),1); 
+error(selRaw2Flt)
+buffSize2 = (UserArgs.bufferSize / Fs) * .5 * UserArgs.stimMaxFreq;
+buffSize2 = ceil(buffSize2);
+forBuffs = {nan(buffSize2,2)}; 
+stimBuff = nan(buffSize2,1); 
 
 % stimulator 
 if UserArgs.StimActive
