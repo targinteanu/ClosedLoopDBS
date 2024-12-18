@@ -97,7 +97,8 @@ end
         rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),t0); rawPlt = rawPlt{1};
         fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
         forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
-        tPltRng = [gettimes(rawPlt); gettimes(fltPlt); gettimes(forPlt)];
+        %tPltRng = [gettimes(rawPlt); gettimes(fltPlt); gettimes(forPlt)];
+        tPltRng = gettimes(rawPlt);
         tPltRng = [min(tPltRng), max(tPltRng)];
         tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
     end
