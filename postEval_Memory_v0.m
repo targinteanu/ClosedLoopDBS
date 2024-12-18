@@ -21,7 +21,11 @@ dataOneChannel = dataAllChannels(channelIndex,:);
 dataOneChannelWithArtifact = dataOneChannel;
 
 %% Get timing data
-tRel = linspace(0,ns.MetaTags.DataPointsSec,ns.MetaTags.DataPoints);
+try
+    tRel = linspace(0,ns.MetaTags.DataPointsSec,ns.MetaTags.DataPoints);
+catch
+    tRel = linspace(0,ns.MetaTags.DataPoints/SamplingFreq,ns.MetaTags.DataPoints);
+end
 t = seconds(tRel);
 t0 = datetime(ns.MetaTags.DateTime); 
 t = t+t0; 
