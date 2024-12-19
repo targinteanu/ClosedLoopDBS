@@ -58,9 +58,9 @@ while dopoll
             stimBuffAll = [stimStore; stimBuff];
             [~,stimU] = unique(stimBuffAll, 'stable');
             stimU = stimU( stimU > height(stimStore) );
-            stimBuff = stimBuffAll(stimU, :);
+            stimBuffNew = stimBuffAll(stimU, :);
             [stimFull, stimStore, stimP, stimBuffSv] = bufferStorage(...
-                stimStore, stimP, removenan(stimBuff) );
+                stimStore, stimP, removenan(stimBuffNew) );
             if stimFull
                 Stim = stimBuffSv;
                 save([svname,num2str(svN),'.mat'], 'Stim');
@@ -72,9 +72,9 @@ while dopoll
             forBuffAll = [forStore; forBuff];
             [~,forU] = unique(forBuffAll, 'stable', 'rows');
             forU = forU( forU > height(forStore) );
-            forBuff = forBuffAll(forU, :);
+            forBuffNew = forBuffAll(forU, :);
             [forFull, forStore, forP, forBuffSv] = bufferStorage(...
-                forStore, forP, removenan(forBuff) );
+                forStore, forP, removenan(forBuffNew) );
             if forFull
                 PeakTrough = forBuffSv;
                 save([svname,num2str(svN),'.mat'], 'PeakTrough');

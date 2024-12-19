@@ -143,8 +143,7 @@ else
 end
 
 % init forecast-output buffers, i.e. times to/of next phase(s) of interest
-error(selRaw2Flt)
-buffSize2 = (UserArgs.bufferSize / Fs) * .5 * UserArgs.stimMaxFreq;
+buffSize2 = (UserArgs.bufferSize / rawN{chInd}.SampleRate) * .5 * UserArgs.stimMaxFreq;
 buffSize2 = ceil(buffSize2);
 forBuffs = {nan(buffSize2,2)}; 
 stimBuff = nan(buffSize2,1); 

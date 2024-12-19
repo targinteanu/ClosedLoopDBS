@@ -455,6 +455,8 @@ end
 
 try
 % save stored data 
+% TO DO: if Stim/PeakTrough are all nan or SerialLog has only nan
+% timestamps, do not save that variable 
 Stim = handles.stStorage; PeakTrough = handles.phStorage;
 SerialLog = handles.srlStorage1;
 svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
