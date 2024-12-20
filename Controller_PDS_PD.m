@@ -9,6 +9,13 @@ t2Q = inf;
 
 if bp > 10 % min band power cutoff; orig at 1000
     if handles.StimActive
+
+        %srl = handles.srl;
+        f = fields(handles.srl);
+        F = [f, repmat({' | '}, size(f))]';
+        F = F(:);
+        error([F{:}])
+
         ParadigmPhase = handles.srl.UserData.ParadigmPhase;
         if ~strcmpi(ParadigmPhase,'WAIT')
             if strcmpi(ParadigmPhase, 'Started') || strcmp(ParadigmPhase, 'gray')

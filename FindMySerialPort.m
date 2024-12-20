@@ -19,7 +19,8 @@ elseif strcmp(thiscomputer, 'DESKTOP-SDRL657')
     thisport = "COM3";
 elseif strcmp(thiscomputer, 'DESKTOP-PF4UFTT')
     % Toren Arginteanu - Surface Book
-    thisport = '';    
+    %thisport = '';    
+    thisport = 'COM9';
 else
     thisport = '';
 end
