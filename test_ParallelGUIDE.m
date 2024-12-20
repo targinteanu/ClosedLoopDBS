@@ -71,6 +71,9 @@ end
 
 handles.dataQueue = parallel.pool.PollableDataQueue;
 
+htxt = handles.text2;
+set(htxt, 'String', 'Starting GUI');
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -96,7 +99,7 @@ function StartButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 guidata(hObject, handles);
 handles.f = parfeval(@bg_Data, 1, ...
-    handles.dataQueue, true, handles.dataMean, handles.dataStd);
+    handles.dataQueue, true, handles.dataMean, handles.dataStd, handles.text2);
 guidata(hObject, handles);
 while strcmp(handles.f.State, 'running') && handles.checkEnable.Value
     handles = guidata(hObject);
@@ -175,18 +178,23 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-function x = bg_Data(DQ, RunMainLoop, xMean, xStd)
+function x = bg_Data(DQ, RunMainLoop, xMean, xStd, htxt)
 while RunMainLoop
     pause(.01);
     x = xStd*randn + xMean;
     send(DQ,x);
+    if x > xMean
+        set(htxt, 'String', 'large');
+    elseif x < xMean
+        set(htxt, 'String', 'small');
+    end
 end
 
 function doRefresh(hObject)
 handles = guidata(hObject);
 cancel(handles.f);
 handles.f = parfeval(@bg_Data, 1, ...
-    handles.dataQueue, true, handles.dataMean, handles.dataStd);
+    handles.dataQueue, true, handles.dataMean, handles.dataStd, handles.text2);
 guidata(hObject, handles);
 
 
