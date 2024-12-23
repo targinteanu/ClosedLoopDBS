@@ -493,7 +493,9 @@ cancelAll(handles.pool.FevalQueue);
 guidata(hObject, handles)
 stop(handles.timer)
 delete(handles.timer)
-delete(handles.srl);
+if ~handles.SerialArgs.NoSerial
+    delete(handles.srl);
+end
 catch ME3
     getReport(ME3)
 end
@@ -1056,7 +1058,9 @@ catch ME
 end
 
 function handles = disconnectSerial(handles)
-delete(handles.srl);
+if ~handles.SerialArgs.NoSerial
+    delete(handles.srl);
+end
 handles.srlHere = false;
 handles.textSrl.String = 'Serial disconnected from user thread.';
 
