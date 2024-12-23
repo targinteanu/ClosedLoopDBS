@@ -1026,7 +1026,20 @@ CBFn = handles.SerialArgs.CallbackFcn;
 thisportname = handles.SerialArgs.PortName; 
 noSerialSetup = handles.SerialArgs.NoSerial;
 if ~noSerialSetup
-    receiverSerial = serialport(thisportname, 9600);
+    try
+        pause(.1);
+        receiverSerial = serialport(thisportname, 9600);
+    catch ME1 
+        if contains(ME1.message, ...
+                'Verify that a device is connected to the port, the port is not in use')
+            % the port may need some time (how much?) before it is cleared 
+            warning('Failed to connect serial port on first try; trying again soon...')
+            pause(3);
+            receiverSerial = serialport(thisportname, 9600);
+        else
+            rethrow(ME1)
+        end
+    end
 end
 receiverSerial.UserData = ud;
 if ~noSerialSetup
