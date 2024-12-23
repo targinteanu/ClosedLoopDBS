@@ -1,4 +1,4 @@
-function [t2Q, Stim2Q] = Controller_PDS_PD(handles, dataPast, PeakTroughTimes)
+function [t2Q, Stim2Q] = Controller_PDS_PD(srl, handles, dataPast, PeakTroughTimes)
 
 bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate
 t2peak = PeakTroughTimes(:,1); 
@@ -10,13 +10,7 @@ t2Q = inf;
 if bp > 10 % min band power cutoff; orig at 1000
     if handles.StimActive
 
-        %srl = handles.srl;
-        f = fields(handles.srl);
-        F = [f, repmat({' | '}, size(f))]';
-        F = F(:);
-        error([F{:}])
-
-        ParadigmPhase = handles.srl.UserData.ParadigmPhase;
+        ParadigmPhase = srl.UserData.ParadigmPhase;
         if ~strcmpi(ParadigmPhase,'WAIT')
             if strcmpi(ParadigmPhase, 'Started') || strcmp(ParadigmPhase, 'gray')
                 % Started, gray, and red should all be the same.

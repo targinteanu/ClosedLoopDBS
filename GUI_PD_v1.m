@@ -80,18 +80,19 @@ waitbar(.03, wb, 'Setting up serial com...')
 handles.textSrl.String = 'attempting to start serial com here ...';
 thisportname = FindMySerialPort();
 noSerialSetup = isempty(thisportname);
-if ~noSerialSetup
-    receiverSerial = serialport(thisportname, 9600);
-end
 ud = struct('ReceivedData', '', ...
-            'ParadigmPhase', 'Stopped');
-receiverSerial.UserData = ud;
-if ~noSerialSetup
-configureCallback(receiverSerial,"terminator",...
-    @(hsrl,evt)CharSerialCallbackReceiver_PD_v0(hsrl,evt, ...
-                    handles.textSrl, handles.txt_Status)); 
+            'ParadigmPhase', 'Stopped'); 
+handles.SerialArgs = struct('UserData', ud, ...
+                         'CallbackFcn', @CharSerialCallbackReceiver_PD_v0, ...
+                         'PortName', thisportname, ...
+                         'NoSerial', noSerialSetup);
+try
+    handles = connectSerial(handles);
+catch ME1
+    getReport(ME1)
+    % try delete(instrfind) ??
+    keyboard
 end
-handles.srl = receiverSerial; 
 
 % serial saving 
 ud.TimeStamp = nan;
@@ -172,7 +173,7 @@ handles.rmfieldList = {...
     'dataQueue', 'stimQueue', 'pool', ...
     'f_PhaseDetect', ...
     'udBlank', 'srlStorage1', 'srlP1', 'phStorage', 'phP', 'stStorage', 'stP', ...
-    'timer', ...
+    'timer', 'srl', ...
     'h_rawDataTrace', 'h_filtDataTrace', 'h_timingTrace', 'h_timeDispTrace', ...
     'h_predTrace', 'h_peakTrace', 'h_trouTrace', 'h_stimTrace', ...
     'h_peakPhase', 'h_trouPhase', ...
@@ -194,6 +195,13 @@ handles.rmfieldList = {...
     'tgl_stim', 'tgl_StartStop', ...
     'push_AR', 'push_filter', 'push_remchan', ...
     'cmd_cbmexOpen', 'cmd_cbmexClose'};
+try
+    h1 = rmfield(handles, handles.rmfieldList);
+catch ME2
+    getReport(ME2)
+    % fix issue with removed field list here
+    keyboard
+end
 
 % Update handles structure
 waitbar(1, wb, 'Updating GUI handles...')
@@ -241,6 +249,7 @@ handles.time0 = datetime - seconds(cbmex('time'));
 disconnect_cbmex();
 
 handles.DAQstatus = true;
+handles = disconnectSerial(handles);
 
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
@@ -254,15 +263,27 @@ handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
 % Acquire some data to get channel information. Determine which channels
 % are enabled
 [dataRecd, handles.SaveFileN, ~,~,~, ~,~,~,~, rawInfo, ~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
     handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+    handles.srlStorage1, handles.srlP1);
 if ~dataRecd
     handles.DAQstatus = false;
     warning('Data aquisition timed out.')
 else
 cancel(handles.f_PhaseDetect);
+
+% serial text 
+if ~isempty(srlString)
+    handles.textSrl.String = srlString;
+end
+if ~isempty(srlUserData)
+    handles.txt_Status.String = srlUserData.ParadigmPhase;
+end
+
+handles = connectSerial(handles);
 
 % set channel popup menu to hold channels
 handles.fSamples = cellfun(@(ch) ch.SampleRate, rawInfo);
@@ -317,16 +338,28 @@ function cmd_cbmexClose_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.DAQstatus = false;
 [dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+        handles.srlStorage1, handles.srlP1);
 if ~dataRecd
     warning('Polling data queue timed out.')
     keyboard
 end
 cancel(handles.f_PhaseDetect); 
 cancelAll(handles.pool.FevalQueue);
+
+% serial text 
+if ~isempty(srlString)
+    handles.textSrl.String = srlString;
+end
+if ~isempty(srlUserData)
+    handles.txt_Status.String = srlUserData.ParadigmPhase;
+end
+
+handles = connectSerial(handles);
 guidata(hObject,handles)
 
 function txt_display_Callback(hObject, eventdata, handles)
@@ -354,7 +387,7 @@ end
 function tgl_StartStop_ButtonDownFcn(hObject, eventdata, handles)
 keyboard
 tgl_StartStop_Callback(hObject, eventdata, handles)
-% This has been added for debugging. Does the code ever get here?
+% Unclear why the code sometimes gets here instead of Callback below. 
 
 
 % --- Executes on button press in tgl_StartStop.
@@ -434,14 +467,25 @@ try
 cbmex('close')
 handles.DAQstatus = false;
 [dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+        handles.srlStorage1, handles.srlP1);
 if ~dataRecd
     warning('Polling data queue timed out.')
     %keyboard
 end
+
+% serial text 
+if ~isempty(srlString)
+    handles.textSrl.String = srlString;
+end
+if ~isempty(srlUserData)
+    handles.txt_Status.String = srlUserData.ParadigmPhase;
+end
+
 if ~isempty(handles.f_PhaseDetect)
     cancel(handles.f_PhaseDetect); 
 end
@@ -503,20 +547,32 @@ try
         % LIMIT DATA QUEUE LENGTH
         cancel(handles.f_PhaseDetect);
         cancelAll(handles.pool.FevalQueue);
+        handles = connectSerial(handles);
+        guidata(hObject, handles);
         error('Data Queue Overflow');
     end
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+        handles.srlStorage1, handles.srlP1);
     if ~dataRecd
         error('Data aquisition timed out.')
     end
     lastSampleProcTime = timeBuff(end);
     rawIDs = cellfun(@(s) s.IDnumber, rawD1);
+
+    % serial text
+    if ~isempty(srlString)
+        handles.textSrl.String = srlString;
+    end
+    if ~isempty(srlUserData)
+        handles.txt_Status.String = srlUserData.ParadigmPhase;
+    end
 
     % x axes alignment 
     common_xlim = tPltRng - tNow;
@@ -528,7 +584,7 @@ try
     % update serial log 
     % TO DO: there should be a better way to do this; serial callback
     % should trigger an event or listener that logs the info 
-    % Should this be in background instead?
+    if handles.srlHere % should not get here (?) 
     ReceivedData = handles.srl.UserData.ReceivedData; 
     if ~strcmp(ReceivedData, handles.srlLastMsg)
         ud = handles.srl.UserData; 
@@ -549,6 +605,7 @@ try
         end
     end
     handles.srlLastMsg = ReceivedData;
+    end
 
     % update electrode grid 
     if handles.showElecGrid
@@ -713,6 +770,7 @@ try
     handles.fSample = handles.fSamples(handles.channelIndex);
     handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
+    handles = disconnectSerial(handles);
     guidata(hObject, handles)
 
     % get data from Central
@@ -729,10 +787,12 @@ try
         [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
             tPltRng, rawPlt, fltPlt, forPlt, ...
             rawD1, rawD4, fltD1, fltD4, forD1, forD4, ...
-            handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+            handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+            handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
             pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
             handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-            handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+            handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+            handles.srlStorage1, handles.srlP1);
         if ~dataRecd
             error('Data aquisition timed out.')
         end
@@ -748,6 +808,14 @@ try
             end
         end
         redo = redo && redoWait < 5; % stop trying at some point
+
+        % serial text
+        if ~isempty(srlString)
+            handles.textSrl.String = srlString;
+        end
+        if ~isempty(srlUserData)
+            handles.txt_Status.String = srlUserData.ParadigmPhase;
+        end
     end
     unitname = rawD1{handles.channelIndex}.Unit;
 
@@ -841,6 +909,8 @@ catch ME
     handles.RunMainLoop = false; 
     guidata(hObject, handles);
     requeryPhaseDetect(hObject, 1);
+    handles = connectSerial(handles);
+    guidata(hObject, handles);
     keyboard
 end
 
@@ -862,6 +932,8 @@ try
     handles.RunMainLoop = false;
     guidata(hObject, handles)
     requeryPhaseDetect(hObject, 1);
+    handles = connectSerial(handles);
+    guidata(hObject, handles);
 catch ME
     getReport(ME)
     keyboard
@@ -897,20 +969,30 @@ function requeryPhaseDetect(hObject, timeoutdur)
 handles = guidata(hObject);
 if timeoutdur >= 0
 [dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, timeoutdur, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+        handles.srlStorage1, handles.srlP1);
 if ~dataRecd
     warning('Polling data queue timed out.')
     %hObject
     %eventdata
     %keyboard
 end
+% serial text 
+if ~isempty(srlString)
+    handles.textSrl.String = srlString;
+end
+if ~isempty(srlUserData)
+    handles.txt_Status.String = srlUserData.ParadigmPhase;
+end
 end
 try
 if ~isempty(handles.f_PhaseDetect)
 cancel(handles.f_PhaseDetect); 
+handles = disconnectSerial(handles);
 % For some reason, after push_filter, the above does not immediately cancel
 % all RunningFutures, but waiting at least 3 seconds will make them empty
 if handles.FilterSetUp
@@ -935,6 +1017,35 @@ catch ME2
     keyboard
 end
 guidata(hObject, handles);
+
+
+function handles = connectSerial(handles)
+try
+ud = handles.SerialArgs.UserData; 
+CBFn = handles.SerialArgs.CallbackFcn;
+thisportname = handles.SerialArgs.PortName; 
+noSerialSetup = handles.SerialArgs.NoSerial;
+if ~noSerialSetup
+    receiverSerial = serialport(thisportname, 9600);
+end
+receiverSerial.UserData = ud;
+if ~noSerialSetup
+configureCallback(receiverSerial,"terminator",...
+    @(hsrl,evt)CBFn(hsrl,evt, ...
+                    handles.textSrl, handles.txt_Status)); 
+end
+handles.textSrl.String = 'Serial is connected on user thread.';
+handles.srlHere = true;
+handles.srl = receiverSerial;
+catch ME
+    getReport(ME)
+    handles.textSrl.String = ME.message;
+end
+
+function handles = disconnectSerial(handles)
+delete(handles.srl);
+handles.srlHere = false;
+handles.textSrl.String = 'Serial disconnected from user thread.';
 
 
 function plotData = plotLogical(logData)
@@ -1260,12 +1371,22 @@ try
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, stimBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
+        handles.srlStorage1, handles.srlP1);
     if ~dataRecd
         error('Data aquisition timed out.')
+    end
+
+    % serial text
+    if ~isempty(srlString)
+        handles.textSrl.String = srlString;
+    end
+    if ~isempty(srlUserData)
+        handles.txt_Status.String = srlUserData.ParadigmPhase;
     end
 
     y = fltD4{1}(:,2); 

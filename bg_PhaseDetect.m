@@ -77,6 +77,29 @@ forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
 buffSize = UserArgs.bufferSizeGrid;
 PhaseOfInterest = UserArgs.PhaseOfInterest;
 
+%% setup serial comm
+
+SerialArgs = UserArgs.SerialArgs;
+noSerialSetup = SerialArgs.NoSerial;
+srlUD = SerialArgs.UserData;
+if UserArgs.srlHere
+    % serial is already set up on user thread! 
+    error('Attempt to start serial on multiple threads.')
+end
+srlCBFn = SerialArgs.CallbackFcn;
+if ~noSerialSetup
+    receiverSerial = serialport(SerialArgs.PortName, 9600);
+    configureCallback(receiverSerial,"terminator", ...
+        @(hsrl,evt)srlCBFn(hsrl,evt)); % no GUI object args passed - must handle in DQ
+end
+receiverSerial.UserData = srlUD;
+srlString = 'Serial is connected on a parallel thread.';
+
+% saving 
+srlUD.TimeStamp = nan;
+srlBuff = repmat(srlUD, [100, 1]);
+srlLastMsg = srlUD.ReceivedData;
+
 %% init 
 
 dT = .001; % s between data requests 
@@ -198,7 +221,7 @@ while cont_loop
     forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
     forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
     if doStim
-        [t2stim, stim2q] = StimController(UserArgs, fltD{4,1}(:,2), forBuffNew);
+        [t2stim, stim2q] = StimController(receiverSerial, UserArgs, fltD{4,1}(:,2), forBuffNew);
         if stim2q && (t2stim < 2*looptime)
             t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
             % ensure below max freq
@@ -216,6 +239,20 @@ while cont_loop
         end
     end
 
+    % handle serial comm 
+    % TO DO: there should be a better way to do this; serial callback
+    % should trigger an event or listener that logs the info 
+    ReceivedData = receiverSerial.UserData.ReceivedData;
+    if ~isempty(ReceivedData)
+        srlString = ['Serial Port ',char(receiverSerial.Port),' Received Message: ',ReceivedData];
+    end
+    if ~strcmp(ReceivedData, srlLastMsg)
+        ud = receiverSerial.UserData; 
+        ud.TimeStamp = GetTime(initTic); % should this be last proc time from timeBuffs ???
+        srlBuff = bufferData(srlBuff, ud);
+    end
+    srlLastMsg = ReceivedData;
+
     % User should be ready for new data when loopcount = loopsendum
     % send data AT LEAST that frequently so the user never waits for data
     if first_loop || (loopcount >= .5*loopsendnum)
@@ -226,12 +263,12 @@ while cont_loop
         else
             rawD_ = rawD(:,rawInds);
             timeBuffs_ = timeBuffs(rawInds);
-        end
-        % This relies on the forecast buffers being 2xN and the stim buffer
-        % being 1xN; should be made more robust. 
+        end 
         send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
                   {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
-                  {timeBuffs_}, {stimBuff}, {forBuff}]);
+                  {timeBuffs_}, {stimBuff}, {forBuff}; ...
+                  {srlBuff}, {receiverSerial.UserData}, {srlString}]);
+        srlBuff = repmat(srlUD, size(srlBuff)); % blank 
     end
     % bgArgOut = [forBuff, stimBuff];
 
