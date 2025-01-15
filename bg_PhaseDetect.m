@@ -36,6 +36,13 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 % and outputs time to next stimulus. 
 % 
 
+SRLA = serialportlist("available");
+w = whos;
+ww = [w.name,' ',w.class];
+f = fields(UserArgs);
+ff = [f, repmat({' '},size(f))]';
+ff = [ff{:}];
+
 bgArgOut = [];
 
 looptime = .01; % starting estimate loop time (s)
@@ -87,10 +94,29 @@ if UserArgs.srlHere
     error('Attempt to start serial on multiple threads.')
 end
 srlCBFn = SerialArgs.CallbackFcn;
+
+if ~sum(strcmp(SRLA, SerialArgs.PortName))
+    error(['Port ',char(SerialArgs.PortName),' was not found. ',...
+        'UserArgs fields are: ',ff,' ; ',...
+        'workspace variables are: ',ww])
+end
+
 if ~noSerialSetup
+    try
     receiverSerial = serialport(SerialArgs.PortName, 9600);
     configureCallback(receiverSerial,"terminator", ...
         @(hsrl,evt)srlCBFn(hsrl,evt)); % no GUI object args passed - must handle in DQ
+    catch MEsrl
+        if strcmpi(MEsrl.identifier, 'serialport:serialport:ConnectionFailed')
+            srlavailstr = squeeze(char(SRLA));
+            srlavailstr = srlavailstr(:)';
+            srlavailstr = ['At time of error, available ports are ',srlavailstr,' | '];
+            msg = [srlavailstr, MEsrl.message];
+            error(msg)
+        else
+            rethrow(MEsrl)
+        end
+    end
 end
 receiverSerial.UserData = srlUD;
 srlString = 'Serial is connected on a parallel thread.';
@@ -269,6 +295,7 @@ while cont_loop
                   {timeBuffs_}, {stimBuff}, {forBuff}; ...
                   {srlBuff}, {receiverSerial.UserData}, {srlString}]);
         srlBuff = repmat(srlUD, size(srlBuff)); % blank 
+        srlString = '';
     end
     % bgArgOut = [forBuff, stimBuff];
 

@@ -887,7 +887,7 @@ catch ME
     handles = connectSerial(handles);
     guidata(hObject, handles);
     %}
-    keyboard
+    % keyboard
 end
 
 % ----------------------------------------------------------------------- %
@@ -968,7 +968,6 @@ end
 try
 if ~isempty(handles.f_PhaseDetect)
 cancel(handles.f_PhaseDetect); 
-handles = disconnectSerial(handles);
 % For some reason, after push_filter, the above does not immediately cancel
 % all RunningFutures, but waiting at least 3 seconds will make them empty
 if handles.FilterSetUp
@@ -979,6 +978,7 @@ end
 % windows trying to open or opening. 
 cancelAll(handles.pool.FevalQueue);
 end
+handles = disconnectSerial(handles);
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
