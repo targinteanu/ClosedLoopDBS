@@ -86,6 +86,7 @@ handles.SerialArgs = struct('UserData', ud, ...
                          'CallbackFcn', @CharSerialCallbackReceiver_PD_v0, ...
                          'PortName', thisportname, ...
                          'NoSerial', noSerialSetup);
+handles.srlHere = false;
 try
     handles = connectSerial(handles);
 catch ME1
@@ -246,44 +247,14 @@ end
 
 connect_cbmex();
 handles.time0 = datetime - seconds(cbmex('time'));
-disconnect_cbmex();
 
 handles.DAQstatus = true;
-handles = disconnectSerial(handles);
-
-handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
-    rmfield(handles, handles.rmfieldList), ...
-    handles.dataQueue, handles.stimQueue, ...
-    @InitializeRecording_cbmex, @disconnect_cbmex, ...
-    ... @stimSetup_cerestim, @stimShutdown_cerestim, @stimPulse_cerestim, ...
-    @(~) 0, @(~,~) 0, @(~,~) 0, ... dummy stimulator
-    @initRawData_cbmex, @getNewRawData_cbmex, @getTime_cbmex, ...
-    @Controller_PDS_PD);
 
 % Acquire some data to get channel information. Determine which channels
 % are enabled
-[dataRecd, handles.SaveFileN, ~,~,~, ~,~,~,~, rawInfo, ~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
-    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-    handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-    handles.srlStorage1, handles.srlP1);
-if ~dataRecd
-    handles.DAQstatus = false;
-    warning('Data aquisition timed out.')
-else
-cancel(handles.f_PhaseDetect);
+[~,~,~,rawInfo] = initRawData_cbmex(handles.allChannelIDs, handles.bufferSizeGrid);
 
-% serial text 
-if ~isempty(srlString)
-    handles.textSrl.String = srlString;
-end
-if ~isempty(srlUserData)
-    handles.txt_Status.String = srlUserData.ParadigmPhase;
-end
-
-handles = connectSerial(handles);
+disconnect_cbmex();
 
 % set channel popup menu to hold channels
 handles.fSamples = cellfun(@(ch) ch.SampleRate, rawInfo);
@@ -317,8 +288,6 @@ text(X(:),Y(:), chL_, ...
     'VerticalAlignment','middle', ...
     'FontWeight', 'bold', ...
     'Color',[.8 0 0]);
-
-end
 
 % Set the Start/Stop toggle button to stopped state (String is 'Start' and
 % Value is 1)
@@ -359,7 +328,7 @@ if ~isempty(srlUserData)
     handles.txt_Status.String = srlUserData.ParadigmPhase;
 end
 
-handles = connectSerial(handles);
+handles = connectSerial(handles); % ?
 guidata(hObject,handles)
 
 function txt_display_Callback(hObject, eventdata, handles)
@@ -549,8 +518,10 @@ try
         % LIMIT DATA QUEUE LENGTH
         cancel(handles.f_PhaseDetect);
         cancelAll(handles.pool.FevalQueue);
+        %{
         handles = connectSerial(handles);
         guidata(hObject, handles);
+        %}
         error('Data Queue Overflow');
     end
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
@@ -911,8 +882,11 @@ catch ME
     handles.RunMainLoop = false; 
     guidata(hObject, handles);
     requeryPhaseDetect(hObject, 1);
+    stop(handles.timer);
+    %{
     handles = connectSerial(handles);
     guidata(hObject, handles);
+    %}
     keyboard
 end
 
@@ -1004,6 +978,7 @@ end
 % FevalQueue is not empty, it causes annoying problems like extra GUI
 % windows trying to open or opening. 
 cancelAll(handles.pool.FevalQueue);
+end
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
@@ -1012,7 +987,6 @@ handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     @(~) 0, @(~,~) 0, @(~,~) 0, ... dummy stimulator 
     @initRawData_cbmex, @getNewRawData_cbmex, @getTime_cbmex, ...
     @Controller_PDS_PD);
-end
 catch ME2
     warning(ME2.message);
     % if there is a problem here, consider stopping everything 
@@ -1022,6 +996,10 @@ guidata(hObject, handles);
 
 
 function handles = connectSerial(handles)
+if handles.srlHere
+    % should already be connected? 
+    keyboard
+else
 try
 ud = handles.SerialArgs.UserData; 
 CBFn = handles.SerialArgs.CallbackFcn;
@@ -1055,6 +1033,7 @@ handles.srl = receiverSerial;
 catch ME
     getReport(ME)
     handles.textSrl.String = ME.message;
+end
 end
 
 function handles = disconnectSerial(handles)
