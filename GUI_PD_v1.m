@@ -88,7 +88,7 @@ handles.SerialArgs = struct('UserData', ud, ...
                          'NoSerial', noSerialSetup);
 handles.srlHere = false;
 try
-    handles = connectSerial(handles);
+    % handles = connectSerial(handles);
 catch ME1
     getReport(ME1)
     % try delete(instrfind) ??
@@ -328,7 +328,7 @@ if ~isempty(srlUserData)
     handles.txt_Status.String = srlUserData.ParadigmPhase;
 end
 
-handles = connectSerial(handles); % ?
+% handles = connectSerial(handles); % ?
 guidata(hObject,handles)
 
 function txt_display_Callback(hObject, eventdata, handles)
@@ -908,7 +908,7 @@ try
     handles.RunMainLoop = false;
     guidata(hObject, handles)
     requeryPhaseDetect(hObject, 1);
-    handles = connectSerial(handles);
+    % handles = connectSerial(handles);
     guidata(hObject, handles);
 catch ME
     getReport(ME)
