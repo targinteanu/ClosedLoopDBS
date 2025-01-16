@@ -20,6 +20,17 @@ if isempty(chsel)
 end
 
 newContData = cell(1,length(chsel));
+
+if width(chsel) == width(chnum)
+    % assume order is the same for timing 
+    for ch = 1:length(chsel)
+        newContData{ch} = ...
+            [nan(size(newContDataRaw{ch})), newContDataRaw{ch}];
+        newContData{ch}(1,1) = time;
+    end
+else
+
+% if not same size, can't be same order
 for ch = 1:length(chsel)
     chInd = find(chnum == chsel(ch)); 
     if ~isempty(chInd)
@@ -34,6 +45,8 @@ for ch = 1:length(chsel)
             'VariableNames', chname(chInd)); 
         %}
     end
+end
+
 end
 
 end
