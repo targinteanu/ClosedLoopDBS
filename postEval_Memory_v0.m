@@ -12,6 +12,7 @@ cd(cd00);
     channelName, channelIndex, channelIndexStim, channelNames]...
     = getRecordedData_NS(ns);
 dataOneChannelWithArtifact = dataOneChannel; 
+t0 = t(1);
 
 %% Get indexes of peaks, troughs, and stimulus pulses 
 PeakInd = PeakTime*SamplingFreq; 

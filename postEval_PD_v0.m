@@ -12,6 +12,7 @@ cd(cd00);
     channelName, channelIndex, channelIndexStim, channelNames]...
     = getRecordedData_NS(ns);
 dataOneChannelWithArtifact = dataOneChannel; 
+t0 = t(1);
 
 %% Get indexes of peaks, troughs, and stimulus pulses 
 PeakInd = PeakTime*SamplingFreq; 
@@ -75,6 +76,7 @@ end
 dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,13,30);
 
 %% determine red/yellow/green phases of experiment 
+if ~isempty(SerialLog)
 expStates = {SerialLog.ParadigmPhase}';
 SrlTimes = [SerialLog.TimeStamp]';
 expStatesU = unique(expStates);
@@ -89,8 +91,14 @@ for ESi = 1:length(expStatesU)
     expStateIT{ESi,2} = tStart; expStateIT{ESi,3} = tEnd;
     clear expState ind tStart tEnd indStim ESi
 end
+else
+    expStatesU = {};
+    expStateIT = {};
+end
 
 %% Plot time series 
+
+lgd = {'Data'; 'Peaks'; 'Troughs'; 'Stim'}; lgdsel = true(size(lgd));
 
 % select the data to plot 
 dataMinMax = [min(dataOneChannel), max(dataOneChannel)];
@@ -99,10 +107,24 @@ dataMin = dataMinMax(1); dataMax = dataMinMax(2);
 
 % plot data and indicate recorded peaks, troughs, stimuli 
 figure; plot(t,dataOneChannel); grid on; hold on; 
-plot(t(PeakInd),   dataOneChannel(PeakInd),   '^m'); 
-plot(t(TroughInd), dataOneChannel(TroughInd), 'vm'); 
-plot(t(StimInd),   dataOneChannel(StimInd),   '*r');
+if isempty(PeakInd)
+    lgdsel(2) = false;
+else
+    plot(t(PeakInd),   dataOneChannel(PeakInd),   '^m'); 
+end
+if isempty(TroughInd)
+    lgdsel(3) = false;
+else
+    plot(t(TroughInd), dataOneChannel(TroughInd), 'vm'); 
+end
+if isempty(StimInd)
+    lgdsel(4) = false;
+else
+    plot(t(StimInd),   dataOneChannel(StimInd),   '*r');
+end
+lgd = lgd(lgdsel);
 
+if ~isempty(SerialLog)
 % shade plot regions indicating encode and decode state of paradigm 
 for ESi = 1:length(expStatesU)
     colr = expStatesU{ESi};
@@ -127,9 +149,10 @@ for ESi = 1:length(expStatesU)
 
     clear colr tStart tEnd ESi
 end
+end
 
 % label the plot 
-legend([{'Data'; 'Peaks'; 'Troughs'; 'Stim'}; expStatesU])
+legend([lgd; expStatesU])
 
 %% Get inst. freq. and phase 
 [dataPhase, dataFreq] = instPhaseFreq(dataOneChannel, SamplingFreq);
