@@ -89,11 +89,13 @@ PhaseOfInterest = UserArgs.PhaseOfInterest;
 SerialArgs = UserArgs.SerialArgs;
 noSerialSetup = SerialArgs.NoSerial;
 srlUD = SerialArgs.UserData;
+%{
 if UserArgs.srlHere
     % serial is already set up on user thread! 
     error('Attempt to start serial on multiple threads.')
 end
 srlCBFn = SerialArgs.CallbackFcn;
+%}
 
 %{
 if ~sum(strcmp(SRLA, SerialArgs.PortName))

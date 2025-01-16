@@ -115,7 +115,7 @@ handles.bufferSizeGrid = 10;
 handles.allChannelIDs = [];
 handles.channelIndex = [];
 handles.PhaseOfInterest = [0, pi];
-handles.srl = [];
+% handles.srl = [];
 
 % init other storage buffers
 handles.phStorage = nan(100000,width(handles.PhaseOfInterest)); 
