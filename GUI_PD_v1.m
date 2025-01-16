@@ -88,7 +88,7 @@ handles.SerialArgs = struct('UserData', ud, ...
                          'NoSerial', noSerialSetup);
 handles.srlHere = false;
 try
-    % handles = connectSerial(handles);
+    handles = connectSerial(handles);
 catch ME1
     getReport(ME1)
     % try delete(instrfind) ??
@@ -744,7 +744,7 @@ try
     handles.fSample = handles.fSamples(handles.channelIndex);
     handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
-    handles = disconnectSerial(handles);
+    % handles = disconnectSerial(handles);
     guidata(hObject, handles)
 
     % get data from Central
@@ -979,7 +979,7 @@ end
 % windows trying to open or opening. 
 cancelAll(handles.pool.FevalQueue);
 end
-handles = disconnectSerial(handles);
+% handles = disconnectSerial(handles);
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
