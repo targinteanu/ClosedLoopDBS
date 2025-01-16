@@ -95,12 +95,15 @@ if UserArgs.srlHere
 end
 srlCBFn = SerialArgs.CallbackFcn;
 
+%{
 if ~sum(strcmp(SRLA, SerialArgs.PortName))
     error(['Port ',char(SerialArgs.PortName),' was not found. ',...
         'UserArgs fields are: ',ff,' ; ',...
         'workspace variables are: ',ww])
 end
+%}
 
+%{
 if ~noSerialSetup
     try
     receiverSerial = serialport(SerialArgs.PortName, 9600);
@@ -118,8 +121,10 @@ if ~noSerialSetup
         end
     end
 end
+%}
 receiverSerial.UserData = srlUD;
-srlString = 'Serial is connected on a parallel thread.';
+%srlString = 'Serial is connected on a parallel thread.';
+srlString = 'Serial was bypassed on a parallel thread.';
 
 % saving 
 srlUD.TimeStamp = nan;
@@ -248,7 +253,7 @@ while cont_loop
     forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
     if doStim
         [t2stim, stim2q] = StimController(receiverSerial, UserArgs, fltD{4,1}(:,2), forBuffNew);
-        if stim2q && (t2stim < 2*looptime)
+        if stim2q && (t2stim < 1.5*looptime)
             t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
             % ensure below max freq
             if 1/(t2stim + timeBuffs{chInd}(end,:) - stimLastTime) <= UserArgs.stimMaxFreq
