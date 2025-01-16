@@ -8,27 +8,10 @@ cd00 = cd; cd(filepath);
 load(OnlineFile.name); ns = openNSx(NSFile.name); 
 cd(cd00); 
 
-%% User selects channel 
-channelNames = {ns.ElectrodesInfo.Label};
-channelIndex = listdlg('ListString', channelNames);
-channelName = channelNames{channelIndex};
-channelIndexStim = find(contains(channelNames, 'ainp1'));
-
-%% interpret data from ns structure 
-SamplingFreq = ns.MetaTags.SamplingFreq;
-dataAllChannels = double(ns.Data); 
-dataOneChannel = dataAllChannels(channelIndex,:);
-dataOneChannelWithArtifact = dataOneChannel;
-
-%% Get timing data
-try
-    tRel = linspace(0,ns.MetaTags.DataPointsSec,ns.MetaTags.DataPoints);
-catch
-    tRel = linspace(0,ns.MetaTags.DataPoints/SamplingFreq,ns.MetaTags.DataPoints);
-end
-t = seconds(tRel);
-t0 = datetime(ns.MetaTags.DateTime); 
-t = t+t0; 
+[dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
+    channelName, channelIndex, channelIndexStim, channelNames]...
+    = getRecordedData_NS(ns);
+dataOneChannelWithArtifact = dataOneChannel; 
 
 %% Get indexes of peaks, troughs, and stimulus pulses 
 PeakInd = PeakTime*SamplingFreq; 
