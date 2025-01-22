@@ -54,6 +54,9 @@ rawIDs = cellfun(@(c) c.IDnumber, chInfo);
 
 curTime = nan(1,size(rawData,2));
 
+lenLastRaw = cellfun(@height, rawData(3,:)); lenLastFlt = lenLastRaw(selRaw2Flt);
+
+% TO DO: consolidate this with getNewRawData; is all this necessary?
 [newTails, tailNames, tailIDs] = daqFun(); 
 for ch = 1:size(newTails,2)
     newTail = newTails{ch};
@@ -128,7 +131,8 @@ curTimeFlt = curTime(selRaw2Flt);
 for CH = 1:size(fltData,2)
     [fltData{2,CH}, fltData{3,CH}, fltData{4,CH}] = ...
         bufferjuggle(fltData{2,CH},fltData{3,CH},fltTails{CH},@bufferData);
-    forArgs.TimeStart(CH) = curTimeFlt(CH) - fltArgs.TimeShift(CH);
+    CHfor = CH + length(selRaw2For); % corresponding forecast channel
+    forArgs.TimeStart(CHfor) = curTimeFlt(CH) - fltArgs.TimeShift(CH);
 end
 fltTails = fltData(3,:); fltAllData = fltData(4,:);
 
@@ -144,15 +148,19 @@ if doFor
 
 [forTails, forBuffsAdd, forArgs] = forFun(forArgs, ...
     [rawAllData(selRaw2For), fltAllData(selFlt2For)]);
-lenFor = [lenRaw(selRaw2For), lenFlt(selFlt2For)];
+lenFor = [lenLastRaw(selRaw2For), lenLastFlt(selFlt2For);
+          lenRaw(selRaw2For),     lenFlt(selFlt2For)];
 if ~(size(forTails,2) == size(forData,2))
     error('Forecast channels are inconsistent.');
 end
 curTimeFor = [curTime(selRaw2For), curTimeFlt(selFlt2For)];
 for CH = 1:size(forData,2)
-    [forData{2,CH}, forData{3,CH}, forData{4,CH}] = ...
-        bufferjuggle(forData{2,CH},forData{3,CH},forTails{CH}, ...
-        @(old, new) bufferDataOverwrite(old, new, lenFor(CH)));
+    oldHead = forData{2,CH}; oldTail = forData{3,CH}; newTail = forTails{CH};
+    oldTime = lenFor(1,CH); newTime = lenFor(2,CH); % overwrite times 
+    newHead =       bufferDataOverwrite(oldHead, oldTail, oldTime); 
+    forData{2,CH} = newHead;
+    forData{3,CH} = newTail; 
+    forData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
     forBuffCH = forBuffs{1,CH}; forBuffAddCH = forBuffsAdd{1,CH} + curTimeFor(CH);
     for p = 1:width(forBuffCH)
         if forBuffCH(end,p) > curTimeFor(CH)
