@@ -20,7 +20,11 @@ function [...
 %   stimRef is reference signal for new stimuli that would cause artifact
 %   [artRemData, artRemArgs] = artRemFun(artRemArgs, artRemHeads, rawTails)
 %   [fltTails, fltArgs] = fltFun(fltArgs, rawTails)
+%       fltArgs must have an array fltArgs.TimeShift which has each
+%       channel's time shift (in seconds) caused by the filter delay 
 %   [forTails, forBuffsAdd, forArgs] = forFun(forArgs, inData)
+%       forArgs must have an array forArgs.TimeStart which has each
+%       channel's starting time (seconds) where the forecast begins 
 
 %% handle/check inputs 
 tic
