@@ -30,7 +30,7 @@ else
             end
         end
     else
-        openNSx(fullfile(fp,[fn,fe]));
+        openNSx(fullfile(fp,[fn,fe]), 'uV');
         ns = eval(['NS',fe(end)]);
     end
     clear vtry
@@ -95,7 +95,8 @@ for ch = 1:height(dataAllChannels) % scale to reported unit - can this be replac
     dataAllChannels(ch,:) = x;
 end
 dataOneChannel = dataAllChannels(channelIndex,:);
-StimTrainRec = dataAllChannels(channelIndexStim,:) > 1e4;
+%StimTrainRec = dataAllChannels(channelIndexStim,:) > 3000;
+StimTrainRec = [false, diff(dataAllChannels(channelIndexStim,:)) > 2000]; % rising edge
 if ~numel(channelIndexStim)
     StimTrainRec = zeros(size(dataOneChannel));
 end
