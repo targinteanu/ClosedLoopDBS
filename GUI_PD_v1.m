@@ -285,8 +285,10 @@ img = nan(nrow, ncol);
 handles.elecGridImg = imagesc(img, [gridminval, gridmaxval]); 
 xticks([]); yticks([]);
 colormap('parula'); colorbar; hold on;
-chL_ = handles.channelList(1:(ncol*nrow));
-text(X(:),Y(:), chL_, ...
+chL_ = handles.channelList(1:min((ncol*nrow), length(handles.channelList)));
+X = X(:); X = X(1:length(chL_));
+Y = Y(:); Y = Y(1:length(chL_));
+text(X,Y, chL_, ...
     'HorizontalAlignment','center', ...
     'VerticalAlignment','middle', ...
     'FontWeight', 'bold', ...
@@ -619,8 +621,10 @@ try
     % update filtered data plot
     if handles.FilterSetUp
         try
-        set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
-        set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
+        if numel(fltPlt)
+            set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
+            set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
+        end
         if ~sum(isnan(ext_xlim))
             set(handles.ax_filt, 'XLim', ext_xlim);
         end
@@ -629,8 +633,10 @@ try
         if handles.MdlSetUp
             try
             if handles.check_polar.Value
+                if numel(forPlt)
                 set(handles.h_predTrace,'YData',forPlt.Variables);
                 set(handles.h_predTrace,'XData',forPlt.Time - tNow);
+                end
             end
             tPk = forBuff(:,1); tTr = forBuff(:,2); % time to peak, trough (s)
             set(handles.h_peakTrace,'YData',zeros(size(tPk)));
