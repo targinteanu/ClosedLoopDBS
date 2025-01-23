@@ -376,7 +376,7 @@ for ch_art = 1:size(rawTails,2)
     stimtimes = StimTimesTail{ch_art}; % time to stim (sec)
     stiminds = round(stimtimes * FsArt(ch_art));
     stiminds = stiminds(stiminds > 0);
-    for i1 = stiminds
+    for i1 = stiminds'
         i2 = i1 + StimLen(ch_art);
         if i2 > height(tX)
             % artifact will carry over into the next packet 
