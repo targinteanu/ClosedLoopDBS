@@ -758,6 +758,7 @@ try
     guidata(hObject, handles)
 
     % assign channel indexes (NOT IDs!) to use for filtering and forecasting
+    chInd = handles.channelIndex;
     selRaw2Flt = []; selFlt2For = []; selFor2Art = [];
     selRaw2Art = chInd;
     if handles.FilterSetUp
@@ -776,7 +777,6 @@ try
         'selRaw2For', selRaw2For);
 
     % (re-)init data structs
-    chInd = handles.channelIndex;
     disconnect_cbmex(); % is this necessary ?
     buffSize = handles.bufferSizeGrid .* ones(size(handles.allChannelInfo)); % samples
     buffSize(chInd) = handles.bufferSize;
@@ -791,17 +791,17 @@ try
     rawD1 = rawD(1,:); rawD4 = rawD(4,:);
     artD1 = artD(1,:); artD4 = artD(4,:);
     fltD1 = fltD(1,:); fltD4 = fltD(4,:);
-    forD1 = forD(1,:); forD4 = fltD(4,:);
+    forD1 = forD(1,:); forD4 = forD(4,:);
     timeBuff = timeBuffs{chInd};
     buffSize2 = (handles.bufferSize / rawD1{chInd}.SampleRate) * .5 * handles.stimMaxFreq;
     buffSize2 = ceil(buffSize2);
     forBuff = nan(buffSize2,2);
-    tst = nan(buffSize2,1);
+    tSt = nan(buffSize2,1);
     handles.allChannelInfo = rawD1;
-    rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),t0); rawPlt = rawPlt{1};
-    fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
-    forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
-    artPlt = data2timetable(artD4,artD1,t0); artPlt = artPlt{1};
+    rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),handles.time0); rawPlt = rawPlt{1};
+    fltPlt = data2timetable(fltD4,fltD1,handles.time0); fltPlt = fltPlt{1};
+    forPlt = data2timetable(forD4,forD1,handles.time0); forPlt = forPlt{1};
+    artPlt = data2timetable(artD4,artD1,handles.time0); artPlt = artPlt{1};
     if numel(rawPlt)
         tPltRng = rawPlt.Time;
     else
@@ -809,15 +809,11 @@ try
     end
     tPltRng = [min(tPltRng), max(tPltRng)];
     tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
-    handles.recDataStructs = struct(...
-        'rawD', rawD, ...
-        'artD', artD, ...
-        'fltD', fltD, ...
-        'forD', forD, ...
-        'timeBuffs', timeBuffs, ...
-        'initTic', initTic, ...
-        'forBuffs', {forBuff}, ...
-        'stimBuff', tst);
+    recDataStructs.forBuffs = {forBuff}; recDataStructs.stimBuff = tSt;
+    for v = ["rawD", "artD", "fltD", "forD", "timeBuffs", "initTic"]
+        eval("recDataStructs."+v+" = "+v+";");
+    end
+    handles.recDataStructs = recDataStructs;
 
     unitname = handles.allChannelInfo{handles.channelIndex}.Unit;
 
@@ -1026,10 +1022,10 @@ end
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
-    @InitializeRecording_cbmex, @disconnect_cbmex, ...
-    @stimSetup_cerestim, @stimShutdown_cerestim, @stimPulse_cerestim, ...
-    ...@(~) 0, @(~,~) 0, @(~,~) 0, ... dummy stimulator 
-    @initRawData_cbmex, @getNewRawData_cbmex, @getTime_cbmex, ...
+    @connect_cbmex, @disconnect_cbmex, ...
+    ...@stimSetup_cerestim, @stimShutdown_cerestim, @stimPulse_cerestim, ...
+    @(~) 0, @(~,~) 0, @(~,~) 0, ... dummy stimulator 
+    @getNewRawData_cbmex, @getTime_cbmex, ...
     @Controller_PDS_PD);
 catch ME2
     warning(ME2.message);

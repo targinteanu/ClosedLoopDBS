@@ -1,7 +1,7 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
-    InitializeRecording, ShutdownRecording, ...
+    SetupRecording, ShutdownRecording, ...
     SetupStimulator, ShutdownStimulator, PulseStimulator, ...
-    InitializeRawData, GetNewRawData, GetTime, StimController)
+    GetNewRawData, GetTime, StimController)
 % 
 % Run brain recording with phase detection/prediction for PDS.
 % 
@@ -152,6 +152,8 @@ srlLastMsg = srlUD.ReceivedData;
 %% init 
 
 dT = .001; % s between data requests 
+
+SetupRecording();
 
 rawInds = nan(size(rawIDs));
 for ch = 1:length(rawInds)
