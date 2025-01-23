@@ -18,6 +18,11 @@ function [siginf,asiginf] = neuromodulation_output_visualization(filename, Hmag_
 
     Fs = 1000;
 
+    if nargin < 1
+        [fn,fp] = uigetfile('*.csv');
+        filename = fullfile(fp,fn);
+    end
+
     if(nargin < 2)
         Hmag_Threshold = 100;
     end
