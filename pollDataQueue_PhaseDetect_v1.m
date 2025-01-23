@@ -1,6 +1,6 @@
 function [dataReceived, svN, timeBuff, forBuff, stimBuff, ...
-    tPltRng, rawPlt, fltPlt, forPlt, ...
-    rawD1, rawD4, fltD1, fltD4, forD1, forD4, ...
+    tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
+    rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
     forStore, forP, stimStore, stimP, srlStore, srlP, ...
     srlUserData, srlString] = ...
     pollDataQueue_PhaseDetect_v1(dataQueue, chInd, svname, svN, t0, pollTimeOut, ...
@@ -36,11 +36,12 @@ if isempty(chInd)
 end
 
         tPltRng = []; 
-        rawPlt = []; fltPlt = []; forPlt = [];
+        rawPlt = []; fltPlt = []; forPlt = []; artPlt = [];
         timeBuff = []; forBuff = []; stimBuff = [];
         rawD1 = []; rawD4 = []; 
         fltD1 = []; fltD4 = []; 
         forD1 = []; forD4 = [];
+        artD1 = []; artD4 = [];
         srlUserData = []; srlString = '';
         dataReceived = false;
 
@@ -104,6 +105,7 @@ while dopoll
         rawD1 = sentData{1,1}; rawD4 = sentData{2,1};
         fltD1 = sentData(1,2); fltD4 = sentData(2,2);
         forD1 = sentData(1,3); forD4 = sentData(2,3);
+        artD1 = sentData(1,4); artD4 = sentData(2,4);
         timeBuffs = sentData{3,1}; 
         timeBuff = timeBuffs{chInd};
     end
@@ -116,6 +118,7 @@ end
         rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),t0); rawPlt = rawPlt{1};
         fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
         forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
+        artPlt = data2timetable(artD4,artD1,t0); artPlt = artPlt{1};
         %tPltRng = [gettimes(rawPlt); gettimes(fltPlt); gettimes(forPlt)];
         tPltRng = gettimes(rawPlt);
         tPltRng = [min(tPltRng), max(tPltRng)];
