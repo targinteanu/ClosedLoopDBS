@@ -56,27 +56,14 @@ curTime = nan(1,size(rawData,2));
 
 lenLastRaw = cellfun(@height, rawData(3,:)); lenLastFlt = lenLastRaw(selRaw2Flt);
 
-% TO DO: consolidate this with getNewRawData; is all this necessary?
 [newTails, tailNames, tailIDs] = daqFun(); 
-for ch = 1:size(newTails,2)
-    newTail = newTails{ch};
-    tailName = tailNames{ch};
-    %CH = find(strcmp(tailName, rawNames)); 
-    tailID = tailIDs(ch);
-    CH = find(tailID == rawIDs);
-    if isempty(CH)
-        error(['Unrecognized new raw data label: ',tailName]);
-    end
-    if length(CH) > 1
-        error(['Raw data label ',tailName,' is not unique.']);
-    end
-
+for CH = 1:width(rawData)
+    newTail = newTails{CH};
+    [rawData{2,CH}, rawData{3,CH}, rawData{4,CH}] = ...
+        bufferjuggle(rawData{2,CH},rawData{3,CH},newTail,@bufferData);
     fs = chInfo{CH}.SampleRate;
     tailProcTime = newTail(1,1) + (height(newTail)-1)/fs; 
     curTime(CH) = tailProcTime;
-
-    [rawData{2,CH}, rawData{3,CH}, rawData{4,CH}] = ...
-        bufferjuggle(rawData{2,CH},rawData{3,CH},newTail,@bufferData);
     timeBuffs{1,CH} = bufferData(timeBuffs{1,CH}, tailProcTime);
 end
 

@@ -34,6 +34,9 @@ else
 for ch = 1:length(chsel)
     chInd = find(chnum == chsel(ch)); 
     if ~isempty(chInd)
+        if length(chInd) > 1
+            error(['Raw data ID ',num2str(chsel(ch)),' is not unique.'])
+        end
         newContData{ch} = ...
             [nan(size(newContDataRaw{chInd})), newContDataRaw{chInd}];
         newContData{ch}(1,1) = time;
