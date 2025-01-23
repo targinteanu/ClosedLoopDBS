@@ -5,8 +5,8 @@ function [...
     forBuffs, forData, forArgs] = ...
     iterReadBrain(...
         timeBuffs, rawData, daqFun, ...
-        selRaw2Flt, selRaw2For, selFlt2For, ...
-        artRemData, stimRef, artRemFun, artRemArgs, ...
+        selRaw2Art, selFor2Art, selRaw2Flt, selRaw2For, selFlt2For, ...
+        artRemData, artRemFun, artRemArgs, ...
         fltData, fltFun, fltArgs, ...
         forBuffs, forData, forFun, forArgs)
 % One iteration of brain reading, to be used as a main loop or timer
@@ -18,7 +18,7 @@ function [...
 %   selxxx2xxx is a horizontal array of selected column indexes
 %   calling daqFun() gets new raw tails 
 %   stimRef is reference signal for new stimuli that would cause artifact
-%   [artRemData, artRemArgs] = artRemFun(artRemArgs, artRemHeads, rawTails)
+%   [artRemTails, artRemArgs] = artRemFun(artRemArgs, rawTails, forTails)
 %   [fltTails, fltArgs] = fltFun(fltArgs, rawTails)
 %       fltArgs must have an array fltArgs.TimeShift which has each
 %       channel's time shift (in seconds) caused by the filter delay 
@@ -30,7 +30,7 @@ function [...
 tic
 
 doDAQ = (~isempty(rawData)) && (~isempty(daqFun));
-doArt = doDAQ && (~isempty(artRemData)) && (~isempty(stimRef)) && (~isempty(artRemFun));
+doArt = doDAQ && (~isempty(artRemData)) && (~isempty(artRemFun));
 doFlt = doDAQ && (~isempty(fltFun)); 
 doFor = doDAQ && (~isempty(forFun));
 
@@ -83,8 +83,8 @@ end
 % selection, etc
 rawTails = rawData(3,:); rawAllData = rawData(4,:);
 try
-    rawTails = rawTails([selRaw2Flt, selRaw2For]); 
-    rawAllData = rawAllData([selRaw2Flt, selRaw2For]);
+    rawTails = rawTails([selRaw2Art, selRaw2Flt, selRaw2For]); 
+    rawAllData = rawAllData([selRaw2Art, selRaw2Flt, selRaw2For]);
 catch ME
     if strcmp(ME.identifier, 'MATLAB:badsubscript')
         error('Requested selected channel(s) that do(es) not exist in raw data.');
@@ -92,8 +92,9 @@ catch ME
         rethrow(ME);
     end
 end
-selRaw2Flt = 1:length(selRaw2Flt); 
-selRaw2For = length(selRaw2Flt) + (1:length(selRaw2For));
+selRaw2Art = 1:length(selRaw2Art);
+selRaw2Flt = length(selRaw2Art) + (1:length(selRaw2Flt)); 
+selRaw2For = length(selRaw2Art) + length(selRaw2Flt) + (1:length(selRaw2For));
 lenRaw = cellfun(@height, rawTails); lenFlt = lenRaw(selRaw2Flt);
 
 end
@@ -103,18 +104,22 @@ DAQ_time = toc; disp(['DAQ time = ',num2str(DAQ_time)])
 tic
 if doArt
 
-artRemHeads = artRemData(2,:);
-[artRemTails, artRemArgs] = artRemFun(artRemArgs, artRemHeads, rawTails);
+nOverlapOld = artRemArgs.nOverlap;
+[artRemTails, artRemArgs] = artRemFun(artRemArgs, ...
+    rawTails(selRaw2Art), forData(3,selFor2Art));
 if ~(size(artRemTails,2) == size(artRemData,2))
     error('Artifact removal channels are inconsistent.');
 end
 for CH = 1:size(artRemData, 2)
-    [artRemData{2,CH}, artRemData{3,CH}, artRemData{4,CH}] = ...
-        bufferjuggle(artRemData{2,CH},artRemData{3,CH},artRemTails{CH},@bufferData);
-    % does this buffering need to have an overwrite for future extended
-    % data instead? 
+    oldHead = artRemData{2,CH}; oldTail = artRemData{3,CH}; newTail = artRemTails{CH};
+    oldTime = nOverlapOld(CH); newTime = artRemArgs.nOverlap(CH); % overwrite times 
+    newHead =       bufferDataOverwrite(oldHead, oldTail, oldTime); 
+    artRemData{2,CH} = newHead;
+    artRemData{3,CH} = newTail; 
+    artRemData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
 end
-rawTails = artRemData(3,:); rawAllData = rawData(4,:);
+% overwrite raw data - internally only - ???
+rawTails(selRaw2Art) = artRemData(3,:); rawAllData(selRaw2Art) = artRemData(4,:);
 
 end
 

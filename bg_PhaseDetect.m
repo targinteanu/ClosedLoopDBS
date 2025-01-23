@@ -48,8 +48,6 @@ bgArgOut = [];
 looptime = .01; % starting estimate loop time (s)
 guitime = .4; % estimate of gui update time (s)
 
-cont_fullfunc = true; % run or wait for user input
-%while cont_fullfunc
 try
 %% import filter and model details, etc
 
@@ -60,6 +58,7 @@ end
 cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop; 
     % if false, loop should only run once
 
+doArtRem = UserArgs.check_artifact.Value;
 FilterSetUp = UserArgs.FilterSetUp; % t/f
 MdlSetUp = FilterSetUp && UserArgs.MdlSetUp; % t/f
 if FilterSetUp
@@ -157,11 +156,13 @@ if sum(isnan(rawInds))
 end
 
 % assign channel indexes (NOT IDs!) to use for filtering and forecasting
-selRaw2Flt = []; selFlt2For = []; 
+selRaw2Flt = []; selFlt2For = []; selRaw2Art = []; selFor2Art = [];
 if FilterSetUp
     selRaw2Flt = chInd; 
     if MdlSetUp
         selFlt2For = 1;
+        selFor2Art = 1;
+        selRaw2Art = chInd;
     end
 end
 selRaw2For = []; 
@@ -171,31 +172,39 @@ selRaw2For = [];
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
     rawIDs, selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); 
+%artD = rawD(:,selRaw2Art); 
+artD = rawD(:,chInd); % FIX THIS!!!
 % to do: double width of forD and implement sine wave !!
 bgArgOut = UserArgs;
 
 % define input args for filtering/forecasting funcs 
-Fs = cellfun(@(s) s.SampleRate, rawN); Fs = Fs(selRaw2Flt);
+Fs = cellfun(@(s) s.SampleRate, rawN); 
 if FilterSetUp
     fltN = fltD(1,:); 
     fIC = arrayfun(@(ord) zeros(ord,1), filtOrds, 'UniformOutput',false);
     filtArgs.fltInit = fIC; filtArgs.fltObj = filtObjs;
-    filtArgs.TimeShift = filtOrds(1)/(2*Fs); 
+    filtArgs.TimeShift = filtOrds(1)/(2*Fs(selRaw2Flt)); 
     if MdlSetUp
         forN = forD(1,:);
         foreArgs.K = forecastwin; foreArgs.k = forecastpad;
         foreArgs.TimeStart = nan(size(forN));
         foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
         foreArgs.ARmdls = mdls;
-        foreArgs.SampleRates = Fs;
+        foreArgs.SampleRates = Fs(selRaw2Flt); % !!! needs improvement
         foreArgs.FreqRange = [loco, hico];
         foreArgs.PhaseOfInterest = PhaseOfInterest;
+        artRemArgs.SampleRates = Fs(selRaw2Art);
+        artRemArgs.StimDur = .11; % seconds
+        artRemArgs.StimTimes = cell(size(artRemArgs.SampleRates));
+        artRemArgs.nOverlap = zeros(size(artRemArgs.SampleRates));
     else
         foreArgs = [];
+        artRemArgs = [];
     end
 else
     filtArgs = [];
     foreArgs = [];
+    artRemArgs = [];
 end
 
 % init forecast-output buffers, i.e. times to/of next phase(s) of interest
@@ -220,6 +229,11 @@ if MdlSetUp
 else
     forefun = [];
 end
+if doArtRem && MdlSetUp
+    artremfun = @artRemFun;
+else
+    artremfun = [];
+end
 doStim = ((~isempty(StimController)) && UserArgs.StimActive) && (FilterSetUp && MdlSetUp);
 
 %% loop 
@@ -239,13 +253,13 @@ while cont_loop
     % main iteration 
     [...
     timeBuffs, rawD, ...
-    ~, ~, ...
+    artD, artRemArgs, ...
     fltD, filtArgs, ...
     forBuffs, forD, foreArgs] = ...
     iterReadBrain(...
         timeBuffs, rawD, @() GetNewRawData(rawIDs), ...
-        selRaw2Flt, selRaw2For, selFlt2For, ...
-        [], [], [], [], ...
+        selRaw2Art, selFor2Art, selRaw2Flt, selRaw2For, selFlt2For, ...
+        artD, artremfun, artRemArgs, ...
         fltD, filtfun, filtArgs, ...
         forBuffs, forD, forefun, foreArgs);
 
@@ -267,6 +281,11 @@ while cont_loop
                 stimtime2 = GetTime(initTic);
                 stimtime = .5*(stimtime1 + stimtime2);
                 stimBuff = bufferData(stimBuff, stimtime);
+                if doArtRem
+                    artRemArgs.StimTimes = cellfun(...
+                        @(T) stimBuff - T(end,:), timeBuffs(selRaw2Art), ...
+                        'UniformOutput',false);
+                end
                 stimLastTime = stimtime;
             end
         end
@@ -297,10 +316,10 @@ while cont_loop
             rawD_ = rawD(:,rawInds);
             timeBuffs_ = timeBuffs(rawInds);
         end 
-        send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1); ...
-                  {rawD_(4,:)}, fltD(4,1), forD(4,1); ...
-                  {timeBuffs_}, {stimBuff}, {forBuff}; ...
-                  {srlBuff}, {receiverSerial.UserData}, {srlString}]);
+        send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1), artD(1,1); ...
+                  {rawD_(4,:)}, fltD(4,1), forD(4,1), artD(4,1); ...
+                  {timeBuffs_}, {stimBuff}, {forBuff}, {[]}; ...
+                  {srlBuff}, {receiverSerial.UserData}, {srlString}, {[]}]);
         srlBuff = repmat(srlUD, size(srlBuff)); % blank 
         srlString = '';
     end
@@ -336,7 +355,6 @@ end
 % If there are any errors in the full func, stop looping and allow the User
 % to handle them. 
 catch ME_fullfunc
-    cont_fullfunc = false;
     getReport(ME_fullfunc)
     send(DQ, ME_fullfunc)
 end
@@ -344,8 +362,41 @@ end
 
 %% function def 
 
+function [artRemTails, artRemArgs] = ...
+        artRemFun(artRemArgs, rawTails, forTails)
+% forTails must be the forecast data starting at the same time as rawTails
+artRemTails = cell(size(rawTails));
+FsArt = artRemArgs.SampleRates;
+StimDur = artRemArgs.StimDur; % seconds to remove
+StimLen = ceil(StimDur.*FsArt); % #samples to remove 
+StimTimesTail = artRemArgs.StimTimes; 
+for ch_art = 1:size(rawTails,2)
+    tXfor = forTails{ch_art};
+    tX = rawTails{ch_art}; % [time, data]
+    stimtimes = StimTimesTail{ch_art}; % time to stim (sec)
+    stiminds = round(stimtimes * FsArt(ch_art));
+    stiminds = stiminds(stiminds > 0);
+    for i1 = stiminds
+        i2 = i1 + StimLen(ch_art);
+        if i2 > height(tX)
+            % artifact will carry over into the next packet 
+            nO = i2 - height(tX);
+            artRemArgs.nOverlap(ch_art) = nO;
+            tX = [tX; nan(nO,2)]; 
+        else
+            % artifact limited to this packet 
+            artRemArgs.nOverlap(ch_art) = 0;
+        end
+        tX(i1:i2,2) = tXfor(i1:i2,2);
+    end
+    artRemTails{ch_art} = tX;
+end
+end
+
 function [foreTails, foreBuffsAdd, foreArgs] = foreFun(foreArgs, inData)
-% inData should just be the filtered channel of interest
+% inData should just be the (filtered) channel(s) of interest
+% foreTails will be the forecast tails starting at the current time minus
+% any filtering delay
 if isempty(foreArgs)
     error('Attempted forecast function with empty arguments.')
 end
@@ -363,7 +414,8 @@ for ch_fore = 1:size(inData,2)
     foreTails{ch_fore}(1,1) = foreArgs.TimeStart(ch_fore);
 
     FT = FT(1:k,:); % use limited duration for hilbert padding
-    [t2,i2,phi_inst,f_inst] = blockPDS(...
+    %[t2,i2,phi_inst,f_inst] = blockPDS(...
+    t2 = blockPDS(...
         inData{ch_fore}(:,2), FT, fs(ch_fore), phis, ...
         Ts(ch_fore), Fco(1), Fco(2));
     t2 = t2-Ts(ch_fore); % [t2peak, t2trough]
