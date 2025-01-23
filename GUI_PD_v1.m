@@ -621,7 +621,9 @@ try
         try
         set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
         set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
-        set(handles.ax_filt, 'XLim', ext_xlim);
+        if ~sum(isnan(ext_xlim))
+            set(handles.ax_filt, 'XLim', ext_xlim);
+        end
 
         % update model-forecasted data plot
         if handles.MdlSetUp
@@ -716,8 +718,10 @@ try
     set(handles.h_timeDispTrace,'YData',[nan; diff(handles.timeDispBuff)]);
     set(handles.h_timeDispTrace,'XData', ...
         handles.time0 + seconds(handles.timeDispBuff) - tNow );
-    set(handles.ax_raw, 'XLim', common_xlim);
-    set(handles.ax_timing, 'XLim', common_xlim);
+    if ~sum(isnan(common_xlim)) % why is it sometimes nan??
+        set(handles.ax_raw, 'XLim', common_xlim);
+        set(handles.ax_timing, 'XLim', common_xlim);
+    end
 
     guidata(hObject,handles)
 
