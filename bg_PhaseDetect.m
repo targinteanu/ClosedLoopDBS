@@ -83,6 +83,11 @@ forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
 buffSize = UserArgs.bufferSizeGrid;
 PhaseOfInterest = UserArgs.PhaseOfInterest;
 
+rawN = UserArgs.allChannelInfo;
+chID = cellfun(@(s) s.IDnumber, rawN); chID = chID(chInd);
+buffSize = UserArgs.bufferSizeGrid .* ones(size(rawN)); % samples
+buffSize(chInd) = UserArgs.bufferSize;
+
 %% setup serial comm
 
 SerialArgs = UserArgs.SerialArgs;
@@ -136,13 +141,6 @@ srlLastMsg = srlUD.ReceivedData;
 
 dT = .001; % s between data requests 
 
-% first request for raw data to get details only 
-[~,~,~,rawN] = InitializeRawData(rawIDs, buffSize);
-chID = cellfun(@(s) s.IDnumber, rawN); chID = chID(chInd);
-buffSize = UserArgs.bufferSizeGrid .* ones(size(rawN)); % samples
-buffSize(chInd) = UserArgs.bufferSize;
-ShutdownRecording();
-
 rawInds = nan(size(rawIDs));
 for ch = 1:length(rawInds)
     rawInd = find(rawIDs == rawN{ch}.IDnumber);
@@ -156,24 +154,22 @@ if sum(isnan(rawInds))
 end
 
 % assign channel indexes (NOT IDs!) to use for filtering and forecasting
-selRaw2Flt = []; selFlt2For = []; selRaw2Art = []; selFor2Art = [];
+selRaw2Flt = []; selFlt2For = []; selFor2Art = [];
+selRaw2Art = chInd; 
 if FilterSetUp
     selRaw2Flt = chInd; 
     if MdlSetUp
         selFlt2For = 1;
         selFor2Art = 1;
-        selRaw2Art = chInd;
     end
 end
 selRaw2For = []; 
 
 % initialize data structs for real
-[rawD, fltD, forD, timeBuffs, initTic] = ...
+[rawD, artD, fltD, forD, timeBuffs, initTic] = ...
     InitializeRecording(buffSize, filtOrds, forecastwin, ...
-    rawIDs, selRaw2Flt, selRaw2For, selFlt2For);
+    rawIDs, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
 rawN = rawD(1,:); 
-%artD = rawD(:,selRaw2Art); 
-artD = rawD(:,chInd); % FIX THIS!!!
 % to do: double width of forD and implement sine wave !!
 bgArgOut = UserArgs;
 

@@ -1,6 +1,6 @@
-function [rawD, fltD, forD, timeBuffs, startTic] = ...
+function [rawD, artD, fltD, forD, timeBuffs, startTic] = ...
     InitializeRecording_cbmex(buffSize, filtorder, forecastwin, ...
-    selRawID, selRaw2Flt, selRaw2For, selFlt2For)
+    selRawID, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For)
 % Initialize the multichannel data structures used in ClosedLoopDBS using
 % BlackRock hardware with the cbmex function.
 % Return structures for raw, filtered, and forecast data, as well as timing
@@ -30,6 +30,12 @@ catch ME
     [rawH, rawT, rawB, rawN, startTic] = initRawData_cbmex(selRawID, buffSize);
 end
 rawD = [rawN; rawH; rawT; rawB]; 
+
+if numel(selRaw2Art)
+    artD = rawD(:,selRaw2Art);
+else
+    artD = emptyOut;
+end
 
 if numel(IndShiftFIR) && numel(selRaw2Flt)
     fltH = initFilteredData(rawH(selRaw2Flt), IndShiftFIR); 

@@ -175,6 +175,7 @@ handles.rmfieldList = {...
     'dataQueue', 'stimQueue', 'pool', ...
     'f_PhaseDetect', ...
     'udBlank', 'srlStorage1', 'srlP1', 'phStorage', 'phP', 'stStorage', 'stP', ...
+    'output', ...
     'timer', 'srl', ...
     'h_rawDataTrace', 'h_filtDataTrace', 'h_timingTrace', 'h_timeDispTrace', ...
     'h_predTrace', 'h_peakTrace', 'h_trouTrace', 'h_stimTrace', ...
@@ -253,15 +254,16 @@ handles.DAQstatus = true;
 
 % Acquire some data to get channel information. Determine which channels
 % are enabled
-[~,~,~,rawInfo] = initRawData_cbmex(handles.allChannelIDs, handles.bufferSizeGrid);
+[~,~,~,allChannelInfo] = initRawData_cbmex(handles.allChannelIDs, handles.bufferSizeGrid);
+handles.allChannelInfo = allChannelInfo;
 
 disconnect_cbmex();
 
 % set channel popup menu to hold channels
-handles.fSamples = cellfun(@(ch) ch.SampleRate, rawInfo);
-handles.channelIDlist = cellfun(@(ch) ch.IDnumber, rawInfo);
+handles.fSamples = cellfun(@(ch) ch.SampleRate, allChannelInfo);
+handles.channelIDlist = cellfun(@(ch) ch.IDnumber, allChannelInfo);
 handles.channelList = cellfun(@(ch) [num2str(ch.IDnumber),': ',ch.Name], ...
-    rawInfo, 'UniformOutput',false);
+    allChannelInfo, 'UniformOutput',false);
 chL = [handles.channelList, 'None'];
 set(handles.pop_channels, 'String', handles.channelList);
 for pop_ = [handles.pop_channel1, ...
@@ -756,6 +758,7 @@ try
     guidata(hObject, handles)
 
     % get data from Central
+    %%{
     requeryPhaseDetect(hObject, -1);
     handles = guidata(hObject); 
     % This may need 4-10 sec of waiting for the filtered data to send back.
@@ -799,7 +802,8 @@ try
             handles.txt_Status.String = srlUserData.ParadigmPhase;
         end
     end
-    unitname = rawD1{handles.channelIndex}.Unit;
+    %}
+    unitname = handles.allChannelInfo{handles.channelIndex}.Unit;
 
     % keep track of the display time 
     handles.timeDisp1 = tic; handles.timeDisp0 = timeBuff(end, :);
