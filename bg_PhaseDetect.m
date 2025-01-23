@@ -80,13 +80,25 @@ chInd = UserArgs.channelIndex;
     end
 forecastwin = UserArgs.PDSwin1; % # samples ahead to forecast
 forecastpad = UserArgs.PDSwin2; % # of above to use to pad hilbert transform
-buffSize = UserArgs.bufferSizeGrid;
 PhaseOfInterest = UserArgs.PhaseOfInterest;
 
 rawN = UserArgs.allChannelInfo;
 chID = cellfun(@(s) s.IDnumber, rawN); chID = chID(chInd);
-buffSize = UserArgs.bufferSizeGrid .* ones(size(rawN)); % samples
-buffSize(chInd) = UserArgs.bufferSize;
+
+selRaw2Flt = UserArgs.selInds.selRaw2Flt;
+selFlt2For = UserArgs.selInds.selFlt2For;
+selFor2Art = UserArgs.selInds.selFor2Art;
+selRaw2Art = UserArgs.selInds.selRaw2Art;
+selRaw2For = UserArgs.selInds.selRaw2For;
+
+rawD = UserArgs.recDataStructs.rawD;
+artD = UserArgs.recDataStructs.artD;
+fltD = UserArgs.recDataStructs.fltD;
+forD = UserArgs.recDataStructs.forD;
+timeBuffs = UserArgs.recDataStructs.timeBuffs;
+initTic = UserArgs.recDataStructs.initTic;
+forBuffs = UserArgs.recDataStructs.forBuffs;
+stimBuff = UserArgs.recDataStructs.stimBuff;
 
 %% setup serial comm
 
@@ -153,24 +165,6 @@ if sum(isnan(rawInds))
     rawInds = rawInds(~isnan(rawInds));
 end
 
-% assign channel indexes (NOT IDs!) to use for filtering and forecasting
-selRaw2Flt = []; selFlt2For = []; selFor2Art = [];
-selRaw2Art = chInd; 
-if FilterSetUp
-    selRaw2Flt = chInd; 
-    if MdlSetUp
-        selFlt2For = 1;
-        selFor2Art = 1;
-    end
-end
-selRaw2For = []; 
-
-% initialize data structs for real
-[rawD, artD, fltD, forD, timeBuffs, initTic] = ...
-    InitializeRecording(buffSize, filtOrds, forecastwin, ...
-    rawIDs, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
-rawN = rawD(1,:); 
-% to do: double width of forD and implement sine wave !!
 bgArgOut = UserArgs;
 
 % define input args for filtering/forecasting funcs 
@@ -202,12 +196,6 @@ else
     foreArgs = [];
     artRemArgs = [];
 end
-
-% init forecast-output buffers, i.e. times to/of next phase(s) of interest
-buffSize2 = (UserArgs.bufferSize / rawN{chInd}.SampleRate) * .5 * UserArgs.stimMaxFreq;
-buffSize2 = ceil(buffSize2);
-forBuffs = {nan(buffSize2,2)}; 
-stimBuff = nan(buffSize2,1); 
 
 % stimulator 
 if UserArgs.StimActive

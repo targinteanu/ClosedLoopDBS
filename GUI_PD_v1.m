@@ -208,9 +208,9 @@ end
 
 % Update handles structure
 waitbar(1, wb, 'Updating GUI handles...')
-pause(.1)
+pause(.01)
 close(wb)
-pause(.1)
+pause(.01)
 guidata(hObject, handles);
 
 clc
@@ -757,52 +757,68 @@ try
     % handles = disconnectSerial(handles);
     guidata(hObject, handles)
 
-    % get data from Central
-    %%{
-    requeryPhaseDetect(hObject, -1);
-    handles = guidata(hObject); 
-    % This may need 4-10 sec of waiting for the filtered data to send back.
-    % Unclear why. Might have to do with loopsendnum. 
-    redoWait = 0; redo = true; 
-    while redo
-        if redoWait > 0
-            pause(redoWait);
-        end
-        redoWait = redoWait + 1;
-        [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
-            tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
-            rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
-            handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-            handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
-            pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-            handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-            handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-            handles.srlStorage1, handles.srlP1);
-        if ~dataRecd
-            error('Data aquisition timed out.')
-        end
-        redo = false; 
-        if handles.FilterSetUp
-            if isempty(fltPlt)
-                redo = true; 
-            end
-        end
+    % assign channel indexes (NOT IDs!) to use for filtering and forecasting
+    selRaw2Flt = []; selFlt2For = []; selFor2Art = [];
+    selRaw2Art = chInd;
+    if handles.FilterSetUp
+        selRaw2Flt = chInd;
         if handles.MdlSetUp
-            if isempty(forPlt)
-                redo = true;
-            end
-        end
-        redo = redo && redoWait < 5; % stop trying at some point
-
-        % serial text
-        if ~isempty(srlString)
-            handles.textSrl.String = srlString;
-        end
-        if ~isempty(srlUserData)
-            handles.txt_Status.String = srlUserData.ParadigmPhase;
+            selFlt2For = 1;
+            selFor2Art = 1;
         end
     end
-    %}
+    selRaw2For = [];
+    handles.selInds = struct(...
+        'selRaw2Flt', selRaw2Flt, ...
+        'selFlt2For', selFlt2For, ...
+        'selFor2Art', selFor2Art, ...
+        'selRaw2Art', selRaw2Art, ...
+        'selRaw2For', selRaw2For);
+
+    % (re-)init data structs
+    chInd = handles.channelIndex;
+    disconnect_cbmex(); % is this necessary ?
+    buffSize = handles.bufferSizeGrid .* ones(size(handles.allChannelInfo)); % samples
+    buffSize(chInd) = handles.bufferSize;
+    if handles.FilterSetUp
+        filtOrds = [handles.FilterOrder]; % array with chans as cols
+    else
+        filtOrds = [];
+    end
+    [rawD, artD, fltD, forD, timeBuffs, initTic] = ...
+        InitializeRecording_cbmex(buffSize, filtOrds, handles.PDSwin1, ...
+        handles.allChannelIDs, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
+    rawD1 = rawD(1,:); rawD4 = rawD(4,:);
+    artD1 = artD(1,:); artD4 = artD(4,:);
+    fltD1 = fltD(1,:); fltD4 = fltD(4,:);
+    forD1 = forD(1,:); forD4 = fltD(4,:);
+    timeBuff = timeBuffs{chInd};
+    buffSize2 = (handles.bufferSize / rawD1{chInd}.SampleRate) * .5 * handles.stimMaxFreq;
+    buffSize2 = ceil(buffSize2);
+    forBuff = nan(buffSize2,2);
+    tst = nan(buffSize2,1);
+    handles.allChannelInfo = rawD1;
+    rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),t0); rawPlt = rawPlt{1};
+    fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
+    forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
+    artPlt = data2timetable(artD4,artD1,t0); artPlt = artPlt{1};
+    if numel(rawPlt)
+        tPltRng = rawPlt.Time;
+    else
+        tPltRng = tNow + nan;
+    end
+    tPltRng = [min(tPltRng), max(tPltRng)];
+    tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
+    handles.recDataStructs = struct(...
+        'rawD', rawD, ...
+        'artD', artD, ...
+        'fltD', fltD, ...
+        'forD', forD, ...
+        'timeBuffs', timeBuffs, ...
+        'initTic', initTic, ...
+        'forBuffs', {forBuff}, ...
+        'stimBuff', tst);
+
     unitname = handles.allChannelInfo{handles.channelIndex}.Unit;
 
     % keep track of the display time 
@@ -811,6 +827,9 @@ try
 
     % initiate raw data plot
     axes(handles.ax_raw);
+    if isempty(rawPlt)
+        error('Raw data was not initialized properly.')
+    end
     hold off; 
     handles.h_rawDataTrace = plot(rawPlt.Time - tNow, rawPlt.Variables);
     grid on; title('Raw Channel Data'); 
@@ -824,6 +843,10 @@ try
     % add artifact removal if applicable 
     if handles.FilterSetUp && handles.MdlSetUp
         if handles.check_artifact.Value
+            if isempty(artPlt)
+                set(handles.check_artifact,'Value',false);
+                error('Artifact removal was not actually set up. Something is wrong in the code.')
+            end
             hold on;
             handles.h_artDataTrace = plot(artPlt.Time - tNow, artPlt.Variables, ':');
         end
@@ -992,7 +1015,7 @@ cancel(handles.f_PhaseDetect);
 % For some reason, after push_filter, the above does not immediately cancel
 % all RunningFutures, but waiting at least 3 seconds will make them empty
 if handles.FilterSetUp
-    pause(10)
+    pause(6)
 end
 % cancellAll may be necessary in case anything is still running, but if the
 % FevalQueue is not empty, it causes annoying problems like extra GUI
