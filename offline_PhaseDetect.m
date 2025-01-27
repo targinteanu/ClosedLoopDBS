@@ -92,7 +92,7 @@ ARmdl_unfilt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 % filtered data. 
 
 % filtering bound rules 
-minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % filter order 
