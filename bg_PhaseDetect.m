@@ -1,7 +1,7 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
-    InitializeRecording, ShutdownRecording, ...
+    SetupRecording, ShutdownRecording, ...
     SetupStimulator, ShutdownStimulator, PulseStimulator, ...
-    InitializeRawData, GetNewRawData, GetTime, StimController)
+    GetNewRawData, GetTime, StimController)
 % 
 % Run brain recording with phase detection/prediction for PDS.
 % 
@@ -153,6 +153,8 @@ srlLastMsg = srlUD.ReceivedData;
 
 dT = .001; % s between data requests 
 
+SetupRecording();
+
 rawInds = nan(size(rawIDs));
 for ch = 1:length(rawInds)
     rawInd = find(rawIDs == rawN{ch}.IDnumber);
@@ -200,6 +202,9 @@ end
 % stimulator 
 if UserArgs.StimActive
     StimArgs = SetupStimulator(UserArgs);
+    stimScheduler = timer(...
+        "TimerFcn",{@stimFunction, StimArgs, UserArgs, initTic}, ...
+        "StartDelay",inf);
 end
 
 % enable defined filtering/forecasting funcs only if ready
@@ -253,25 +258,27 @@ while cont_loop
     forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
     if doStim
         [t2stim, stim2q] = StimController(receiverSerial, UserArgs, fltD{4,1}(:,2), forBuffNew);
-        if stim2q && (t2stim < 1.5*looptime)
+        if stim2q
             t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
+            if t2stim >= 0 % should the minimum be set any higher?
             % ensure below max freq
             if 1/(t2stim + timeBuffs{chInd}(end,:) - stimLastTime) <= UserArgs.stimMaxFreq
                 % check if stimulator is ready here?
-                % assume stim should occur before completion of next loop
-                pause(t2stim);
-                stimtime1 = GetTime(initTic);
-                StimArgs = PulseStimulator(StimArgs, UserArgs);
-                stimtime2 = GetTime(initTic);
-                stimtime = .5*(stimtime1 + stimtime2);
-                stimBuff = bufferData(stimBuff, stimtime);
-                if doArtRem
-                    artRemArgs.StimTimes = cellfun(...
-                        @(T) stimBuff - T(end,:), timeBuffs(selRaw2Art), ...
-                        'UniformOutput',false);
-                end
-                stimLastTime = stimtime;
+                stop(stimScheduler); % if timer hasn't fired, overwrite it
+                stimScheduler.StartDelay = t2stim; 
+                start(stimScheduler);
             end
+            end
+        end
+        stimtime = stimScheduler.UserData; stimScheduler.UserData = [];
+        if numel(stimtime)
+            stimBuff = bufferData(stimBuff, stimtime);
+            if doArtRem
+                artRemArgs.StimTimes = cellfun(...
+                    @(T) stimBuff - T(end,:), timeBuffs(selRaw2Art), ...
+                    'UniformOutput',false);
+            end
+            stimLastTime = stimtime(end);
         end
     end
 
@@ -421,5 +428,13 @@ for ch_flt = 1:size(rawTails,2)
 end
 fltArgs.fltInit = filtFin;
 end
+
+    function stimFunction(timerObj, evt, StimArgs, UserArgs, initTic)
+        stimtime1 = GetTime(initTic);
+        StimArgs = PulseStimulator(StimArgs, UserArgs);
+        stimtime2 = GetTime(initTic);
+        stimt = .5*(stimtime1 + stimtime2);
+        timerObj.UserData = [timerObj.UserData; stimt];
+    end
 
 end

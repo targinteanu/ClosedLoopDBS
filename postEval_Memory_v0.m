@@ -5,7 +5,7 @@ OnlineFile = OnlineFiles(1);
 NSFiles = dir([filepath,filesep,'*.ns*']); 
 NSFile = NSFiles(1); 
 cd00 = cd; cd(filepath); 
-load(OnlineFile.name); ns = openNSx(NSFile.name); 
+load(OnlineFile.name); ns = openNSx(NSFile.name, 'uV'); 
 cd(cd00); 
 
 [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...

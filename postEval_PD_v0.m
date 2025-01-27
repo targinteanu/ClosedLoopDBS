@@ -5,7 +5,7 @@ OnlineFile = OnlineFiles(1);
 NSFiles = dir([filepath,filesep,'*.ns*']); 
 NSFile = NSFiles(1); 
 cd00 = cd; cd(filepath); 
-load(OnlineFile.name); ns = openNSx(NSFile.name); 
+load(OnlineFile.name); ns = openNSx(NSFile.name, 'uV'); 
 cd(cd00); 
 
 [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
@@ -51,6 +51,7 @@ ARmdl = ar(iddata(dataBaseline', [], 1/SamplingFreq), ARlen, 'yw');
 
 %% remove artifact 
 dataOneChannel = dataOneChannelWithArtifact;
+dataOneChannel = dataOneChannel - mean(dataOneChannel); % correct DC offset
 
 for ind = artIndAll
     ind0 = ind - ARlen;
@@ -85,10 +86,12 @@ for ESi = 1:length(expStatesU)
     expState = expStatesU{ESi};
     [ind, tStart, tEnd] = findExpState(expState, expStates, SrlTimes, tRel);
     indStim = StimInd(ind(StimInd));
+    indStimRec = find(ind & StimTrainRec);
     tStart = seconds(tStart) + t0; 
     tEnd   = seconds(tEnd)   + t0;
     expStateIT{ESi,1} = ind; expStateIT{ESi,4} = indStim;
     expStateIT{ESi,2} = tStart; expStateIT{ESi,3} = tEnd;
+    expStateIT{ESi,5} = indStimRec;
     clear expState ind tStart tEnd indStim ESi
 end
 else
@@ -98,7 +101,8 @@ end
 
 %% Plot time series 
 
-lgd = {'Data'; 'Peaks'; 'Troughs'; 'Stim'}; lgdsel = true(size(lgd));
+lgd = {'Data'; 'Peaks'; 'Troughs'; 'Stim Sent'; 'Stim Recd'}; 
+lgdsel = true(size(lgd));
 
 % select the data to plot 
 dataMinMax = [min(dataOneChannel), max(dataOneChannel)];
@@ -121,6 +125,11 @@ if isempty(StimInd)
     lgdsel(4) = false;
 else
     plot(t(StimInd),   dataOneChannel(StimInd),   '*r');
+end
+if isempty(StimTrainRec)
+    lgdsel(5) = false;
+else
+    plot(t(StimTrainRec), dataOneChannel(StimTrainRec), 'or');
 end
 lgd = lgd(lgdsel);
 
@@ -170,17 +179,25 @@ figure;
 
 if isempty(expStateIT)
     % there is at most one stimulus cond 
+    subplot(1,2,1);
     polarhistogram(dataPhase(StimInd),18);
-    title('Stim');
+    title('Stim Sent');
+    subplot(1,2,2);
+    polarhistogram(dataPhase(StimTrainRec),18);
+    title('Stim Recd');
 else
 
 for ESi = 1:length(expStatesU)
     expState = expStatesU{ESi};
     ESind = expStateIT{ESi,4};
     %ESind = ESind(t(ESind) > datetime(2024,08,29,17,08,11));
-    subplot(H,W,ESi);
+    subplot(H*2,W,ESi);
     polarhistogram(dataPhase(ESind),18); 
-    title(['Stim during ',expState])
+    title(['Stim Sent during ',expState])
+    ESind = expStateIT{ESi,5};
+    subplot(H*2,W,ESi + H*W);
+    polarhistogram(dataPhase(ESind),18); 
+    title(['Stim Recd during ',expState])
 end
 
 end

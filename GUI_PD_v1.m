@@ -285,8 +285,10 @@ img = nan(nrow, ncol);
 handles.elecGridImg = imagesc(img, [gridminval, gridmaxval]); 
 xticks([]); yticks([]);
 colormap('parula'); colorbar; hold on;
-chL_ = handles.channelList(1:(ncol*nrow));
-text(X(:),Y(:), chL_, ...
+chL_ = handles.channelList(1:min((ncol*nrow), length(handles.channelList)));
+X = X(:); X = X(1:length(chL_));
+Y = Y(:); Y = Y(1:length(chL_));
+text(X,Y, chL_, ...
     'HorizontalAlignment','center', ...
     'VerticalAlignment','middle', ...
     'FontWeight', 'bold', ...
@@ -619,16 +621,22 @@ try
     % update filtered data plot
     if handles.FilterSetUp
         try
-        set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
-        set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
-        set(handles.ax_filt, 'XLim', ext_xlim);
+        if numel(fltPlt)
+            set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
+            set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
+        end
+        if ~sum(isnan(ext_xlim))
+            set(handles.ax_filt, 'XLim', ext_xlim);
+        end
 
         % update model-forecasted data plot
         if handles.MdlSetUp
             try
             if handles.check_polar.Value
+                if numel(forPlt)
                 set(handles.h_predTrace,'YData',forPlt.Variables);
                 set(handles.h_predTrace,'XData',forPlt.Time - tNow);
+                end
             end
             tPk = forBuff(:,1); tTr = forBuff(:,2); % time to peak, trough (s)
             set(handles.h_peakTrace,'YData',zeros(size(tPk)));
@@ -716,8 +724,10 @@ try
     set(handles.h_timeDispTrace,'YData',[nan; diff(handles.timeDispBuff)]);
     set(handles.h_timeDispTrace,'XData', ...
         handles.time0 + seconds(handles.timeDispBuff) - tNow );
-    set(handles.ax_raw, 'XLim', common_xlim);
-    set(handles.ax_timing, 'XLim', common_xlim);
+    if ~sum(isnan(common_xlim)) % why is it sometimes nan??
+        set(handles.ax_raw, 'XLim', common_xlim);
+        set(handles.ax_timing, 'XLim', common_xlim);
+    end
 
     guidata(hObject,handles)
 
@@ -758,6 +768,7 @@ try
     guidata(hObject, handles)
 
     % assign channel indexes (NOT IDs!) to use for filtering and forecasting
+    chInd = handles.channelIndex;
     selRaw2Flt = []; selFlt2For = []; selFor2Art = [];
     selRaw2Art = chInd;
     if handles.FilterSetUp
@@ -776,7 +787,6 @@ try
         'selRaw2For', selRaw2For);
 
     % (re-)init data structs
-    chInd = handles.channelIndex;
     disconnect_cbmex(); % is this necessary ?
     buffSize = handles.bufferSizeGrid .* ones(size(handles.allChannelInfo)); % samples
     buffSize(chInd) = handles.bufferSize;
@@ -791,17 +801,17 @@ try
     rawD1 = rawD(1,:); rawD4 = rawD(4,:);
     artD1 = artD(1,:); artD4 = artD(4,:);
     fltD1 = fltD(1,:); fltD4 = fltD(4,:);
-    forD1 = forD(1,:); forD4 = fltD(4,:);
+    forD1 = forD(1,:); forD4 = forD(4,:);
     timeBuff = timeBuffs{chInd};
     buffSize2 = (handles.bufferSize / rawD1{chInd}.SampleRate) * .5 * handles.stimMaxFreq;
     buffSize2 = ceil(buffSize2);
     forBuff = nan(buffSize2,2);
-    tst = nan(buffSize2,1);
+    tSt = nan(buffSize2,1);
     handles.allChannelInfo = rawD1;
-    rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),t0); rawPlt = rawPlt{1};
-    fltPlt = data2timetable(fltD4,fltD1,t0); fltPlt = fltPlt{1};
-    forPlt = data2timetable(forD4,forD1,t0); forPlt = forPlt{1};
-    artPlt = data2timetable(artD4,artD1,t0); artPlt = artPlt{1};
+    rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),handles.time0); rawPlt = rawPlt{1};
+    fltPlt = data2timetable(fltD4,fltD1,handles.time0); fltPlt = fltPlt{1};
+    forPlt = data2timetable(forD4,forD1,handles.time0); forPlt = forPlt{1};
+    artPlt = data2timetable(artD4,artD1,handles.time0); artPlt = artPlt{1};
     if numel(rawPlt)
         tPltRng = rawPlt.Time;
     else
@@ -809,15 +819,11 @@ try
     end
     tPltRng = [min(tPltRng), max(tPltRng)];
     tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
-    handles.recDataStructs = struct(...
-        'rawD', rawD, ...
-        'artD', artD, ...
-        'fltD', fltD, ...
-        'forD', forD, ...
-        'timeBuffs', timeBuffs, ...
-        'initTic', initTic, ...
-        'forBuffs', {forBuff}, ...
-        'stimBuff', tst);
+    recDataStructs.forBuffs = {forBuff}; recDataStructs.stimBuff = tSt;
+    for v = ["rawD", "artD", "fltD", "forD", "timeBuffs", "initTic"]
+        eval("recDataStructs."+v+" = "+v+";");
+    end
+    handles.recDataStructs = recDataStructs;
 
     unitname = handles.allChannelInfo{handles.channelIndex}.Unit;
 
@@ -1026,10 +1032,10 @@ end
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
-    @InitializeRecording_cbmex, @disconnect_cbmex, ...
+    @connect_cbmex, @disconnect_cbmex, ...
     @stimSetup_cerestim, @stimShutdown_cerestim, @stimPulse_cerestim, ...
     ...@(~) 0, @(~,~) 0, @(~,~) 0, ... dummy stimulator 
-    @initRawData_cbmex, @getNewRawData_cbmex, @getTime_cbmex, ...
+    @getNewRawData_cbmex, @getTime_cbmex, ...
     @Controller_PDS_PD);
 catch ME2
     warning(ME2.message);
@@ -1283,7 +1289,7 @@ srate = handles.fSample;
 nyq            = srate*0.5;  % Nyquist frequency
 
 % filtering bound rules 
-minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % access desired parameters
@@ -1664,6 +1670,20 @@ if get(hObject, 'Value') == 1
     % start stimulus 
 
     try
+
+    % check cerestim connection before proceeding 
+    stimulator = cerestim96();
+    dl = stimulator.scanForDevices();
+    if isempty(dl)
+        warnmsg = ['Difficulty connecting to CereStim. ' ...
+            'It is recommended to turn the device off and on ' ...
+            'again before proceeding.'];
+        resp = questdlg(warnmsg, 'CereStim connection issue', ...
+            'Do Not Proceed', 'Proceed Anyway', 'Do Not Proceed');
+        if ~strcmp(resp, 'Proceed Anyway')
+            error('Try again after turning the CereStim off and on.')
+        end
+    end
 
     handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
 
