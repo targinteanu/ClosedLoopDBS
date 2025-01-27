@@ -8,6 +8,6 @@ phi_block = angle(H_block);
 
 % calculate inst. freq. 
 f_block = gradient(unwrap(phi_block)')' *fs/(2*pi);
-f_block = abs(f_block); % ?? why does it go negative??
+%f_block = abs(f_block); % ?? why does it go negative??
 
 end
