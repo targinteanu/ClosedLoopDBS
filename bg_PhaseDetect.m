@@ -201,7 +201,7 @@ end
 
 % stimulator 
 if UserArgs.StimActive
-    StimArgs = SetupStimulator(UserArgs);
+    StimArgs = SetupStimulator(UserArgs.StimSetupArgs);
     stimScheduler = timer(...
         "TimerFcn",{@stimFunction, StimArgs, UserArgs, initTic}, ...
         "StartDelay",inf);
