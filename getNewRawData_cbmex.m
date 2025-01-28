@@ -8,11 +8,11 @@ if isempty(continuousData)
     error('No continuous data; ensure that data acquisition has been enabled.')
 end
 
-chnum = [continuousData{:,1}]';
-%fs = [continuousData{:,2}]';
+chnum = [continuousData{:,1}];
+%fs = [continuousData{:,2}];
 chname = spikeEvents(:,1);
 chname = chname(chnum);
-newContDataRaw = continuousData(:,3); 
+newContDataRaw = continuousData(:,3)'; 
 
 if isempty(chsel)
     % select all channels
