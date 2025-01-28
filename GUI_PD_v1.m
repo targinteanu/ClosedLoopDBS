@@ -155,6 +155,14 @@ handles.bufferSize = str2double(get(handles.txt_display,'String')) * 1000;
 handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
 handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
 
+% hardware-specific functions 
+handles.HardwareFuncs = struct(...
+    'SetupRecording', @connect_cbmex, 'ShutdownRecording', @disconnect_cbmex, 'InitRawData', @initRawData_cbmex, 'GetNewRawData', @getNewRawData_cbmex, 'GetTime', @getTime_cbmex, ... BlackRock NSP
+    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'PulseStimulator', @stimPulse_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim ... BlackRock CereStim
+    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'PulseStimulator', @(~,~) 0, @() 0 ... dummy/no stimulator
+    );
+handles.initTic = tic;
+
 % start parallel pool(s) 
 waitbar(.08, wb, 'Starting parallel pool...')
 handles.pool = gcp('nocreate');
@@ -177,6 +185,7 @@ handles.rmfieldList = {...
     'udBlank', 'srlStorage1', 'srlP1', 'phStorage', 'phP', 'stStorage', 'stP', ...
     'output', ...
     'timer', 'srl', ...
+    'HardwareFuncs', ...
     'h_rawDataTrace', 'h_filtDataTrace', 'h_timingTrace', 'h_timeDispTrace', ...
     'h_predTrace', 'h_peakTrace', 'h_trouTrace', 'h_stimTrace', ...
     'h_peakPhase', 'h_trouPhase', ...
@@ -247,17 +256,17 @@ if handles.DAQstatus
     error('DSP already connected. Please disconnect first.')
 end
 
-connect_cbmex();
-handles.time0 = datetime - seconds(cbmex('time'));
+handles.HardwareFuncs.SetupRecording();
+handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic));
 
 handles.DAQstatus = true;
 
 % Acquire some data to get channel information. Determine which channels
 % are enabled
-[~,~,~,allChannelInfo] = initRawData_cbmex(handles.allChannelIDs, handles.bufferSizeGrid);
+[~,~,~,allChannelInfo] = handles.HardwareFuncs.InitRawData(handles.allChannelIDs, handles.bufferSizeGrid);
 handles.allChannelInfo = allChannelInfo;
 
-disconnect_cbmex();
+handles.HardwareFuncs.ShutdownRecording();
 
 % set channel popup menu to hold channels
 handles.fSamples = cellfun(@(ch) ch.SampleRate, allChannelInfo);
@@ -302,7 +311,7 @@ guidata(hObject,handles)
 
 catch ME
     getReport(ME)
-    errordlg(ME.message, 'Connect cbmex issue')
+    errordlg(ME.message, 'Connect DAQ issue')
 end
 
 % --- Executes on button press in cmd_cbmexClose.
@@ -379,7 +388,7 @@ if get(hObject,'Value') == 1
     
     % Check to make sure cbmex connection is open
     if ~handles.DAQstatus
-        errordlg('No cbmex connection.  Open connection before starting','Not Connected')
+        errordlg('No DAQ connection. Open connection before starting','Not Connected')
         return
     end
     
@@ -438,7 +447,7 @@ catch ME1
 end
 
 try
-cbmex('close')
+handles.HardwareFuncs.ShutdownRecording();
 handles.DAQstatus = false;
 [dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~,~,~,~, ...
     handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
@@ -787,7 +796,7 @@ try
         'selRaw2For', selRaw2For);
 
     % (re-)init data structs
-    disconnect_cbmex(); % is this necessary ?
+    handles.HardwareFuncs.ShutdownRecording(); % is this necessary ?
     buffSize = handles.bufferSizeGrid .* ones(size(handles.allChannelInfo)); % samples
     buffSize(chInd) = handles.bufferSize;
     if handles.FilterSetUp
@@ -796,7 +805,7 @@ try
         filtOrds = [];
     end
     [rawD, artD, fltD, forD, timeBuffs, initTic] = ...
-        InitializeRecording_cbmex(buffSize, filtOrds, handles.PDSwin1, ...
+        handles.HardwareFuncs.InitRawData(buffSize, filtOrds, handles.PDSwin1, ...
         handles.allChannelIDs, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
     rawD1 = rawD(1,:); rawD4 = rawD(4,:);
     artD1 = artD(1,:); artD4 = artD(4,:);
@@ -1032,10 +1041,9 @@ end
 handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
-    @connect_cbmex, @disconnect_cbmex, ...
-    @stimSetup_cerestim, @stimShutdown_cerestim, @stimPulse_cerestim, ...
-    ...@(~) 0, @(~,~) 0, @(~,~) 0, ... dummy stimulator 
-    @getNewRawData_cbmex, @getTime_cbmex, ...
+    handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
+    handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, handles.HardwareFuncs.PulseStimulator, ...
+    handles.HardwareFuncs.GetNewRawData, handles.HardwareFuncs.GetTime, ...
     @Controller_PDS_PD);
 catch ME2
     warning(ME2.message);
@@ -1670,20 +1678,8 @@ if get(hObject, 'Value') == 1
     % start stimulus 
 
     try
-
-    % check cerestim connection before proceeding 
-    stimulator = cerestim96();
-    dl = stimulator.scanForDevices();
-    if isempty(dl)
-        warnmsg = ['Difficulty connecting to CereStim. ' ...
-            'It is recommended to turn the device off and on ' ...
-            'again before proceeding.'];
-        resp = questdlg(warnmsg, 'CereStim connection issue', ...
-            'Do Not Proceed', 'Proceed Anyway', 'Do Not Proceed');
-        if ~strcmp(resp, 'Proceed Anyway')
-            error('Try again after turning the CereStim off and on.')
-        end
-    end
+ 
+    handles.HardwareFuncs.CheckConnectionStimulator();
 
     handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
 
