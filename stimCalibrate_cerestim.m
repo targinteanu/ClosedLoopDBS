@@ -58,7 +58,7 @@ else
     initTic = tic;
     chanInfos = UserArgs.allChannelInfo;
     connectRecording();
-    StimSetupArgs = UserData.StimSetupArgs;
+    StimSetupArgs = UserArgs.StimSetupArgs;
 end
 
 %% connect to hardware and determine stim trigger channel
@@ -83,6 +83,16 @@ chanInfo = {chanInfos(chanInd)};
 time0 = datetime - seconds(getTime(initTic)); % time-of-day when cbmex time was 0
 
 stimulator = stimSetup(StimSetupArgs);
+
+%% warning before doing stimulation
+warnmsg = ['Stimulator is about to send many randomly spaced pulses for calibration. ' ...
+    'PLEASE ENSURE IT IS NOT CONNECTED TO A PATIENT. ' ...
+    'Please ensure trigger output is connected to recording apparatus.'];
+resp = questdlg(warnmsg, 'Stimulator Calibration Warning', ...
+    'Abort', 'Proceed', 'Abort');
+if ~strcmp(resp, 'Proceed')
+    error('Calibration aborted.')
+end
 
 %% perform the test 
 disp('Beginning calibration'); tic
@@ -113,7 +123,10 @@ StimTimeRec = dataTbl.Time(StimTrainRec);
 StimTimeSent = seconds(StimSentTime) + time0;
 StimDelay = StimTimeRec - StimTimeSent;
 
-avgLag = mean(seconds(stimDelay)); stdLag = std(seconds(StimDelay));
+avgLag = mean(seconds(StimDelay)); stdLag = std(seconds(StimDelay));
+if avgLag < 0
+    warndlg('Calibration error due to packet timing. Please try calibrating again.')
+end
 
 if showplot
     figure; subplot(3,1,1); 
