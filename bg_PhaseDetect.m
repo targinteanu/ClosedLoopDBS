@@ -58,6 +58,7 @@ end
 cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop; 
     % if false, loop should only run once
 
+StimulatorLagTime = UserArgs.StimulatorLagTime; % s
 doArtRem = UserArgs.check_artifact_Value;
 FilterSetUp = UserArgs.FilterSetUp; % t/f
 MdlSetUp = FilterSetUp && UserArgs.MdlSetUp; % t/f
@@ -185,6 +186,7 @@ if FilterSetUp
         foreArgs.SampleRates = Fs(selRaw2Flt); % !!! needs improvement
         foreArgs.FreqRange = [loco, hico];
         foreArgs.PhaseOfInterest = PhaseOfInterest;
+        foreArgs.StimulatorLagTime = StimulatorLagTime;
         artRemArgs.SampleRates = Fs(selRaw2Art);
         artRemArgs.StimDur = .11; % seconds
         artRemArgs.StimTimes = cell(size(artRemArgs.SampleRates));
@@ -258,6 +260,8 @@ while cont_loop
     forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
     if doStim
         [t2stim, stim2q] = StimController(receiverSerial, UserArgs, fltD{4,1}(:,2), forBuffNew);
+        t2stim = t2stim - StimulatorLagTime; % account for hardware delays
+        stim2q = stim2q && (t2stim >= 0); % should always be true by construction
         if stim2q
             t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
             if t2stim >= 0 % should the minimum be set any higher?
@@ -397,6 +401,7 @@ fs = foreArgs.SampleRates;
 Ts = foreArgs.TimeShift;
 Fco = foreArgs.FreqRange;
 phis = foreArgs.PhaseOfInterest;
+TstimLag = foreArgs.StimulatorLagTime;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
 for ch_fore = 1:size(inData,2)
     armdl = ARmdls{ch_fore};
@@ -408,7 +413,7 @@ for ch_fore = 1:size(inData,2)
     %[t2,i2,phi_inst,f_inst] = blockPDS(...
     t2 = blockPDS(...
         inData{ch_fore}(:,2), FT, fs(ch_fore), phis, ...
-        Ts(ch_fore), Fco(1), Fco(2));
+        Ts(ch_fore)+TstimLag, Fco(1), Fco(2));
     t2 = t2-Ts(ch_fore); % [t2peak, t2trough]
     % t2 = max(t2,0); % Should this be necessary? Will this cause problems?
     t2(t2 < 0) = nan;
