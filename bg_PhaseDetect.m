@@ -58,7 +58,7 @@ end
 cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop; 
     % if false, loop should only run once
 
-doArtRem = UserArgs.check_artifact.Value;
+doArtRem = UserArgs.check_artifact_Value;
 FilterSetUp = UserArgs.FilterSetUp; % t/f
 MdlSetUp = FilterSetUp && UserArgs.MdlSetUp; % t/f
 if FilterSetUp

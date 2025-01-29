@@ -155,6 +155,7 @@ handles.bufferSize = str2double(get(handles.txt_display,'String')) * 1000;
 handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
 handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
 handles.StimulatorLagTime = 0.012; % or should it start at 0?
+handles.check_artifact_Value = false;
 
 % hardware-specific functions 
 handles.HardwareFuncs = struct(...
@@ -192,7 +193,7 @@ handles.rmfieldList = {...
     'h_peakPhase', 'h_trouPhase', ...
     'figure1', 'scribeOverlay', 'output', ...
     'pnl_elecgrid', 'pnl_stim', 'pnl_filt', 'pnl_controls', ...
-    'check_polar', ...'check_artifact', ...
+    'check_polar', 'check_artifact', ...
     'txt_Status', 'txt_gridmax', 'txt_gridmin', 'txt_griddur', ...
     'txt_MaxStimFreq', 'txt_interphase', 'txt_width2', 'txt_width1', 'txt_amp2', 'txt_amp1', ...
     'txt_AR', 'txt_hico', 'txt_loco', 'txt_PDSwin', 'txt_display', ...
@@ -861,6 +862,7 @@ try
         if handles.check_artifact.Value
             if isempty(artPlt)
                 set(handles.check_artifact,'Value',false);
+                handles.check_artifact_Value = false;
                 error('Artifact removal was not actually set up. Something is wrong in the code.')
             end
             hold on;
@@ -1725,6 +1727,8 @@ function check_artifact_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_artifact
+handles.check_artifact_Value = get(hObject, 'Value'); 
+guidata(hObject, handles);
 settingChange(hObject)
 
 
