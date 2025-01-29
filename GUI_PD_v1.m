@@ -76,7 +76,7 @@ handles.timer = timer(...
     'BusyMode', 'error');     % callback to execute when timer starts
 
 % start receiver serial communication from paradigm computer
-waitbar(.03, wb, 'Setting up serial com...')
+waitbar(.05, wb, 'Setting up serial com...')
 handles.textSrl.String = 'attempting to start serial com here ...';
 thisportname = FindMySerialPort();
 noSerialSetup = isempty(thisportname);
@@ -102,7 +102,7 @@ handles.srlStorage1 = repmat(ud,[1000,1]);
 handles.srlP1 = 1; 
 
 % initiate other vars ...
-waitbar(.04, wb, 'Initiating variables...')
+waitbar(.1, wb, 'Initiating variables...')
 handles.DAQstatus = false;
 handles.StimActive = false;
 handles.RunMainLoop = false;
@@ -136,7 +136,7 @@ handles.h_trouPhase = [];
 handles.elecGridImg = [];
 
 % file saving 
-waitbar(.04, wb, 'Setting file save location...')
+waitbar(.15, wb, 'Setting file save location...')
 svloc = ['Saved Data PD',filesep,'Saved Data ',...
     datestr(datetime, 'yyyy-mm-dd HH.MM.SS')];
 pause(1)
@@ -146,7 +146,7 @@ handles.SaveFileName = [svloc,filesep,'SaveFile'];
 handles.SaveFileN = 1;
 
 % default values 
-waitbar(.08, wb, 'Setting default values...')
+waitbar(.2, wb, 'Setting default values...')
 %handles.channelIndex = get(handles.pop_channels,'Value'); 
 PDSwin = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(PDSwin*1000); handles.PDSwin1 = PDSwin;
@@ -164,14 +164,14 @@ handles.HardwareFuncs = struct(...
 handles.initTic = tic;
 
 % start parallel pool(s) 
-waitbar(.08, wb, 'Starting parallel pool...')
+waitbar(.25, wb, 'Starting parallel pool...')
 handles.pool = gcp('nocreate');
 if isempty(handles.pool)
     handles.pool = parpool;
 end
 
 % Set up a data queue(s)
-waitbar(.99, wb, 'Setting parallel data queue(s)...')
+waitbar(.95, wb, 'Setting parallel data queue(s)...')
 %handles.userQueue = parallel.pool.PollableDataQueue;
 handles.dataQueue = parallel.pool.PollableDataQueue;
 handles.stimQueue = parallel.pool.PollableDataQueue;
@@ -1099,14 +1099,7 @@ if ~handles.SerialArgs.NoSerial
     delete(handles.srl);
 end
 handles.srlHere = false;
-handles.textSrl.String = 'Serial disconnected from user thread.';
-
-
-function plotData = plotLogical(logData)
-% take in a logical array and output an array that will plot true as 1 
-% and will not plot false
-plotData = double(logData); 
-plotData(~logData) = nan; 
+handles.textSrl.String = 'Serial disconnected from user thread.'; 
 
 
 function setTgl(hObject, eventdata, handles, hTgl, newValue)
