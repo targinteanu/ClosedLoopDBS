@@ -22,7 +22,7 @@ function varargout = GUI_PD_v1(varargin)
 
 % Edit the above text to modify the response to help GUI_PD_v1
 
-% Last Modified by GUIDE v2.5 24-Nov-2024 23:44:10
+% Last Modified by GUIDE v2.5 29-Jan-2025 12:52:29
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -154,12 +154,13 @@ handles.PDSwin2 = ceil(.02*PDSwin);
 handles.bufferSize = str2double(get(handles.txt_display,'String')) * 1000;
 handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
 handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
+handles.StimulatorLagTime = 0.012; % or should it start at 0?
 
 % hardware-specific functions 
 handles.HardwareFuncs = struct(...
     'SetupRecording', @connect_cbmex, 'ShutdownRecording', @disconnect_cbmex, 'InitRawData', @initRawData_cbmex, 'GetNewRawData', @getNewRawData_cbmex, 'GetTime', @getTime_cbmex, ... BlackRock NSP
-    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'PulseStimulator', @stimPulse_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim ... BlackRock CereStim
-    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'PulseStimulator', @(~,~) 0, @() 0 ... dummy/no stimulator
+    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'PulseStimulator', @stimPulse_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim, 'CalibrateStimulator', @stimCalibrate_cerestim ... BlackRock CereStim
+    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'PulseStimulator', @(~,~) 0, 'CheckConnectionStimulator', @() 0, 'CalibrateStimulator', @(~,~,~,~,~,~,~,~,~,~) 0 ... dummy/no stimulator
     );
 handles.initTic = tic;
 
@@ -205,7 +206,7 @@ handles.rmfieldList = {...
     'pop_elecgrid', 'pop_GreenStim', 'pop_YellowStim', 'pop_RedStim', 'pop_StopStim', ...
     'pop_channel5', 'pop_channel4', 'pop_channel3', 'pop_channel2', 'pop_channel1', 'pop_channels', ...
     'tgl_stim', 'tgl_StartStop', ...
-    'push_AR', 'push_filter', 'push_remchan', ...
+    'push_AR', 'push_filter', 'push_remchan', 'push_stimCalibrate', ...
     'cmd_cbmexOpen', 'cmd_cbmexClose'};
 try
     h1 = rmfield(handles, handles.rmfieldList);
@@ -1938,3 +1939,23 @@ if ok
     guidata(hObject, handles);
     settingChange(hObject);
 end
+
+
+% --- Executes on button press in push_stimCalibrate.
+function push_stimCalibrate_Callback(hObject, eventdata, handles)
+% hObject    handle to push_stimCalibrate (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if handles.RunMainLoop
+    error('Cannot calibrate while running data aquisition. Press Stop to proceed.')
+end
+if handles.StimActive
+    error('Stimulator is already active. Press Stim Off to proceed.')
+end
+handles.StimulatorLagTime = handles.HardwareFuncs.CalibrateStimulator(...
+    handles, false, ...
+    handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
+    handles.HardwareFuncs.GetTime, handles.HardwareFuncs.InitRawData, handles.HardwareFuncs.GetNewRawData, ...
+    handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, ...
+    handles.HardwareFuncs.PulseStimulator);
+guidata(hObject, handles);
