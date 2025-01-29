@@ -157,6 +157,7 @@ handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
 handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
 handles.StimulatorLagTime = 0.012; % or should it start at 0?
 handles.check_artifact_Value = false;
+handles.ControllerResult = 0;
 
 % hardware-specific functions 
 handles.HardwareFuncs = struct(...
@@ -574,7 +575,14 @@ try
     % update serial log 
     % TO DO: there should be a better way to do this; serial callback
     % should trigger an event or listener that logs the info 
-    if handles.srlHere % should not get here (?) 
+    if handles.srlHere 
+    ControllerLastResult = handles.ControllerResult;
+    ControllerResult = Controller_PDS_PD(handles.srl, rmfield(handles, handles.rmfieldlist));
+    if ControllerResult ~= ControllerLastResult
+        handles.ControllerResult = ControllerResult;
+        guidata(hObject, handles);
+        requeryPhaseDetect(hObject, 1);
+    end
     ReceivedData = handles.srl.UserData.ReceivedData; 
     if ~strcmp(ReceivedData, handles.srlLastMsg)
         ud = handles.srl.UserData; 
@@ -776,7 +784,6 @@ try
     handles.fSample = handles.fSamples(handles.channelIndex);
     handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
     handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
-    % handles = disconnectSerial(handles);
     guidata(hObject, handles)
 
     % assign channel indexes (NOT IDs!) to use for filtering and forecasting
@@ -936,6 +943,7 @@ try
         end
     end
 
+    % handles = disconnectSerial(handles);
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
     requeryPhaseDetect(hObject, 1);
@@ -1047,8 +1055,7 @@ handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     handles.dataQueue, handles.stimQueue, ...
     handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
     handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, handles.HardwareFuncs.PulseStimulator, ...
-    handles.HardwareFuncs.GetNewRawData, handles.HardwareFuncs.GetTime, ...
-    @Controller_PDS_PD);
+    handles.HardwareFuncs.GetNewRawData, handles.HardwareFuncs.GetTime);
 catch ME2
     warning(ME2.message);
     % if there is a problem here, consider stopping everything 

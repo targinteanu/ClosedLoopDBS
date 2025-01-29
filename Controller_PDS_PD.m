@@ -1,5 +1,8 @@
 function [t2Q, Stim2Q] = Controller_PDS_PD(srl, handles, dataPast, PeakTroughTimes)
 
+% change this - should output index of [PeakTroughTimes] to select, or zero
+% if no stim2q 
+
 bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate
 t2peak = PeakTroughTimes(:,1); 
 t2trou = PeakTroughTimes(:,2);

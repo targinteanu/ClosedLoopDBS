@@ -1,7 +1,7 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
     SetupRecording, ShutdownRecording, ...
     SetupStimulator, ShutdownStimulator, PulseStimulator, ...
-    GetNewRawData, GetTime, StimController)
+    GetNewRawData, GetTime)
 % 
 % Run brain recording with phase detection/prediction for PDS.
 % 
@@ -58,6 +58,7 @@ end
 cont_loop_2 = UserArgs.DAQstatus && UserArgs.RunMainLoop; 
     % if false, loop should only run once
 
+StimController = UserArgs.ControllerResult;
 StimulatorLagTime = UserArgs.StimulatorLagTime; % s
 doArtRem = UserArgs.check_artifact_Value;
 FilterSetUp = UserArgs.FilterSetUp; % t/f
@@ -258,11 +259,10 @@ while cont_loop
     forBuff = forBuffs{1}; 
     forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
     forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
-    if doStim
-        [t2stim, stim2q] = StimController(receiverSerial, UserArgs, fltD{4,1}(:,2), forBuffNew);
+    if doStim && (StimController > 0)
+        t2stim = forBuffNew(:,StimController);
         t2stim = t2stim - StimulatorLagTime; % account for hardware delays
-        stim2q = stim2q && (t2stim >= 0); % should always be true by construction
-        if stim2q
+        if (t2stim >= 0) % should always be true by construction
             t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
             if t2stim >= 0 % should the minimum be set any higher?
             % ensure below max freq
