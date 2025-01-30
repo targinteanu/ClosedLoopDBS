@@ -25,7 +25,7 @@ PeakInd = trimToSize(PeakInd,t); TroughInd = trimToSize(TroughInd,t); StimInd = 
 %% artifact detection
 artExtend = 10; % extend artifact by __ samples 
 if numel(channelIndexStim)
-    artIndAll = dataAllChannels(channelIndexStim,:) > 1e4; % cerestim trigs
+    artIndAll = StimTrainRec; % cerestim trigs
     % no other sources of artifact in the memory protocol
 else
     warning('Stimulus channel ainp1 was not connected.')
@@ -43,7 +43,7 @@ baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(bas
 if ~isempty(artIndAll)
 baselineWinLen = 1000; ARlen = 10; % samples 
 dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
-dataBaseline = Myeegfilt(dataBaseline,SamplingFreq,13,30);
+dataBaseline = Myeegfilt(dataBaseline,SamplingFreq,4,9);
 baselineWin = (baselineEndInd-baselineStartInd) + [-1,1]*baselineWinLen; 
 baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
 baselineWin(1) = max(1,baselineWin(1)); baselineWin(2) = min(length(dataBaseline),baselineWin(2));
@@ -79,7 +79,7 @@ grid on; linkaxes(ax, 'x');
 end
 
 %% filter 
-dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,13,30);
+dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,4,9);
 
 %% select time of interest (manually)
 % TO DO: make this automatic, pulled from notes.txt ?
