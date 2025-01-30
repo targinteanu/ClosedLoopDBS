@@ -1067,7 +1067,7 @@ receiverSerial.UserData = ud;
 if ~noSerialSetup
 configureCallback(receiverSerial,"terminator",...
     @(hsrl,evt)CBFn(hsrl,evt, ...
-                    handles.textSrl, handles.txt_Status)); 
+                    handles.textSrl, handles.ParadigmInfoTable)); 
 end
 handles.textSrl.String = 'Serial is connected on user thread.';
 handles.srlHere = true;
