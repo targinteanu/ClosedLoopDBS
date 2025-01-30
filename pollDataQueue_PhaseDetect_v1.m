@@ -1,10 +1,9 @@
 function [dataReceived, svN, timeBuff, forBuff, stimBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
-    forStore, forP, stimStore, stimP, srlStore, srlP, ...
-    srlUserData, srlString] = ...
+    forStore, forP, stimStore, stimP] = ...
     pollDataQueue_PhaseDetect_v1(dataQueue, chInd, svname, svN, t0, pollTimeOut, ...
-    forStore, forP, stimStore, stimP, srlStore, srlP)
+    forStore, forP, stimStore, stimP)
 % 
 % Poll dataQueue as sent by PhaseDetect function and interpret the results.
 % 
@@ -42,7 +41,6 @@ end
         fltD1 = []; fltD4 = []; 
         forD1 = []; forD4 = [];
         artD1 = []; artD4 = [];
-        srlUserData = []; srlString = '';
         dataReceived = false;
 
 [sentData, dataReceivedNow] = poll(dataQueue, pollTimeOut); 
@@ -59,20 +57,6 @@ while dopoll
         end
 
         forBuff = sentData{3,3}; stimBuff = sentData{3,2};
-        srlBuff = sentData{4,1}; srlUserData = sentData{4,2}; srlString = sentData{4,3};
-
-        if ~isempty(srlStore)
-            srlTimeStamp = [srlBuff.TimeStamp];
-            srlSel = ~isnan(srlTimeStamp); 
-            srlBuff = srlBuff(srlSel); 
-            [srlFull, srlStore, srlP, srlBuffSv] = bufferStorage(...
-                srlStore, srlP, srlBuff);
-            if srlFull
-                SerialLog = srlBuffSv; 
-                save([svname,num2str(svN),'.mat'], 'SerialLog');
-                svN = svN+1;
-            end
-        end
         
         if ~isempty(stimStore)
             stimBuffAll = [stimStore; stimBuff];

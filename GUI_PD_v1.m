@@ -325,26 +325,16 @@ function cmd_cbmexClose_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.DAQstatus = false;
 [dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-        handles.srlStorage1, handles.srlP1);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
 if ~dataRecd
     warning('Polling data queue timed out.')
     keyboard
 end
 cancel(handles.f_PhaseDetect); 
 cancelAll(handles.pool.FevalQueue);
-
-% serial text 
-if ~isempty(srlString)
-    handles.textSrl.String = srlString;
-end
-if ~isempty(srlUserData)
-    handles.txt_Status.String = srlUserData.ParadigmPhase;
-end
 
 % handles = connectSerial(handles); % ?
 guidata(hObject,handles)
@@ -454,23 +444,13 @@ try
 handles.HardwareFuncs.ShutdownRecording();
 handles.DAQstatus = false;
 [dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-        handles.srlStorage1, handles.srlP1);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
 if ~dataRecd
     warning('Polling data queue timed out.')
     %keyboard
-end
-
-% serial text 
-if ~isempty(srlString)
-    handles.textSrl.String = srlString;
-end
-if ~isempty(srlUserData)
-    handles.txt_Status.String = srlUserData.ParadigmPhase;
 end
 
 if ~isempty(handles.f_PhaseDetect)
@@ -545,25 +525,15 @@ try
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
     tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-        handles.srlStorage1, handles.srlP1);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
     if ~dataRecd
         error('Data aquisition timed out.')
     end
     lastSampleProcTime = timeBuff(end);
     rawIDs = cellfun(@(s) s.IDnumber, rawD1);
-
-    % serial text
-    if ~isempty(srlString)
-        handles.textSrl.String = srlString;
-    end
-    if ~isempty(srlUserData)
-        handles.txt_Status.String = srlUserData.ParadigmPhase;
-    end
 
     % x axes alignment 
     common_xlim = tPltRng - tNow;
@@ -576,13 +546,19 @@ try
     % TO DO: there should be a better way to do this; serial callback
     % should trigger an event or listener that logs the info 
     if handles.srlHere 
-    ControllerLastResult = handles.ControllerResult;
-    ControllerResult = Controller_PDS_PD(handles.srl, rmfield(handles, handles.rmfieldlist));
-    if ControllerResult ~= ControllerLastResult
-        handles.ControllerResult = ControllerResult;
-        guidata(hObject, handles);
-        requeryPhaseDetect(hObject, 1);
-    end
+        if handles.FilterSetUp
+            if numel(fltPlt) % should this be necessary when above is met?
+                ControllerLastResult = handles.ControllerResult;
+                ControllerResult = Controller_PDS_PD( handles.srl, ...
+                    rmfield(handles, handles.rmfieldList), ...
+                    fltPlt{(end-handles.PDSwin1+1):end, : } );
+                if ControllerResult ~= ControllerLastResult
+                    handles.ControllerResult = ControllerResult;
+                    guidata(hObject, handles);
+                    requeryPhaseDetect(hObject, 1);
+                end
+            end
+        end
     ReceivedData = handles.srl.UserData.ReceivedData; 
     if ~strcmp(ReceivedData, handles.srlLastMsg)
         ud = handles.srl.UserData; 
@@ -1016,24 +992,15 @@ function requeryPhaseDetect(hObject, timeoutdur)
 handles = guidata(hObject);
 if timeoutdur >= 0
 [dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, timeoutdur, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-        handles.srlStorage1, handles.srlP1);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
 if ~dataRecd
     warning('Polling data queue timed out.')
     %hObject
     %eventdata
     %keyboard
-end
-% serial text 
-if ~isempty(srlString)
-    handles.textSrl.String = srlString;
-end
-if ~isempty(srlUserData)
-    handles.txt_Status.String = srlUserData.ParadigmPhase;
 end
 end
 try
@@ -1429,22 +1396,12 @@ try
     [dataRecd, handles.SaveFileN, timeBuff, forBuff, stimBuff, ...
     tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
     rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-    handles.srlStorage1, handles.srlP1, srlUserData, srlString] = ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
     pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
         handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP, ...
-        handles.srlStorage1, handles.srlP1);
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
     if ~dataRecd
         error('Data aquisition timed out.')
-    end
-
-    % serial text
-    if ~isempty(srlString)
-        handles.textSrl.String = srlString;
-    end
-    if ~isempty(srlUserData)
-        handles.txt_Status.String = srlUserData.ParadigmPhase;
     end
 
     y = fltD4{1}(:,2); 

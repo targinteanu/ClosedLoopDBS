@@ -32,16 +32,6 @@ function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
 % GetTime takes Start Tic and returns elapsed time (s); intended to be
 % machine time of recording device. 
 % 
-% StimController takes in UserArgs, Past Data, and Time to Peak/Trough 
-% and outputs time to next stimulus. 
-% 
-
-SRLA = serialportlist("available");
-w = whos;
-ww = [w.name,' ',w.class];
-f = fields(UserArgs);
-ff = [f, repmat({' '},size(f))]';
-ff = [ff{:}];
 
 bgArgOut = [];
 
@@ -101,55 +91,6 @@ timeBuffs = UserArgs.recDataStructs.timeBuffs;
 initTic = UserArgs.recDataStructs.initTic;
 forBuffs = UserArgs.recDataStructs.forBuffs;
 stimBuff = UserArgs.recDataStructs.stimBuff;
-
-%% setup serial comm
-
-SerialArgs = UserArgs.SerialArgs;
-noSerialSetup = SerialArgs.NoSerial;
-srlUD = SerialArgs.UserData;
-%{
-if UserArgs.srlHere
-    % serial is already set up on user thread! 
-    error('Attempt to start serial on multiple threads.')
-end
-srlCBFn = SerialArgs.CallbackFcn;
-%}
-
-%{
-if ~sum(strcmp(SRLA, SerialArgs.PortName))
-    error(['Port ',char(SerialArgs.PortName),' was not found. ',...
-        'UserArgs fields are: ',ff,' ; ',...
-        'workspace variables are: ',ww])
-end
-%}
-
-%{
-if ~noSerialSetup
-    try
-    receiverSerial = serialport(SerialArgs.PortName, 9600);
-    configureCallback(receiverSerial,"terminator", ...
-        @(hsrl,evt)srlCBFn(hsrl,evt)); % no GUI object args passed - must handle in DQ
-    catch MEsrl
-        if strcmpi(MEsrl.identifier, 'serialport:serialport:ConnectionFailed')
-            srlavailstr = squeeze(char(SRLA));
-            srlavailstr = srlavailstr(:)';
-            srlavailstr = ['At time of error, available ports are ',srlavailstr,' | '];
-            msg = [srlavailstr, MEsrl.message];
-            error(msg)
-        else
-            rethrow(MEsrl)
-        end
-    end
-end
-%}
-receiverSerial.UserData = srlUD;
-%srlString = 'Serial is connected on a parallel thread.';
-srlString = 'Serial was bypassed on a parallel thread.';
-
-% saving 
-srlUD.TimeStamp = nan;
-srlBuff = repmat(srlUD, [100, 1]);
-srlLastMsg = srlUD.ReceivedData;
 
 %% init 
 
@@ -286,20 +227,6 @@ while cont_loop
         end
     end
 
-    % handle serial comm 
-    % TO DO: there should be a better way to do this; serial callback
-    % should trigger an event or listener that logs the info 
-    ReceivedData = receiverSerial.UserData.ReceivedData;
-    if ~isempty(ReceivedData)
-        srlString = ['Serial Port ',char(receiverSerial.Port),' Received Message: ',ReceivedData];
-    end
-    if ~strcmp(ReceivedData, srlLastMsg)
-        ud = receiverSerial.UserData; 
-        ud.TimeStamp = GetTime(initTic); % should this be last proc time from timeBuffs ???
-        srlBuff = bufferData(srlBuff, ud);
-    end
-    srlLastMsg = ReceivedData;
-
     % User should be ready for new data when loopcount = loopsendum
     % send data AT LEAST that frequently so the user never waits for data
     if first_loop || (loopcount >= .5*loopsendnum)
@@ -313,10 +240,7 @@ while cont_loop
         end 
         send(DQ, [{rawD_(1,:)}, fltD(1,1), forD(1,1), artD(1,1); ...
                   {rawD_(4,:)}, fltD(4,1), forD(4,1), artD(4,1); ...
-                  {timeBuffs_}, {stimBuff}, {forBuff}, {[]}; ...
-                  {srlBuff}, {receiverSerial.UserData}, {srlString}, {[]}]);
-        srlBuff = repmat(srlUD, size(srlBuff)); % blank 
-        srlString = '';
+                  {timeBuffs_}, {stimBuff}, {forBuff}, {[]} ]);
     end
     % bgArgOut = [forBuff, stimBuff];
 
