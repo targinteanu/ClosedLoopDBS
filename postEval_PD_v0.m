@@ -204,6 +204,7 @@ end
 
 %% polar hist blocks of time 
 % to do: this should pull in data from notes.txt
+%%{
 %{
 winTimes = [...
     datetime(2024,10,01,11,15,00), datetime(2024,10,01,11,17,00); ...
@@ -215,7 +216,28 @@ winTimes = [...
     datetime(2024,10,01,11,34,00), datetime(2024,10,01,11,36,00); ...
     datetime(2024,10,01,11,37,00), datetime(2024,10,01,11,39,00)];
 winTimes = winTimes + hours(4); % convert EST to GMT
+%}
+winTimes = datetime(2025,1,30,17,0,0) + [...
+    minutes(-1), minutes(0); ...
+    minutes(1), minutes(4.5); ...
+    minutes(4.5), minutes(6)];
+winNames = {'Peak Stim', 'Peak Stim', 'Trough Stim'};
 
+figure; 
+for w = 1:height(winTimes)
+    subplot(2, height(winTimes), w); 
+    winInd = (t0+seconds(StimTime) >= winTimes(w,1)) & (t0+seconds(StimTime) <= winTimes(w,2));
+    polarhistogram(dataPhase(StimInd(winInd)), 18);
+    title(['Stim Sent - ',winNames{w}]);
+
+    subplot(2,height(winTimes), w+height(winTimes));
+    StimIndRec = find(StimTrainRec); StimTimeRec = StimIndRec / SamplingFreq;
+    winInd = (t0+seconds(StimTimeRec) >= winTimes(w,1)) & (t0+seconds(StimTimeRec) <= winTimes(w,2));
+    polarhistogram(dataPhase(StimIndRec(winInd)), 18);
+    title(['Stim Recd - ',winNames{w}]);
+end
+
+%{
 winNames = [20, 13, 15, 18, 23, 25, 27, 30];
 
 [winNames, winInd] = sort(winNames); winTimes = winTimes(winInd,:); 
