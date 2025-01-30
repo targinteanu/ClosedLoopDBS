@@ -1,35 +1,35 @@
-function varargout = GUI_PD_v1(varargin)
-% GUI_PD_V1 MATLAB code for GUI_PD_v1.fig
-%      GUI_PD_V1, by itself, creates a new GUI_PD_V1 or raises the existing
+function varargout = GUI_Memory_v1(varargin)
+% GUI_MEMORY_V1 MATLAB code for GUI_Memory_v1.fig
+%      GUI_MEMORY_V1, by itself, creates a new GUI_MEMORY_V1 or raises the existing
 %      singleton*.
 %
-%      H = GUI_PD_V1 returns the handle to a new GUI_PD_V1 or the handle to
+%      H = GUI_MEMORY_V1 returns the handle to a new GUI_MEMORY_V1 or the handle to
 %      the existing singleton*.
 %
-%      GUI_PD_V1('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in GUI_PD_V1.M with the given input arguments.
+%      GUI_MEMORY_V1('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in GUI_MEMORY_V1.M with the given input arguments.
 %
-%      GUI_PD_V1('Property','Value',...) creates a new GUI_PD_V1 or raises the
+%      GUI_MEMORY_V1('Property','Value',...) creates a new GUI_MEMORY_V1 or raises the
 %      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before GUI_PD_v1_OpeningFcn gets called.  An
+%      applied to the GUI before GUI_Memory_v1_OpeningFcn gets called.  An
 %      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to GUI_PD_v1_OpeningFcn via varargin.
+%      stop.  All inputs are passed to GUI_Memory_v1_OpeningFcn via varargin.
 %
 %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
 %      instance to run (singleton)".
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Edit the above text to modify the response to help GUI_PD_v1
+% Edit the above text to modify the response to help GUI_Memory_v1
 
-% Last Modified by GUIDE v2.5 29-Jan-2025 12:52:29
+% Last Modified by GUIDE v2.5 30-Jan-2025 00:35:54
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
                    'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @GUI_PD_v1_OpeningFcn, ...
-                   'gui_OutputFcn',  @GUI_PD_v1_OutputFcn, ...
+                   'gui_OpeningFcn', @GUI_Memory_v1_OpeningFcn, ...
+                   'gui_OutputFcn',  @GUI_Memory_v1_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
@@ -44,15 +44,15 @@ end
 % End initialization code - DO NOT EDIT
 
 
-% --- Executes just before GUI_PD_v1 is made visible.
-function GUI_PD_v1_OpeningFcn(hObject, eventdata, handles, varargin)
+% --- Executes just before GUI_Memory_v1 is made visible.
+function GUI_Memory_v1_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to GUI_PD_v1 (see VARARGIN)
+% varargin   command line arguments to GUI_Memory_v1 (see VARARGIN)
 
-% Choose default command line output for GUI_PD_v1
+% Choose default command line output for GUI_Memory_v1
 handles.output = hObject;
 
 % --- Begin My Code ---
@@ -70,10 +70,10 @@ handles.timer = timer(...
     'ExecutionMode', 'fixedSpacing', ...       % Run timer repeatedly
     'Period', 0.01, ...                      % Initial period is 100 ms
     'TimerFcn', {@updateDisplay,hObject}, ... % callback function.  Pass the figure handle
-    'StartFcn', {@StartMainLoop,hObject}, ... % callback to execute when timer starts
-    'StopFcn',  {@StopMainLoop,hObject}, ...
+    'StartFcn', {@StartMainLoop,hObject}, ...
+    'StopFcn',  {@StopMainLoop,hObject}, ...     % callback to execute when timer starts
     'ErrorFcn', {@TimerError,hObject}, ...
-    'BusyMode', 'error');     
+    'BusyMode', 'error'); 
 
 % start receiver serial communication from paradigm computer
 waitbar(.05, wb, 'Setting up serial com...')
@@ -81,9 +81,12 @@ handles.textSrl.String = 'attempting to start serial com here ...';
 thisportname = FindMySerialPort();
 noSerialSetup = isempty(thisportname);
 ud = struct('ReceivedData', '', ...
-            'ParadigmPhase', 'Stopped'); 
+            'TrialNumber', -1, ...
+            'StimOn', false, ...
+            'ParadigmPhase', 'WAIT', ...
+            'ImageVisible', false);
 handles.SerialArgs = struct('UserData', ud, ...
-                         'CallbackFcn', @CharSerialCallbackReceiver_PD_v0, ...
+                         'CallbackFcn', @CharSerialCallbackReceiver_Memory_v0, ...
                          'PortName', thisportname, ...
                          'NoSerial', noSerialSetup);
 handles.srlHere = false;
@@ -137,7 +140,7 @@ handles.elecGridImg = [];
 
 % file saving 
 waitbar(.15, wb, 'Setting file save location...')
-svloc = ['Saved Data PD',filesep,'Saved Data ',...
+svloc = ['Saved Data Memory',filesep,'Saved Data ',...
     datestr(datetime, 'yyyy-mm-dd HH.MM.SS')];
 pause(1)
 mkdir(svloc); 
@@ -228,12 +231,12 @@ guidata(hObject, handles);
 clc
 %clear all
 
-% UIWAIT makes GUI_PD_v1 wait for user response (see UIRESUME)
+% UIWAIT makes GUI_Memory_v1 wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = GUI_PD_v1_OutputFcn(hObject, eventdata, handles) 
+function varargout = GUI_Memory_v1_OutputFcn(hObject, eventdata, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -253,6 +256,10 @@ function cmd_cbmexOpen_Callback(hObject, eventdata, handles)
 % hObject    handle to cmd_cbmexOpen (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Use a TRY-CATCH in case cbmex is already open.  If you try to open it
+% when it's already open, Matlab throws a 'MATLAB:unassignedOutputs'
+% MException.
 try
 
 if handles.DAQstatus
@@ -264,14 +271,14 @@ handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic
 
 handles.DAQstatus = true;
 
-% Acquire some data to get channel information. Determine which channels
+% Acquire some data to get channel information.  Determine which channels
 % are enabled
 [~,~,~,allChannelInfo] = handles.HardwareFuncs.InitRawData(handles.allChannelIDs, handles.bufferSizeGrid);
 handles.allChannelInfo = allChannelInfo;
 
 handles.HardwareFuncs.ShutdownRecording();
 
-% set channel popup menu to hold channels
+% set channel popup meno to hold channels
 handles.fSamples = cellfun(@(ch) ch.SampleRate, allChannelInfo);
 handles.channelIDlist = cellfun(@(ch) ch.IDnumber, allChannelInfo);
 handles.channelList = cellfun(@(ch) [num2str(ch.IDnumber),': ',ch.Name], ...
@@ -279,10 +286,10 @@ handles.channelList = cellfun(@(ch) [num2str(ch.IDnumber),': ',ch.Name], ...
 chL = [handles.channelList, 'None'];
 set(handles.pop_channels, 'String', handles.channelList);
 for pop_ = [handles.pop_channel1, ...
-            handles.pop_channel2, ...
-            handles.pop_channel3, ...
-            handles.pop_channel4, ...
-            handles.pop_channel5]
+            handles.pop_channel2] %, ...
+%            handles.pop_channel3, ...
+%            handles.pop_channel4, ...
+%            handles.pop_channel5]
     set(pop_, 'String', chL);
 end
 
@@ -290,7 +297,7 @@ end
 gridmaxval = eval(handles.txt_gridmax.String);
 gridminval = eval(handles.txt_gridmin.String);
 axes(handles.ax_elecgrid)
-ncol = 3; % # of columns
+ncol = 3;
 nrow = 21;
 img = nan(nrow, ncol);
 [X,Y] = meshgrid(1:ncol, 1:nrow);
@@ -381,7 +388,7 @@ if get(hObject,'Value') == 1
     
     % Check to make sure cbmex connection is open
     if ~handles.DAQstatus
-        errordlg('No DAQ connection. Open connection before starting','Not Connected')
+        errordlg('No DAQ connection.  Open connection before starting','Not Connected')
         return
     end
     
@@ -405,6 +412,8 @@ function pop_channels_Callback(hObject, eventdata, handles)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns pop_channels contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from pop_channels
+%hObject.Value
+%hObject.String(hObject.Value,:)
 settingChange(hObject)
 
 % --- Executes during object creation, after setting all properties.
@@ -476,7 +485,7 @@ svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
 disp(['Saving Remaining Data to ',svfn])
 save(svfn, 'SerialLog', 'PeakTrough', 'Stim');
 disp('Saving all data...')
-ConsolidateSavedData_v1(handles.SaveFileLoc)
+ConsolidateSavedData(handles.SaveFileLoc)
 catch ME2
     getReport(ME2)
 end
@@ -495,7 +504,7 @@ function updateDisplay(obj, evt, hObject)
 handles = guidata(hObject);
 
 try
-
+    
     % ensure connection with hardware 
     handles = guidata(hObject);
     if ~handles.DAQstatus
@@ -509,7 +518,7 @@ try
     timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
     handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
     guidata(hObject, handles);
-    
+
     % get data from Central
     if handles.dataQueue.QueueLength > 1000 
         % LIMIT DATA QUEUE LENGTH
@@ -539,16 +548,16 @@ try
     common_xdiff = diff(common_xlim); 
     ext_xdiff = common_xdiff * handles.ax_filt.InnerPosition(3) / ...
         handles.ax_raw.InnerPosition(3); 
-    ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left 
+    ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left
 
     % update serial log 
     % TO DO: there should be a better way to do this; serial callback
     % should trigger an event or listener that logs the info 
-    if handles.srlHere 
+    if handles.srlHere
         if handles.FilterSetUp
             if numel(fltPlt) % should this be necessary when above is met?
                 ControllerLastResult = handles.ControllerResult;
-                ControllerResult = Controller_PDS_PD( handles.srl, ...
+                ControllerResult = Controller_PDS_Memory( handles.srl, ...
                     rmfield(handles, handles.rmfieldList), ...
                     fltPlt{(end-handles.PDSwin1+1):end, : } );
                 if ControllerResult ~= ControllerLastResult
@@ -561,15 +570,15 @@ try
     ReceivedData = handles.srl.UserData.ReceivedData; 
     if ~strcmp(ReceivedData, handles.srlLastMsg)
         ud = handles.srl.UserData; 
-        ud.TimeStamp = lastSampleProcTime;
+        ud.TimeStamp = handles.lastSampleProcTime;
         if handles.srlP1 <= length(handles.srlStorage1)
             handles.srlStorage1(handles.srlP1) = ud;
             handles.srlP1 = handles.srlP1+1;
         else
-            ud = handles.udBlank; 
+            ud = handles.udBlank;
             % storage full; save
             SerialLog = handles.srlStorage1;
-            svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
             disp(['Saving Serial to ',svfn])
             save(svfn,'SerialLog');
             handles.SaveFileN = handles.SaveFileN + 1;
@@ -580,10 +589,10 @@ try
     handles.srlLastMsg = ReceivedData;
     end
 
-    % update electrode grid 
+    % update electrode grid
     if handles.showElecGrid
         try
-            elecimg = handles.elecGridImg.CData;
+            elecimg = handles.elecGridImg.CData; 
             for ch = 1:numel(elecimg)
                 chID = handles.channelIDlist(ch); 
                 xInd = find(rawIDs == chID); 
@@ -604,16 +613,15 @@ try
                 end
             end
             handles.elecGridImg.CData = elecimg;
-        catch ME4 
-            getReport(ME4);
+        catch ME4
+            getReport(ME4)
             errordlg(ME4.message, 'Electrode Grid Issue');
             handles.showElecGrid = false;
-            guidata(hObject, handles);
             pause(.01);
         end
     end
 
-    % update filtered data plot
+    % update filtered data 
     if handles.FilterSetUp
         try
         if numel(fltPlt)
@@ -624,7 +632,7 @@ try
             set(handles.ax_filt, 'XLim', ext_xlim);
         end
 
-        % update model-forecasted data plot
+        % update model-forecasted data 
         if handles.MdlSetUp
             try
             if handles.check_polar.Value
@@ -732,7 +740,6 @@ catch ME
     stop(handles.timer)
     keyboard
 end
-
     
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
@@ -751,10 +758,8 @@ handles = guidata(hObject);
 
 try
 
-    tNow = datetime;
-
     % Check which channel is selected and get some data to plot
-    handles.channelIndex = get(handles.pop_channels,'Value'); 
+    handles.channelIndex = get(handles.pop_channels,'Value');
     % Now we know the sampling rate of the selected channel
     handles.fSample = handles.fSamples(handles.channelIndex);
     handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
@@ -948,7 +953,7 @@ function  StopMainLoop(obj, evt, hObject)
 % easier because it captures the error and displays a report to the Matlab
 % Command Window
 
-handles = guidata(hObject); 
+handles = guidata(hObject);
 
 try
     handles.RunMainLoop = false;
@@ -1079,6 +1084,53 @@ handles.srlHere = false;
 handles.textSrl.String = 'Serial disconnected from user thread.'; 
 
 
+function [newBuffer, lastBuffer] = CombineAndCycle(oldBuffer, newData, N)
+% ?? does this still work when N is longer than length oldBuffer ??
+M = length(newData); 
+newBuffer = false(size(oldBuffer)); 
+newBuffer(1:(end-N)) = oldBuffer((N+1):end);
+lastBuffer = oldBuffer; 
+if N < length(lastBuffer)
+    lastBuffer = lastBuffer(1:N);
+end
+newBuffer((end-M+1):end) = newData;
+
+
+function newBuffer = OverwriteAndCycle(oldBuffer, newData, N)
+% N = # of points of data that is actually new 
+if N <= length(newData)
+    if N >= length(oldBuffer)
+        newBuffer = newData(end-length(oldBuffer)+1:end);
+    else
+        % buffer AND overwrite 
+        L = length(newData)-N; % length to overwrite
+        newBuffer = [oldBuffer((N+1):(end-L)); newData];
+    end
+else
+    % there is no data to overwrite; in fact, there is not enough new data
+    % nan-pad newData to length N and cycle buffer 
+    newData = [newData; nan(N-length(newData),1)];
+    newBuffer = cycleBuffer(oldBuffer, newData);
+end
+
+
+function [newFiltBuffer, filterFinalCond] = FilterAndCycle(...
+    oldFiltBuffer, newUnfilt, filtobj, filterInitCond)
+[newFilt,filterFinalCond] = filter(filtobj,1,newUnfilt,filterInitCond);
+newFiltBuffer = cycleBuffer(oldFiltBuffer, newFilt);
+
+
+function dataForecast = MdlForecast(MdlObj, dataPast, k, fs)
+% This needs to be made faster. Since fs is same as model fit, can do
+% by direct multiplication instead of built-in? 
+% Forecast the next <k> datapoints <dataForecast> using the model
+% system <MdlObj> and the previous data <dataPast> sampled at constant rate
+% <fs>. All data is in columns. 
+dataPast = iddata(dataPast,[],1/fs); 
+dataForecast = forecast(MdlObj,dataPast,k);
+dataForecast = dataForecast.OutputData;
+
+
 function setTgl(hObject, eventdata, handles, hTgl, newValue)
 % set a toggle button to a desired Value and activate its callback if it is
 % not currently at that value. 
@@ -1089,6 +1141,46 @@ if ~(curValue == newValue)
     guidata(hObject, handles);
 end
 
+
+function [t2phi, i2phi, phi_inst, f_inst] = ...
+    blockPDS(pastData, futureData, fs, phi, tmin, fmin, fmax)
+% Determine the time (s) and # samples to next desired phase phi from a
+% block of data sampled at a constant rate fs (Hz). Also return the current
+% inst. phase phi_inst (rad) and frequency f_inst (Hz).
+% Block data should include some length of pastData and
+% (forecasted/predicted) futureData to minimize edge effects at the present
+% timepoint, which is the last element of pastData. Data should be input as
+% columns. 
+% phi [desired] is in radians, i.e. phi=0 for peak, phi=pi for trough
+% frequency will be clipped within range [fmin, fmax] (Hz) 
+
+N = size(pastData,1); M = size(futureData,1);
+blockData = [pastData; futureData];
+
+[phi_block, f_block] = instPhaseFreq(blockData, fs);
+phi_inst = phi_block(N,:);
+f_block = max(f_block, fmin); 
+f_block = min(f_block, fmax);
+fwinlen = floor(.03*N); fwinlen = min(fwinlen, M);
+fwin = N + ((-fwinlen):fwinlen);
+f_inst = mean(f_block(fwin,:));
+T=1/f_inst;
+
+% time to next [desired] phi 
+t2phi = zeros(size(phi)); i2phi = t2phi;
+for p = 1:length(phi)
+    phi_ = phi(p);
+    t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
+
+    % account for minimum delay time tmin 
+    nT = (tmin-t)/T; % how many periods needed to add 
+    t = t + ceil(nT)*T; 
+
+    t2phi(p) = t;
+    i2phi(p) = floor(fs*t2phi(p));
+end
+ 
+
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
 % ----                        New Callbacks                           --- %
@@ -1096,23 +1188,23 @@ end
 % ----------------------------------------------------------------------- %
 
 
-% --- Executes on selection change in pop_RedStim.
-function pop_RedStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_RedStim (see GCBO)
+% --- Executes on selection change in pop_EncodeStim.
+function pop_EncodeStim_Callback(hObject, eventdata, handles)
+% hObject    handle to pop_EncodeStim (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_RedStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_RedStim
+% Hints: contents = cellstr(get(hObject,'String')) returns pop_EncodeStim contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from pop_EncodeStim
 contents = cellstr(get(hObject,'String'));
-RedStim = contents{get(hObject,'Value')};
-handles.StimMode.red = RedStim; 
+EncodeStim = contents{get(hObject,'Value')};
+handles.StimMode.ENCODE = EncodeStim; 
 guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function pop_RedStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_RedStim (see GCBO)
+function pop_EncodeStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pop_EncodeStim (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -1121,26 +1213,26 @@ function pop_RedStim_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-pop_RedStim_Callback(hObject, eventdata, handles)
+pop_EncodeStim_Callback(hObject, eventdata, handles)
 
 
-% --- Executes on selection change in pop_YellowStim.
-function pop_YellowStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_YellowStim (see GCBO)
+% --- Executes on selection change in pop_DecodeStim.
+function pop_DecodeStim_Callback(hObject, eventdata, handles)
+% hObject    handle to pop_DecodeStim (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_YellowStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_YellowStim
+% Hints: contents = cellstr(get(hObject,'String')) returns pop_DecodeStim contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from pop_DecodeStim
 contents = cellstr(get(hObject,'String'));
-YellowStim = contents{get(hObject,'Value')};
-handles.StimMode.yellow = YellowStim; 
+DecodeStim = contents{get(hObject,'Value')};
+handles.StimMode.DECODE = DecodeStim; 
 guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function pop_YellowStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_YellowStim (see GCBO)
+function pop_DecodeStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pop_DecodeStim (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -1149,26 +1241,26 @@ function pop_YellowStim_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-pop_YellowStim_Callback(hObject, eventdata, handles)
+pop_DecodeStim_Callback(hObject, eventdata, handles)
 
 
-% --- Executes on selection change in pop_GreenStim.
-function pop_GreenStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_GreenStim (see GCBO)
+% --- Executes on selection change in pop_HoldStim.
+function pop_HoldStim_Callback(hObject, eventdata, handles)
+% hObject    handle to pop_HoldStim (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_GreenStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_GreenStim
+% Hints: contents = cellstr(get(hObject,'String')) returns pop_HoldStim contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from pop_HoldStim
 contents = cellstr(get(hObject,'String'));
-GreenStim = contents{get(hObject,'Value')};
-handles.StimMode.green = GreenStim; 
+HoldStim = contents{get(hObject,'Value')};
+handles.StimMode.HOLD = HoldStim; 
 guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function pop_GreenStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_GreenStim (see GCBO)
+function pop_HoldStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pop_HoldStim (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -1177,34 +1269,7 @@ function pop_GreenStim_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
-
-% --- Executes on selection change in pop_StopStim.
-function pop_StopStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_StopStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_StopStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_StopStim
-contents = cellstr(get(hObject,'String'));
-StopStim = contents{get(hObject,'Value')};
-handles.StimMode.Stopped = StopStim; 
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_StopStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_StopStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-pop_StopStim_Callback(hObject, eventdata, handles)
+pop_HoldStim_Callback(hObject, eventdata, handles)
 
 
 
@@ -1260,14 +1325,12 @@ function push_filter_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-stop(handles.timer); % to avoid dataQueue overflow 
-
 % details from data 
 srate = handles.fSample;
 nyq            = srate*0.5;  % Nyquist frequency
 
 % filtering bound rules 
-minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % access desired parameters
@@ -1313,13 +1376,13 @@ handles.IndShiftFIR = ceil(filtorder/2); % samples ???
 % >> filteredSignal = filtfilt(filtwts, 1, unfilteredSignal)
 filtwts = fir1(filtorder, [locutoff, hicutoff]./(srate/2));
 handles.BPF = filtwts; 
-
-% restart timer and plots
-pause(.01);
 handles.FilterSetUp = true;
+
+%stop(handles.timer)
+StopMainLoop(hObject,eventdata,handles)
 guidata(hObject, handles)
-pause(.01);
-start(handles.timer);
+%start(handles.timer) % restart timer and plots 
+StartMainLoop(hObject,eventdata,handles)
 
 
 
@@ -1375,8 +1438,6 @@ function push_AR_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-stop(handles.timer); % to avoid dataQueue overflow 
-
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
@@ -1392,18 +1453,7 @@ try
         error('Forecast length does not overcome filter delay.')
     end
 
-    [dataRecd, handles.SaveFileN, timeBuff, forBuff, stimBuff, ...
-    tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
-    rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
-    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-        handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
-    if ~dataRecd
-        error('Data aquisition timed out.')
-    end
-
-    y = fltD4{1}(:,2); 
+    y = handles.filtDataBuffer; 
     L = min(length(y), 3*PDSwin) - 1;
     y = y((end-L):end);
     y = iddata(y,[],1/handles.fSample);
@@ -1412,11 +1462,13 @@ try
     handles.Mdl = ARmdl; 
     handles.MdlSetUp = true;
     
-% restart timer and plots
-pause(.01);
-guidata(hObject, handles)
-pause(.01);
-start(handles.timer);
+    %stop(handles.timer)
+    StopMainLoop(hObject,eventdata,handles)
+    pause(.01)
+    guidata(hObject, handles)
+    %start(handles.timer) % restart timer and plots
+    StartMainLoop(hObject,eventdata,handles)
+    pause(.001)
 
 catch ME
     getReport(ME)
@@ -1634,16 +1686,50 @@ function tgl_stim_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of tgl_stim
 
+% if there is a stimulator, stop it 
+if handles.StimActive
+    try
+        handles.stimulator.stop();
+        handles.stimulator.disconnect;
+        pause(.1)
+    catch ME0
+        getReport(ME0)
+        keyboard
+        % should not get here because StimActive should be false
+    end
+end
+
 if get(hObject, 'Value') == 1
     % start stimulus 
 
     try
- 
-    handles.HardwareFuncs.CheckConnectionStimulator();
 
     handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
 
-    handles.StimSetupArgs = stimGetSetupArgs(handles);
+    amp1 = eval(handles.txt_amp1.String); 
+    amp2 = eval(handles.txt_amp2.String); 
+    width1 = eval(handles.txt_width1.String); 
+    width2 = eval(handles.txt_width2.String); 
+    interphase = eval(handles.txt_interphase.String); 
+    frequency = 100; 
+    pulses = 1;
+
+    chan1ind = handles.pop_channel1.Value; 
+    chan2ind = handles.pop_channel2.Value; 
+    channel1 = str2double(handles.pop_channel1.String(chan1ind,:)) 
+    channel2 = str2double(handles.pop_channel2.String(chan2ind,:))
+    %channel1 = chan1ind; 
+    %channel2 = chan2ind;
+
+    handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
+        width1, width2, interphase, frequency, pulses);
+
+    handles.QueuedStim = timer(...
+        'StartDelay', 10, ...
+        'TimerFcn',   {@myPULSE, hObject}, ...
+        'StopFcn',    {@finishPULSE, hObject}, ...
+        'StartFcn',   {@schedulePULSE, hObject}, ...
+        'UserData',   -1);
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
@@ -1651,7 +1737,6 @@ if get(hObject, 'Value') == 1
     catch ME
         hObject.Value = 0;
         handles.StimActive = false;
-        guidata(hObject, handles);
         getReport(ME)
         errordlg(ME.message, 'Stim Setup Issue');
     end
@@ -1663,7 +1748,6 @@ else
 end
 
 guidata(hObject, handles)
-settingChange(hObject);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -1691,9 +1775,6 @@ function check_artifact_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_artifact
-handles.check_artifact_Value = get(hObject, 'Value'); 
-guidata(hObject, handles);
-settingChange(hObject)
 
 
 % --- Executes on selection change in pop_elecgrid.
@@ -1710,27 +1791,26 @@ handles.showElecGrid = ~strcmp(sel, 'None');
 try
 if handles.showElecGrid
     if strcmp(sel, 'PAC')
-        % ***** TO DO: phase amplitude coupling: handles.elecGridFunc = ... 
+        % ***** TO DO: ...
     else
-        % __ band power
+        % ___ band power 
         if strcmp(sel, 'Selected Band Power')
             if ~handles.FilterSetUp
                 error('Filter must be set for this selection.')
             end
             fbnd = [handles.locutoff, handles.hicutoff];
-        elseif strcmp(sel, 'Beta Power')
-            fbnd = [13, 30]; % Hz
+        elseif strcmp(sel, 'Theta Power')
+            fbnd = [4, 9]; % Hz
         elseif strcmp(sel, 'Gamma Power')
             fbnd = [50, 200]; % Hz 
         end
         handles.elecGridFunc = @(data, fs) bandpower(data, fs, fbnd);
     end
 end
-catch ME4
-    getReport(ME4);
+catch ME4 
+    getReport(ME4)
     errordlg(ME4.message, 'Electrode Grid Selection Issue');
     handles.showElecGrid = false;
-    guidata(hObject, handles);
     pause(.01);
 end
 guidata(hObject, handles)
@@ -1749,92 +1829,19 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes on selection change in pop_channel3.
-function pop_channel3_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_channel3 (see GCBO)
+
+function txt_gridmin_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_gridmin (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_channel3 contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_channel3
-setTgl(hObject, eventdata, handles, handles.tgl_stim, 0);
+% Hints: get(hObject,'String') returns contents of txt_gridmin as text
+%        str2double(get(hObject,'String')) returns contents of txt_gridmin as a double
 
 
 % --- Executes during object creation, after setting all properties.
-function pop_channel3_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_channel3 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on selection change in pop_channel4.
-function pop_channel4_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_channel4 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_channel4 contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_channel4
-setTgl(hObject, eventdata, handles, handles.tgl_stim, 0);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_channel4_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_channel4 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on selection change in pop_channel5.
-function pop_channel5_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_channel5 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_channel5 contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_channel5
-setTgl(hObject, eventdata, handles, handles.tgl_stim, 0);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_channel5_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_channel5 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function txt_griddur_Callback(hObject, eventdata, handles)
-% hObject    handle to txt_griddur (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of txt_griddur as text
-%        str2double(get(hObject,'String')) returns contents of txt_griddur as a double
-settingChange(hObject)
-
-
-% --- Executes during object creation, after setting all properties.
-function txt_griddur_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to txt_griddur (see GCBO)
+function txt_gridmin_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_gridmin (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -1853,8 +1860,7 @@ function txt_gridmax_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of txt_gridmax as text
 %        str2double(get(hObject,'String')) returns contents of txt_gridmax as a double
-handles.ax_elecgrid.CLim(2) = eval(get(hObject, 'String'));
-guidata(hObject, handles);
+
 
 % --- Executes during object creation, after setting all properties.
 function txt_gridmax_CreateFcn(hObject, eventdata, handles)
@@ -1870,19 +1876,18 @@ end
 
 
 
-function txt_gridmin_Callback(hObject, eventdata, handles)
-% hObject    handle to txt_gridmin (see GCBO)
+function txt_griddur_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_griddur (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of txt_gridmin as text
-%        str2double(get(hObject,'String')) returns contents of txt_gridmin as a double
-handles.ax_elecgrid.CLim(1) = eval(get(hObject, 'String'));
-guidata(hObject, handles);
+% Hints: get(hObject,'String') returns contents of txt_griddur as text
+%        str2double(get(hObject,'String')) returns contents of txt_griddur as a double
+
 
 % --- Executes during object creation, after setting all properties.
-function txt_gridmin_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to txt_gridmin (see GCBO)
+function txt_griddur_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_griddur (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -1898,15 +1903,6 @@ function push_remchan_Callback(hObject, eventdata, handles)
 % hObject    handle to push_remchan (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[remind, ok] = listdlg("ListString",handles.channelList, ...
-    "PromptString", 'REMOVE these channels:');
-if ok
-    channelIDlist = handles.channelIDlist;
-    remtf = false(size(channelIDlist)); remtf(remind) = true;
-    handles.allChannelIDs = channelIDlist(~remtf);
-    guidata(hObject, handles);
-    settingChange(hObject);
-end
 
 
 % --- Executes on button press in push_stimCalibrate.
@@ -1914,18 +1910,3 @@ function push_stimCalibrate_Callback(hObject, eventdata, handles)
 % hObject    handle to push_stimCalibrate (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-if handles.RunMainLoop
-    error('Cannot calibrate while running data aquisition. Press Stop to proceed.')
-end
-if handles.StimActive
-    error('Stimulator is already active. Press Stim Off to proceed.')
-end
-handles.HardwareFuncs.CheckConnectionStimulator();
-handles.StimSetupArgs = stimGetSetupArgs(handles);
-handles.StimulatorLagTime = handles.HardwareFuncs.CalibrateStimulator(...
-    rmfield(handles, handles.rmfieldList), false, ...
-    handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
-    handles.HardwareFuncs.GetTime, handles.HardwareFuncs.InitRawData, handles.HardwareFuncs.GetNewRawData, ...
-    handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, ...
-    handles.HardwareFuncs.PulseStimulator);
-guidata(hObject, handles);
