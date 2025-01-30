@@ -1084,53 +1084,6 @@ handles.srlHere = false;
 handles.textSrl.String = 'Serial disconnected from user thread.'; 
 
 
-function [newBuffer, lastBuffer] = CombineAndCycle(oldBuffer, newData, N)
-% ?? does this still work when N is longer than length oldBuffer ??
-M = length(newData); 
-newBuffer = false(size(oldBuffer)); 
-newBuffer(1:(end-N)) = oldBuffer((N+1):end);
-lastBuffer = oldBuffer; 
-if N < length(lastBuffer)
-    lastBuffer = lastBuffer(1:N);
-end
-newBuffer((end-M+1):end) = newData;
-
-
-function newBuffer = OverwriteAndCycle(oldBuffer, newData, N)
-% N = # of points of data that is actually new 
-if N <= length(newData)
-    if N >= length(oldBuffer)
-        newBuffer = newData(end-length(oldBuffer)+1:end);
-    else
-        % buffer AND overwrite 
-        L = length(newData)-N; % length to overwrite
-        newBuffer = [oldBuffer((N+1):(end-L)); newData];
-    end
-else
-    % there is no data to overwrite; in fact, there is not enough new data
-    % nan-pad newData to length N and cycle buffer 
-    newData = [newData; nan(N-length(newData),1)];
-    newBuffer = cycleBuffer(oldBuffer, newData);
-end
-
-
-function [newFiltBuffer, filterFinalCond] = FilterAndCycle(...
-    oldFiltBuffer, newUnfilt, filtobj, filterInitCond)
-[newFilt,filterFinalCond] = filter(filtobj,1,newUnfilt,filterInitCond);
-newFiltBuffer = cycleBuffer(oldFiltBuffer, newFilt);
-
-
-function dataForecast = MdlForecast(MdlObj, dataPast, k, fs)
-% This needs to be made faster. Since fs is same as model fit, can do
-% by direct multiplication instead of built-in? 
-% Forecast the next <k> datapoints <dataForecast> using the model
-% system <MdlObj> and the previous data <dataPast> sampled at constant rate
-% <fs>. All data is in columns. 
-dataPast = iddata(dataPast,[],1/fs); 
-dataForecast = forecast(MdlObj,dataPast,k);
-dataForecast = dataForecast.OutputData;
-
-
 function setTgl(hObject, eventdata, handles, hTgl, newValue)
 % set a toggle button to a desired Value and activate its callback if it is
 % not currently at that value. 
@@ -1139,45 +1092,6 @@ hTgl.Value = newValue; guidata(hObject, handles);
 if ~(curValue == newValue)
     hTgl.Callback(hTgl, eventdata);
     guidata(hObject, handles);
-end
-
-
-function [t2phi, i2phi, phi_inst, f_inst] = ...
-    blockPDS(pastData, futureData, fs, phi, tmin, fmin, fmax)
-% Determine the time (s) and # samples to next desired phase phi from a
-% block of data sampled at a constant rate fs (Hz). Also return the current
-% inst. phase phi_inst (rad) and frequency f_inst (Hz).
-% Block data should include some length of pastData and
-% (forecasted/predicted) futureData to minimize edge effects at the present
-% timepoint, which is the last element of pastData. Data should be input as
-% columns. 
-% phi [desired] is in radians, i.e. phi=0 for peak, phi=pi for trough
-% frequency will be clipped within range [fmin, fmax] (Hz) 
-
-N = size(pastData,1); M = size(futureData,1);
-blockData = [pastData; futureData];
-
-[phi_block, f_block] = instPhaseFreq(blockData, fs);
-phi_inst = phi_block(N,:);
-f_block = max(f_block, fmin); 
-f_block = min(f_block, fmax);
-fwinlen = floor(.03*N); fwinlen = min(fwinlen, M);
-fwin = N + ((-fwinlen):fwinlen);
-f_inst = mean(f_block(fwin,:));
-T=1/f_inst;
-
-% time to next [desired] phi 
-t2phi = zeros(size(phi)); i2phi = t2phi;
-for p = 1:length(phi)
-    phi_ = phi(p);
-    t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
-
-    % account for minimum delay time tmin 
-    nT = (tmin-t)/T; % how many periods needed to add 
-    t = t + ceil(nT)*T; 
-
-    t2phi(p) = t;
-    i2phi(p) = floor(fs*t2phi(p));
 end
  
 
@@ -1325,12 +1239,14 @@ function push_filter_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+stop(handles.timer); % to avoid dataQueue overflow 
+
 % details from data 
 srate = handles.fSample;
 nyq            = srate*0.5;  % Nyquist frequency
 
 % filtering bound rules 
-minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % access desired parameters
@@ -1376,13 +1292,13 @@ handles.IndShiftFIR = ceil(filtorder/2); % samples ???
 % >> filteredSignal = filtfilt(filtwts, 1, unfilteredSignal)
 filtwts = fir1(filtorder, [locutoff, hicutoff]./(srate/2));
 handles.BPF = filtwts; 
-handles.FilterSetUp = true;
 
-%stop(handles.timer)
-StopMainLoop(hObject,eventdata,handles)
+% restart timer and plots
+pause(.01);
+handles.FilterSetUp = true;
 guidata(hObject, handles)
-%start(handles.timer) % restart timer and plots 
-StartMainLoop(hObject,eventdata,handles)
+pause(.01);
+start(handles.timer);
 
 
 
@@ -1438,6 +1354,8 @@ function push_AR_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+stop(handles.timer); % to avoid dataQueue overflow 
+
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
@@ -1453,7 +1371,18 @@ try
         error('Forecast length does not overcome filter delay.')
     end
 
-    y = handles.filtDataBuffer; 
+    [dataRecd, handles.SaveFileN, timeBuff, forBuff, stimBuff, ...
+    tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
+    rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
+    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
+    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
+        handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
+        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
+    if ~dataRecd
+        error('Data aquisition timed out.')
+    end
+
+    y = fltD4{1}(:,2); 
     L = min(length(y), 3*PDSwin) - 1;
     y = y((end-L):end);
     y = iddata(y,[],1/handles.fSample);
@@ -1462,13 +1391,11 @@ try
     handles.Mdl = ARmdl; 
     handles.MdlSetUp = true;
     
-    %stop(handles.timer)
-    StopMainLoop(hObject,eventdata,handles)
-    pause(.01)
-    guidata(hObject, handles)
-    %start(handles.timer) % restart timer and plots
-    StartMainLoop(hObject,eventdata,handles)
-    pause(.001)
+% restart timer and plots
+pause(.01);
+guidata(hObject, handles)
+pause(.01);
+start(handles.timer);
 
 catch ME
     getReport(ME)
@@ -1686,50 +1613,16 @@ function tgl_stim_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of tgl_stim
 
-% if there is a stimulator, stop it 
-if handles.StimActive
-    try
-        handles.stimulator.stop();
-        handles.stimulator.disconnect;
-        pause(.1)
-    catch ME0
-        getReport(ME0)
-        keyboard
-        % should not get here because StimActive should be false
-    end
-end
-
 if get(hObject, 'Value') == 1
     % start stimulus 
 
     try
 
+    handles.HardwareFuncs.CheckConnectionStimulator();
+
     handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
 
-    amp1 = eval(handles.txt_amp1.String); 
-    amp2 = eval(handles.txt_amp2.String); 
-    width1 = eval(handles.txt_width1.String); 
-    width2 = eval(handles.txt_width2.String); 
-    interphase = eval(handles.txt_interphase.String); 
-    frequency = 100; 
-    pulses = 1;
-
-    chan1ind = handles.pop_channel1.Value; 
-    chan2ind = handles.pop_channel2.Value; 
-    channel1 = str2double(handles.pop_channel1.String(chan1ind,:)) 
-    channel2 = str2double(handles.pop_channel2.String(chan2ind,:))
-    %channel1 = chan1ind; 
-    %channel2 = chan2ind;
-
-    handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
-        width1, width2, interphase, frequency, pulses);
-
-    handles.QueuedStim = timer(...
-        'StartDelay', 10, ...
-        'TimerFcn',   {@myPULSE, hObject}, ...
-        'StopFcn',    {@finishPULSE, hObject}, ...
-        'StartFcn',   {@schedulePULSE, hObject}, ...
-        'UserData',   -1);
+    handles.StimSetupArgs = stimGetSetupArgs(handles);
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
@@ -1737,6 +1630,7 @@ if get(hObject, 'Value') == 1
     catch ME
         hObject.Value = 0;
         handles.StimActive = false;
+        guidata(hObject, handles);
         getReport(ME)
         errordlg(ME.message, 'Stim Setup Issue');
     end
@@ -1748,6 +1642,7 @@ else
 end
 
 guidata(hObject, handles)
+settingChange(hObject);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -1775,6 +1670,9 @@ function check_artifact_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_artifact
+handles.check_artifact_Value = get(hObject, 'Value'); 
+guidata(hObject, handles);
+settingChange(hObject)
 
 
 % --- Executes on selection change in pop_elecgrid.
@@ -1811,6 +1709,7 @@ catch ME4
     getReport(ME4)
     errordlg(ME4.message, 'Electrode Grid Selection Issue');
     handles.showElecGrid = false;
+    guidata(hObject, handles);
     pause(.01);
 end
 guidata(hObject, handles)
@@ -1837,7 +1736,8 @@ function txt_gridmin_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of txt_gridmin as text
 %        str2double(get(hObject,'String')) returns contents of txt_gridmin as a double
-
+handles.ax_elecgrid.CLim(1) = eval(get(hObject, 'String'));
+guidata(hObject, handles);
 
 % --- Executes during object creation, after setting all properties.
 function txt_gridmin_CreateFcn(hObject, eventdata, handles)
@@ -1860,7 +1760,8 @@ function txt_gridmax_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of txt_gridmax as text
 %        str2double(get(hObject,'String')) returns contents of txt_gridmax as a double
-
+handles.ax_elecgrid.CLim(2) = eval(get(hObject, 'String'));
+guidata(hObject, handles);
 
 % --- Executes during object creation, after setting all properties.
 function txt_gridmax_CreateFcn(hObject, eventdata, handles)
@@ -1883,7 +1784,7 @@ function txt_griddur_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of txt_griddur as text
 %        str2double(get(hObject,'String')) returns contents of txt_griddur as a double
-
+settingChange(hObject)
 
 % --- Executes during object creation, after setting all properties.
 function txt_griddur_CreateFcn(hObject, eventdata, handles)
@@ -1903,6 +1804,15 @@ function push_remchan_Callback(hObject, eventdata, handles)
 % hObject    handle to push_remchan (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+[remind, ok] = listdlg("ListString",handles.channelList, ...
+    "PromptString", 'REMOVE these channels:');
+if ok
+    channelIDlist = handles.channelIDlist;
+    remtf = false(size(channelIDlist)); remtf(remind) = true;
+    handles.allChannelIDs = channelIDlist(~remtf);
+    guidata(hObject, handles);
+    settingChange(hObject);
+end
 
 
 % --- Executes on button press in push_stimCalibrate.
@@ -1910,3 +1820,18 @@ function push_stimCalibrate_Callback(hObject, eventdata, handles)
 % hObject    handle to push_stimCalibrate (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+if handles.RunMainLoop
+    error('Cannot calibrate while running data aquisition. Press Stop to proceed.')
+end
+if handles.StimActive
+    error('Stimulator is already active. Press Stim Off to proceed.')
+end
+handles.HardwareFuncs.CheckConnectionStimulator();
+handles.StimSetupArgs = stimGetSetupArgs(handles);
+handles.StimulatorLagTime = handles.HardwareFuncs.CalibrateStimulator(...
+    rmfield(handles, handles.rmfieldList), false, ...
+    handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
+    handles.HardwareFuncs.GetTime, handles.HardwareFuncs.InitRawData, handles.HardwareFuncs.GetNewRawData, ...
+    handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, ...
+    handles.HardwareFuncs.PulseStimulator);
+guidata(hObject, handles);
