@@ -316,6 +316,7 @@ for ch_art = 1:size(rawTails,2)
             % artifact limited to this packet 
             artRemArgs.nOverlap(ch_art) = 0;
         end
+        i2 = min(i2, height(tX)); % why is this necessary??
         tX(i1:i2,2) = tXfor(i1:i2,2);
     end
     artRemTails{ch_art} = tX;
