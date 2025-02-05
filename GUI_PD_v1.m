@@ -115,6 +115,7 @@ handles.bufferSizeGrid = 10;
 handles.allChannelIDs = [];
 handles.channelIndex = [];
 handles.PhaseOfInterest = [0, pi];
+handles.StimTriggerMode = true;
 
 % init other storage buffers
 handles.phStorage = nan(100000,width(handles.PhaseOfInterest)); 
@@ -161,8 +162,13 @@ handles.ControllerResult = 0;
 % hardware-specific functions 
 handles.HardwareFuncs = struct(...
     'SetupRecording', @connect_cbmex, 'ShutdownRecording', @disconnect_cbmex, 'InitRawData', @initRawData_cbmex, 'InitRecording', @InitializeRecording_cbmex, 'GetNewRawData', @getNewRawData_cbmex, 'GetTime', @getTime_cbmex, ... BlackRock NSP
-    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'PulseStimulator', @stimPulse_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim, 'CalibrateStimulator', @stimCalibrate_cerestim ... BlackRock CereStim
-    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'PulseStimulator', @(~,~) 0, 'CheckConnectionStimulator', @() 0, 'CalibrateStimulator', @(~,~,~,~,~,~,~,~,~,~) 0 ... dummy/no stimulator
+    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'SetTriggerModeStimulator', @stimTriggerMode_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim, 'CalibrateStimulator', @stimCalibrate_cerestim, ... BlackRock CereStim
+    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'SetTriggerModeStimulator', @(~,~) 0, 'CheckConnectionStimulator', @() 0, 'CalibrateStimulator', @(~,~,~,~,~,~,~,~,~,~) 0, ... dummy/no stimulator
+    ...'SetupStimTTL', @(~) [], ... no TTL enabled 
+    'SetupStimTTL', @srlSetup_cpod, ... Cedrus c-pod TTL enabled 
+    ...'PulseStimulator', @stimPulse_cerestim, 'SetStimTriggerMode', @(s) s ... pulse CereStim using the API 
+    'PulseStimulator', @stimPulse_cpod, 'SetStimTriggerMode', @stimTriggerMode_cerestim ... pulse in trigger mode using a TTL sent through Cedrus c-pod 
+    ...'PulseStimulator', @(~,~) 0, 'SetStimTriggerMode', @(s) s ... no stimulation 
     );
 handles.initTic = tic;
 
@@ -1020,7 +1026,8 @@ handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
     rmfield(handles, handles.rmfieldList), ...
     handles.dataQueue, handles.stimQueue, ...
     handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
-    handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, handles.HardwareFuncs.PulseStimulator, ...
+    handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, ...
+    handles.HardwareFuncs.PulseStimulator, handles.HardwareFuncs.SetupStimTTL, ...
     handles.HardwareFuncs.GetNewRawData, handles.HardwareFuncs.GetTime);
 catch ME2
     warning(ME2.message);
@@ -1645,6 +1652,11 @@ if get(hObject, 'Value') == 1
 
     handles.StimSetupArgs = stimGetSetupArgs(handles);
 
+    if handles.StimTriggerMode
+        stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
+        stimulator = handles.HardwareFuncs.SetStimTriggerMode(stimulator);
+    end
+
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
 
@@ -1658,6 +1670,9 @@ if get(hObject, 'Value') == 1
 
 else
     % stop stimulus 
+    if handles.StimTriggerMode
+        stimulator = handles.HardwareFuncs.ShutdownStimulator(handles.StimSetupArgs);
+    end
     handles.StimActive = false;
     set(hObject, 'String', 'Stim Off');
 end
@@ -1927,5 +1942,6 @@ handles.StimulatorLagTime = handles.HardwareFuncs.CalibrateStimulator(...
     handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
     handles.HardwareFuncs.GetTime, handles.HardwareFuncs.InitRawData, handles.HardwareFuncs.GetNewRawData, ...
     handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, ...
-    handles.HardwareFuncs.PulseStimulator);
+    handles.HardwareFuncs.PulseStimulator, ...
+    handles.HardwareFuncs.SetupStimTTL);
 guidata(hObject, handles);
