@@ -145,7 +145,11 @@ end
 
 % stimulator 
 if UserArgs.StimActive
-    StimArgs = SetupStimulator(UserArgs.StimSetupArgs);
+    if ~UserArgs.StimTriggerMode
+        StimArgs = SetupStimulator(UserArgs.StimSetupArgs);
+    else
+        StimArgs = [];
+    end
     stimScheduler = timer(...
         "TimerFcn",{@stimFunction, StimArgs, UserArgs, initTic}, ...
         "StartDelay",inf);
@@ -267,7 +271,7 @@ end
 ShutdownRecording();
 
 % stimulator 
-if UserArgs.StimActive
+if UserArgs.StimActive && ~UserArgs.StimTriggerMode
     StimArgs = ShutdownStimulator(StimArgs, UserArgs);
 end
 

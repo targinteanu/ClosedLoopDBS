@@ -95,6 +95,20 @@ catch ME1
     keyboard
 end
 
+% set serial comm with c-pod for TTL, if necessary 
+handles.StimTriggerMode = true;
+if handles.StimTriggerMode
+    try
+        handles.srlTTL = srlSetup_cpod();
+    catch ME2 
+        getReport(ME2)
+        % try delete(instrfind) ??
+        keyboard
+    end
+else
+    handles.srlTTL = [];
+end
+
 % serial saving 
 ud.TimeStamp = nan;
 handles.udBlank = ud;
@@ -161,8 +175,11 @@ handles.ControllerResult = 0;
 % hardware-specific functions 
 handles.HardwareFuncs = struct(...
     'SetupRecording', @connect_cbmex, 'ShutdownRecording', @disconnect_cbmex, 'InitRawData', @initRawData_cbmex, 'InitRecording', @InitializeRecording_cbmex, 'GetNewRawData', @getNewRawData_cbmex, 'GetTime', @getTime_cbmex, ... BlackRock NSP
-    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'PulseStimulator', @stimPulse_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim, 'CalibrateStimulator', @stimCalibrate_cerestim ... BlackRock CereStim
-    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'PulseStimulator', @(~,~) 0, 'CheckConnectionStimulator', @() 0, 'CalibrateStimulator', @(~,~,~,~,~,~,~,~,~,~) 0 ... dummy/no stimulator
+    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'SetTriggerModeStimulator', @stimTriggerMode_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim, 'CalibrateStimulator', @stimCalibrate_cerestim, ... BlackRock CereStim
+    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'SetTriggerModeStimulator', @(~,~) 0, 'CheckConnectionStimulator', @() 0, 'CalibrateStimulator', @(~,~,~,~,~,~,~,~,~,~) 0, ... dummy/no stimulator
+    ...'PulseStimulator', @stimPulse_cerestim ... pulse CereStim using the API 
+    'PulseStimulator', @stimPulse_cpod ... pulse in trigger mode using a TTL sent through Cedrus c-pod 
+    ...'PulseStimulator', @(~,~) 0 ... no stimulation 
     );
 handles.initTic = tic;
 
@@ -187,7 +204,7 @@ handles.rmfieldList = {...
     'f_PhaseDetect', ...
     'udBlank', 'srlStorage1', 'srlP1', 'phStorage', 'phP', 'stStorage', 'stP', ...
     'output', ...
-    'timer', 'srl', ...
+    'timer', 'srl', 'srlTTL', ...
     'HardwareFuncs', ...
     'h_rawDataTrace', 'h_artDataTrace', 'h_filtDataTrace', 'h_timingTrace', 'h_timeDispTrace', ...
     'h_predTrace', 'h_peakTrace', 'h_trouTrace', 'h_stimTrace', ...
@@ -1645,6 +1662,10 @@ if get(hObject, 'Value') == 1
 
     handles.StimSetupArgs = stimGetSetupArgs(handles);
 
+    if handles.StimTriggerMode
+        stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
+    end
+
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
 
@@ -1658,6 +1679,9 @@ if get(hObject, 'Value') == 1
 
 else
     % stop stimulus 
+    if handles.StimTriggerMode
+        stimulator = handles.HardwareFuncs.ShutdownStimulator(handles.StimSetupArgs);
+    end
     handles.StimActive = false;
     set(hObject, 'String', 'Stim Off');
 end
