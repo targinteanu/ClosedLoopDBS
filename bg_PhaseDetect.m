@@ -1,6 +1,6 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
     SetupRecording, ShutdownRecording, ...
-    SetupStimulator, ShutdownStimulator, PulseStimulator, ...
+    SetupStimulator, ShutdownStimulator, PulseStimulator, SetupStimTTL, ...
     GetNewRawData, GetTime)
 % 
 % Run brain recording with phase detection/prediction for PDS.
@@ -147,11 +147,13 @@ end
 if UserArgs.StimActive
     if ~UserArgs.StimTriggerMode
         StimArgs = SetupStimulator(UserArgs.StimSetupArgs);
+        StimTTL  = [];
     else
         StimArgs = [];
+        StimTTL  = SetupStimTTL(UserArgs.StimSetupArgs);
     end
     stimScheduler = timer(...
-        "TimerFcn",{@stimFunction, StimArgs, UserArgs, initTic}, ...
+        "TimerFcn",{@stimFunction, StimArgs, StimTTL, initTic}, ...
         "StartDelay",inf);
 end
 
@@ -271,8 +273,12 @@ end
 ShutdownRecording();
 
 % stimulator 
-if UserArgs.StimActive && ~UserArgs.StimTriggerMode
-    StimArgs = ShutdownStimulator(StimArgs, UserArgs);
+if UserArgs.StimActive 
+    if ~UserArgs.StimTriggerMode
+        StimArgs = ShutdownStimulator(StimArgs, UserArgs);
+    else
+        delete(StimTTL);
+    end
 end
 
 % If there are any errors in the full func, stop looping and allow the User

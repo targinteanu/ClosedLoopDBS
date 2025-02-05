@@ -8,6 +8,8 @@
 
 %clear device
 
+function device = srlSetup_cpod(~)
+
 device_found = 0;
 ports = serialportlist("available");
 
@@ -28,6 +30,7 @@ end
 
 if device_found == 0
     disp("No XID device found. Exiting.")
+    device = [];
     return
 end
 
@@ -60,4 +63,6 @@ function setPulseDuration(device, duration)
     write(device, sprintf("mp%c%c%c%c", getByte(duration,1),...
         getByte(duration,2), getByte(duration,3),...
         getByte(duration,4)), "char")
+end
+
 end

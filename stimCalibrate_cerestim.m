@@ -1,6 +1,6 @@
 function [avgLag, stdLag] = stimCalibrate_cerestim(UserArgs, showplot, ...
     connectRecording, disconnectRecording, getTime, initRawData, getNewRawData, ...
-    stimSetup, stimShutdown, stimPulse)
+    stimSetup, stimShutdown, stimPulse, stimSetupTTL)
 
 if nargin < 2
     showplot = true;
@@ -16,11 +16,13 @@ if nargin < 10
         stimSetup = @stimSetup_cerestim;
         stimShutdown = @stimShutdown_cerestim;
         stimPulse = @stimPulse_cerestim;
+        stimSetupTTL = @(~) [];
     else
         % use UserArgs 
         stimSetup = UserArgs.HardwareFuncs.SetupStimulator; 
         stimShutdown = UserArgs.HardwareFuncs.ShutdownStimulator; 
         stimPulse = UserArgs.HardwareFuncs.PulseStimulator;
+        stimSetupTTL = UserArgs.HardwareFuncs.SetupStimTTL;
     end
 end
 if nargin < 7
@@ -82,6 +84,8 @@ chanInfo = {chanInfos(chanInd)};
 
 time0 = datetime - seconds(getTime(initTic)); % time-of-day when cbmex time was 0
 
+stimTTL = stimSetupTTL(StimSetupArgs);
+
 stimulator = stimSetup(StimSetupArgs);
 
 %% warning before doing stimulation
@@ -106,7 +110,7 @@ for n = 1:numTests
     testDur = ceil(testDur*1000)/1000; % round up to ms 
     pause(testDur);
     stimtime1 = getTime(initTic);
-    stimulator = stimPulse(stimulator);
+    stimulator = stimPulse(stimulator, stimTTL);
     stimtime2 = getTime(initTic);
     StimSentTime(n) = mean([stimtime1, stimtime2]);
 end
@@ -149,5 +153,8 @@ end
 %% disconnect from hardware 
 disconnectRecording();
 stimShutdown(stimulator);
+if ~isempty(stimTTL)
+    delete(stimTTL);
+end
 
 end
