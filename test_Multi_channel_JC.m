@@ -5,8 +5,8 @@
     = getRecordedData_NS('PD22N008.ns2');
 
 %Channels
-recordingChannelIndex = 37; % Primary recording channel
-neighborChannels = [16, 36, 38, 58]; % Neighbor recording channels - 1, 21, 43, 63
+recordingChannelIndex = 38; % Primary recording channel
+neighborChannels = [15, 17, 57, 59]; % Neighbor recording channels - 1, 21, 43, 63
 disp(neighborChannels(1))
 disp(neighborChannels(2))
 disp(neighborChannels(3))
@@ -25,17 +25,17 @@ ch_neighbors_all_raw = [ch_neighbor1_raw;
 ch_neighbors_avg_raw = mean(ch_neighbors_all_raw, 1);
 
 %Filtered signals
-ch58_filtered = Myeegfilt(ch58_raw, SamplingFreq, 13, 30, 0, 1024);
-ch_neighbor1_filtered = Myeegfilt(ch_neighbor1_raw, SamplingFreq, 13, 30, 0, 1024);
-ch_neighbor2_filtered = Myeegfilt(ch_neighbor2_raw, SamplingFreq, 13, 30, 0, 1024);
-ch_neighbor3_filtered = Myeegfilt(ch_neighbor3_raw, SamplingFreq, 13, 30, 0, 1024);
-ch_neighbor4_filtered = Myeegfilt(ch_neighbor4_raw, SamplingFreq, 13, 30, 0, 1024);
+ch58_filtered = Myeegfilt(ch58_raw, SamplingFreq, 13, 30); %13,30,0,1024
+ch_neighbor1_filtered = Myeegfilt(ch_neighbor1_raw, SamplingFreq, 13, 30);
+ch_neighbor2_filtered = Myeegfilt(ch_neighbor2_raw, SamplingFreq, 13, 30);
+ch_neighbor3_filtered = Myeegfilt(ch_neighbor3_raw, SamplingFreq, 13, 30);
+ch_neighbor4_filtered = Myeegfilt(ch_neighbor4_raw, SamplingFreq, 13, 30);
 ch_neighbors_all_filtered = [ch_neighbor1_filtered; 
                          ch_neighbor2_filtered; 
                          ch_neighbor3_filtered; 
                          ch_neighbor4_filtered];    
 ch_neighbors_avg_filtered = mean(ch_neighbors_all_filtered, 1);
-ch_neighbors_avg_raw_filtered = Myeegfilt(ch_neighbors_avg_raw, SamplingFreq, 13, 30, 0, 1024);
+ch_neighbors_avg_raw_filtered = Myeegfilt(ch_neighbors_avg_raw, SamplingFreq, 13, 30);
 
 %Instantaneous Phase and Frequency
 [ch58_Phase, ch58_Freq] = instPhaseFreq(ch58_filtered, SamplingFreq);
@@ -115,16 +115,16 @@ hold off;
 
 % ---- Plot 4: Ch58 phase vs. Neighbor phase
 nexttile;
-yyaxis left;
 plot(t(startIdx:endIdx), ch58_Phase(startIdx:endIdx), 'b', 'LineWidth', 1.2);
 ylabel('Phase (rad)');
-yyaxis right;
+hold on;
 plot(t(startIdx:endIdx), neighborsPhase(startIdx:endIdx), 'r', 'LineWidth', 1.2); 
 ylabel('Phase (rad)');
 title('Ch58 Phase vs. Avg Neighbors Phase - Method 1');
 xlabel('Time (s)');
 legend('Ch58', 'Avg Neighbor');
 grid on;
+hold off;
 
 % ---- Plot 5: Ch58 Freq vs. Neighbor Freq
 nexttile;
@@ -171,29 +171,28 @@ grid on;
 hold off;
 
 nexttile;
-yyaxis left;
 plot(t(startIdx:endIdx), ch58_Phase(startIdx:endIdx), 'b', 'LineWidth', 1.2); 
 ylabel('Phase (rad)');
-yyaxis right;
+hold on;
 plot(t(startIdx:endIdx), neighborsPhase_2(startIdx:endIdx), 'r', 'LineWidth', 1.2); 
 ylabel('Phase (rad)');
 title('Ch58 Phase vs. Avg Neighbors Phase - Method 2');
 xlabel('Time (s)');
 legend('Ch58', 'Avg Neighbor');
 grid on;
+hold off;
 
 nexttile;
-yyaxis left;
 plot(t(startIdx:endIdx), ch58_Freq(startIdx:endIdx), 'b', 'LineWidth', 1.2); 
 ylabel('Freq (Hz)');
-yyaxis right;
+hold on;
 plot(t(startIdx:endIdx), neighborsFreq_2(startIdx:endIdx), 'r', 'LineWidth', 1.2);
 ylabel('Freq (Hz)');
 title('Ch58 Freq vs. Avg Neighbors Freq - Method 2');
 xlabel('Time (s)');
 legend('Ch58', 'Avg Neighbor');
 grid on;
-
+hold off;
 
 
 
@@ -251,6 +250,57 @@ ylabel('Count');
 title(['Frequency Error Distribution (Ch58 - Avg Neighbor) - Method 2' ...
     sprintf('\nMAE = %.3f, RMSE = %.3f', MAE_freq2, RMSE_freq2)]);
 grid on;
+
+figure;
+tiledlayout(2,2);
+
+% ---- Plot 1: Phase Correlation (Method 1) ----
+nexttile;
+scatter(neighborsPhase, ch58_Phase, 10, 'b', 'filled'); 
+hold on;
+plot([-pi, pi], [-pi, pi], 'k--', 'LineWidth', 1.5); % Perfect correlation line
+hold off;
+xlabel('Neighbor Phase (radians)');
+ylabel('Ch58 Phase (radians)');
+title('Phase Correlation (Ch58 vs Neighbor) - Method 1');
+grid on;
+
+% ---- Plot 2: Frequency Correlation (Method 1) ----
+nexttile;
+scatter(neighborsFreq, ch58_Freq, 10, 'r', 'filled'); 
+hold on;
+xLimits = xlim; % Get dynamic limits for proper scaling
+plot(xLimits, xLimits, 'k--', 'LineWidth', 1.5); % Perfect correlation line
+hold off;
+xlabel('Neighbor Frequency (Hz)');
+ylabel('Ch58 Frequency (Hz)');
+title('Frequency Correlation (Ch58 vs Neighbor) - Method 1');
+grid on;
+
+% ---- Plot 3: Phase Correlation (Method 2) ----
+nexttile;
+scatter(neighborsPhase_2, ch58_Phase, 10, 'b', 'filled'); 
+hold on;
+plot([-pi, pi], [-pi, pi], 'k--', 'LineWidth', 1.5); % Perfect correlation line
+hold off;
+xlabel('Neighbor Phase 2 (radians)');
+ylabel('Ch58 Phase (radians)');
+title('Phase Correlation (Ch58 vs Neighbor) - Method 2');
+grid on;
+
+% ---- Plot 4: Frequency Correlation (Method 2) ----
+nexttile;
+scatter(neighborsFreq_2, ch58_Freq, 10, 'r', 'filled'); 
+hold on;
+xLimits = xlim; % Get dynamic limits for proper scaling
+plot(xLimits, xLimits, 'k--', 'LineWidth', 1.5); % Perfect correlation line
+hold off;
+xlabel('Neighbor Frequency 2 (Hz)');
+ylabel('Ch58 Frequency (Hz)');
+title('Frequency Correlation (Ch58 vs Neighbor) - Method 2');
+grid on;
+
+
 
 
 
