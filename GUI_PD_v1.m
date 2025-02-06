@@ -1410,6 +1410,7 @@ try
         error('Data aquisition timed out.')
     end
 
+    pause(.01);
     y = fltD4{1}(:,2); % ISSUE HERE - sometimes does not index, always fixes itself when debugging - add delay?
     L = min(length(y), 3*PDSwin) - 1;
     y = y((end-L):end);

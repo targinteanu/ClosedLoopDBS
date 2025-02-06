@@ -12,7 +12,7 @@ bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate
 
 ind2Q = 0; 
 
-if bp > 10 % min band power cutoff; orig at 1000
+if bp > 100 % min band power cutoff; orig at 1000
     if handles.StimActive
 
         ParadigmPhase = srl.UserData.ParadigmPhase;
