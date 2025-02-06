@@ -1,4 +1,4 @@
-function [siginf,asiginf] = neuromodulation_output_visualization(filename, Hmag_Threshold)
+function [siginf,asiginf,sigin] = neuromodulation_output_visualization(filename, Hmag_Threshold)
     % This function parses and plots the data and stimulation output
     % from the `output/neuromod_output_YYYY-MM-DD_HH_MM_SS.csv` output
     % log produced by the neuromod_app.py application
@@ -22,6 +22,9 @@ function [siginf,asiginf] = neuromodulation_output_visualization(filename, Hmag_
         [fn,fp] = uigetfile('*.csv');
         filename = fullfile(fp,fn);
     end
+
+    [fp,fn,fe] = fileparts(filename);
+    fn(fn=='_') = ' '; % for plot titles
 
     if(nargin < 2)
         Hmag_Threshold = 100;
@@ -76,6 +79,7 @@ function [siginf,asiginf] = neuromodulation_output_visualization(filename, Hmag_
     xlabel('Time (s)');
     ylim_left=get(gca,'YLim');
     ylim([-1*max(abs(ylim_left)) max(abs(ylim_left))]);
+    title(fn);
     % plot(times_secs, unwrap(angle(hilbert(siginf))));
     % plot(times_secs, diff(unwrap(angle(hilbert(siginf)))));
     hold off;
@@ -91,7 +95,8 @@ function [siginf,asiginf] = neuromodulation_output_visualization(filename, Hmag_
     % phase_angle_siginf_selected = phase_angle_siginf(min_sample_idx+1024:max_sample_idx+1024);
     % figure;polarhistogram(phase_angle_siginf_selected(logical(stims(min_sample_idx+1024:max_sample_idx+1024))), polar_edges);
 
-    title('Polar Histogram of Phases at Calculated Stimulation Times (10° bins)');
+    title({fn, ...
+        'Polar Histogram of Phases at Calculated Stimulation Times (10° bins)'});
 
 
     % [xc,lags] = xcorr(siginf.*siginf.^2,stims);
