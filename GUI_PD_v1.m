@@ -773,9 +773,6 @@ try
     end
 
     guidata(hObject,handles)
-    pause(.001)
-    drawnow 
-    pause(.001)
 
 catch ME 
     getReport(ME)
