@@ -682,6 +682,7 @@ try
                 end
             end
             tPk = forBuff(:,1); tTr = forBuff(:,2); % time to peak, trough (s)
+            tPk
             set(handles.h_peakTrace,'YData',zeros(size(tPk)));
             set(handles.h_peakTrace,'XData',handles.time0 + seconds(tPk) - tNow);
             set(handles.h_trouTrace,'YData',zeros(size(tTr)));
@@ -1035,6 +1036,12 @@ end
 % --- New Helpers ---
 
 
+% function handles = initRec(handles)
+% TO DO: (re-)init RecDataStructs here only 
+% can be called by settingchange and only called by startmainloop at the
+% beginning 
+
+
 function requeryPhaseDetect(hObject, timeoutdur)
 handles = guidata(hObject);
 if timeoutdur >= 0
@@ -1056,7 +1063,7 @@ cancel(handles.f_PhaseDetect);
 % For some reason, after push_filter, the above does not immediately cancel
 % all RunningFutures, but waiting at least 3 seconds will make them empty
 if handles.FilterSetUp
-    pause(6)
+    pause(4)
 end
 % cancellAll may be necessary in case anything is still running, but if the
 % FevalQueue is not empty, it causes annoying problems like extra GUI
