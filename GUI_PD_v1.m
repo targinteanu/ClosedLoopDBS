@@ -115,7 +115,6 @@ handles.bufferSizeGrid = 10;
 handles.allChannelIDs = [];
 handles.channelIndex = [];
 handles.PhaseOfInterest = [0, pi];
-handles.StimTriggerMode = true;
 
 % init other storage buffers
 handles.phStorage = nan(100000,width(handles.PhaseOfInterest)); 
@@ -160,20 +159,61 @@ handles.check_artifact_Value = false;
 handles.ControllerResult = 0;
 
 % hardware-specific functions 
-handles.HardwareFuncs = struct(...
-    'SetupRecording', @connect_cbmex, 'ShutdownRecording', @disconnect_cbmex, 'InitRawData', @initRawData_cbmex, 'InitRecording', @InitializeRecording_cbmex, 'GetNewRawData', @getNewRawData_cbmex, 'GetTime', @getTime_cbmex, ... BlackRock NSP
-    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'SetTriggerModeStimulator', @stimTriggerMode_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim, 'CalibrateStimulator', @stimCalibrate_cerestim, ... BlackRock CereStim
-    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'SetTriggerModeStimulator', @(~,~) 0, 'CheckConnectionStimulator', @() 0, 'CalibrateStimulator', @(~,~,~,~,~,~,~,~,~,~) 0, ... dummy/no stimulator
-    ...'SetupStimTTL', @(~) [], ... no TTL enabled 
-    'SetupStimTTL', @srlSetup_cpod, ... Cedrus c-pod TTL enabled 
-    ...'PulseStimulator', @stimPulse_cerestim, 'SetStimTriggerMode', @(s) s ... pulse CereStim using the API 
-    'PulseStimulator', @stimPulse_cpod, 'SetStimTriggerMode', @stimTriggerMode_cerestim ... pulse in trigger mode using a TTL sent through Cedrus c-pod 
-    ...'PulseStimulator', @(~,~) 0, 'SetStimTriggerMode', @(s) s ... no stimulation 
-    );
+waitbar(.25, wb, 'Setting up hardware...')
+RecOpts = {'Blackrock NSP'}; % TO DO: add Neuro Omega AlphaRS
+StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'None'}; 
+RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
+    "ListString",RecOpts, "SelectionMode","single");
+StimSel = listdlg("PromptString", "Stimulator Hardware Configuration:", ...
+    "ListString",StimOpts, "SelectionMode","single");
+if RecSel == 1
+    % Blackrock NSP 
+    handles.HardwareFuncs = struct(...
+        'SetupRecording', @connect_cbmex, ...
+        'ShutdownRecording', @disconnect_cbmex, ...
+        'InitRawData', @initRawData_cbmex, ...
+        'InitRecording', @InitializeRecording_cbmex, ...
+        'GetNewRawData', @getNewRawData_cbmex, ...
+        'GetTime', @getTime_cbmex); 
+end
+if StimSel == 1
+    % Blackrock CereStim API
+    handles.StimTriggerMode = false;
+    handles.HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
+    handles.HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
+    handles.HardwareFuncs.SetTriggerModeStimulator = @stimTriggerMode_cerestim; % *** are these duplicated?
+    handles.HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
+    handles.HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
+    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
+    handles.HardwareFuncs.PulseStimulator = @stimPulse_cerestim;
+    handles.HardwareFuncs.SetStimTriggerMode = @(s) s;                          % *** are these duplicated?
+elseif StimSel == 2
+    % c-pod + CereStim in trig mode 
+    handles.StimTriggerMode = true;
+    handles.HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
+    handles.HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
+    handles.HardwareFuncs.SetTriggerModeStimulator = @stimTriggerMode_cerestim; % *** are these duplicated?
+    handles.HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
+    handles.HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
+    handles.HardwareFuncs.SetupStimTTL = @srlSetup_cpod;
+    handles.HardwareFuncs.PulseStimulator = @stimPulse_cpod; 
+    handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;       % *** are these duplicated?
+else
+    % dummy mode / no stimulation 
+    handles.StimTriggerMode = false;
+    handles.HardwareFuncs.SetupStimulator = @(~) 0;
+    handles.HardwareFuncs.ShutdownStimulator = @(~,~) 0;
+    handles.HardwareFuncs.SetTriggerModeStimulator = @(~,~) 0;                  % *** are these duplicated?
+    handles.HardwareFuncs.CheckConnectionStimulator = @() 0;
+    handles.HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
+    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
+    handles.HardwareFuncs.PulseStimulator = @(~,~) 0;
+    handles.HardwareFuncs.SetStimTriggerMode = @(s) s;                          % *** are these duplicated?
+end
 handles.initTic = tic;
 
 % start parallel pool(s) 
-waitbar(.25, wb, 'Starting parallel pool...')
+waitbar(.3, wb, 'Starting parallel pool...')
 handles.pool = gcp('nocreate');
 if isempty(handles.pool)
     handles.pool = parpool;
