@@ -175,6 +175,8 @@ if RecSel == 1
         'InitRecording', @InitializeRecording_cbmex, ...
         'GetNewRawData', @getNewRawData_cbmex, ...
         'GetTime', @getTime_cbmex); 
+else
+    error('Recording option must be specified.')
 end
 if StimSel == 1
     % Blackrock CereStim API
