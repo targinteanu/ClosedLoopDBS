@@ -1689,6 +1689,11 @@ if get(hObject, 'Value') == 1
 
     try
  
+    if handles.StimActive
+        % there is a problem if StimActive is already enabled 
+        error('Issue last time turning off stim; please try again.')
+    end
+
     handles.HardwareFuncs.CheckConnectionStimulator();
 
     handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
