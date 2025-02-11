@@ -182,8 +182,8 @@ for CH = 1:size(forData,2)
     forData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
     forBuffCH = forBuffs{1,CH}; forBuffAddCH = forBuffsAdd{1,CH} + curTimeFor(CH);
     for p = 1:width(forBuffCH)
-        if forBuffCH(end,p) > curTimeFor(CH)
-            % prev point is still in the future; replace it
+        if forBuffCH(end,p) > curTimeFor(CH) + forArgs.StimulatorLagTime
+            % prev point is still in the accessible future; replace it
             forBuffCH(end,p) = forBuffAddCH(end,p);
         else
             % prev point passed; add new point to buffer 
