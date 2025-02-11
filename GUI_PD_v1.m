@@ -682,7 +682,6 @@ try
                 end
             end
             tPk = forBuff(:,1); tTr = forBuff(:,2); % time to peak, trough (s)
-            tPk
             set(handles.h_peakTrace,'YData',zeros(size(tPk)));
             set(handles.h_peakTrace,'XData',handles.time0 + seconds(tPk) - tNow);
             set(handles.h_trouTrace,'YData',zeros(size(tTr)));
@@ -1460,6 +1459,9 @@ try
     end
 
     pause(.01);
+    if isempty(fltD4{1})
+        pause(1);
+    end
     y = fltD4{1}(:,2); % ISSUE HERE - sometimes does not index, always fixes itself when debugging - add delay?
     L = min(length(y), 3*PDSwin) - 1;
     y = y((end-L):end);
