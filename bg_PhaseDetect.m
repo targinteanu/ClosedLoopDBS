@@ -187,6 +187,12 @@ while cont_loop
     loopcount = loopcount+1;
     loopsendnum = guitime/looptime;
     pause(dT)
+    if rand > .7
+        pause(dT)
+        % introducing random extra pause; will this stop it from getting
+        % "stuck" in a loop where forecast buffers never make it into the
+        % "past"? 
+    end
 
     try
     % main iteration 
