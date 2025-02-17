@@ -52,6 +52,7 @@ ARmdl = ar(iddata(dataBaseline', [], 1/SamplingFreq), ARlen, 'yw');
 
 %% remove artifact 
 dataOneChannel = dataOneChannelWithArtifact;
+dataOneChannel = dataOneChannel - mean(dataOneChannel); % correct DC offset
 
 for ind = artIndAll
     ind0 = ind - ARlen;
@@ -84,7 +85,8 @@ dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,4,9);
 %% select time of interest (manually)
 % TO DO: make this automatic, pulled from notes.txt ?
 % selind = true(size(t)); % no selection
-selind = t >= datetime(2024,10,9,16,35,0) + hours(4);
+% selind = t >= datetime(2024,10,9,16,35,0) + hours(4);
+selind = true(size(t)); % bypass selection - fix this!!!
 tSel = t(selind); tRelSel = tRel(selind);
 dataOneChannelSel = dataOneChannel(selind);
 selind = find(selind); 
