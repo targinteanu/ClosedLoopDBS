@@ -7,10 +7,10 @@
 %Channels
 recordingChannelIndex = 38; % Primary recording channel
 neighborChannels = [15, 17, 57, 59]; % Neighbor recording channels - 1, 21, 43, 63
-disp(neighborChannels(1))
-disp(neighborChannels(2))
-disp(neighborChannels(3))
-disp(neighborChannels(4))
+%disp(neighborChannels(1))
+%disp(neighborChannels(2))
+%disp(neighborChannels(3))
+%disp(neighborChannels(4))
 
 %Raw signals
 ch58_raw = dataAllChannels(recordingChannelIndex, :);
@@ -25,17 +25,17 @@ ch_neighbors_all_raw = [ch_neighbor1_raw;
 ch_neighbors_avg_raw = mean(ch_neighbors_all_raw, 1);
 
 %Filtered signals
-ch58_filtered = Myeegfilt(ch58_raw, SamplingFreq, 13, 30); %13,30,0,1024
-ch_neighbor1_filtered = Myeegfilt(ch_neighbor1_raw, SamplingFreq, 13, 30);
-ch_neighbor2_filtered = Myeegfilt(ch_neighbor2_raw, SamplingFreq, 13, 30);
-ch_neighbor3_filtered = Myeegfilt(ch_neighbor3_raw, SamplingFreq, 13, 30);
-ch_neighbor4_filtered = Myeegfilt(ch_neighbor4_raw, SamplingFreq, 13, 30);
+ch58_filtered = Myeegfilt(ch58_raw, SamplingFreq, 13, 30, 0, 1024); %13,30,0,1024
+ch_neighbor1_filtered = Myeegfilt(ch_neighbor1_raw, SamplingFreq, 13, 30, 0, 1024);  %0-1024
+ch_neighbor2_filtered = Myeegfilt(ch_neighbor2_raw, SamplingFreq, 13, 30, 0, 1024);
+ch_neighbor3_filtered = Myeegfilt(ch_neighbor3_raw, SamplingFreq, 13, 30, 0, 1024);
+ch_neighbor4_filtered = Myeegfilt(ch_neighbor4_raw, SamplingFreq, 13, 30, 0, 1024);
 ch_neighbors_all_filtered = [ch_neighbor1_filtered; 
                          ch_neighbor2_filtered; 
                          ch_neighbor3_filtered; 
                          ch_neighbor4_filtered];    
 ch_neighbors_avg_filtered = mean(ch_neighbors_all_filtered, 1);
-ch_neighbors_avg_raw_filtered = Myeegfilt(ch_neighbors_avg_raw, SamplingFreq, 13, 30);
+ch_neighbors_avg_raw_filtered = Myeegfilt(ch_neighbors_avg_raw, SamplingFreq, 13, 30, 0, 1024);
 
 %Instantaneous Phase and Frequency
 [ch58_Phase, ch58_Freq] = instPhaseFreq(ch58_filtered, SamplingFreq);
