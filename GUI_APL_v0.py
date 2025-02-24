@@ -33,7 +33,7 @@ if not os.path.exists(local_folder):
     os.makedirs(local_folder)
 
 # Specify the remote folder path
-remote_folder = '/path/to/remote/folder'
+remote_folder = 'jhuadmin@192.168.50.70:/home/jhuadmin/app/neuromod_software/output/'
 
 # function to modify AR coefficients 
 def modify_ar_coefficients(myClient, NewArCoeffs):
@@ -59,7 +59,7 @@ def modify_ar_coefficients(myClient, NewArCoeffs):
 # Device credentials
 hostname = '192.168.50.70'
 username = 'jhuadmin'
-password = '123qaz!@#QAZ'  # Replace with the actual password
+password = '123qaz!@#QAZ' 
 
 # Create an SSH client
 client = paramiko.SSHClient()
@@ -69,6 +69,7 @@ try:
     # Connect to the device
     client.connect(hostname, username=username, password=password)
     print("Connected successfully to", hostname)
+    time.sleep(1)
 
     # Get the current datetime of this computer
     current_datetime = datetime.now().strftime('%Y%m%d %H:%M:%S')
@@ -80,6 +81,7 @@ try:
     stdin.flush()
     print(stdout.read().decode())
     print(stderr.read().decode())
+    time.sleep(1)
     
     # Change directory to app/neuromod_software
     command = 'cd app/neuromod_software'
@@ -92,7 +94,7 @@ try:
     stdin, stdout, stderr = client.exec_command(command)
     print(stdout.read().decode())
     print(stderr.read().decode())
-    time.sleep(30)
+    time.sleep(10)
     # Stop the neuro modulation script
     command = 'pkill -f run_neuro_modulation.sh'
     stdin, stdout, stderr = client.exec_command(command)
