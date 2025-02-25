@@ -1,9 +1,12 @@
 function [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
     channelName, channelIndex, channelIndexStim, channelNames]...
-    = getRecordedData_NS(nsOrFilename)
+    = getRecordedData_NS(nsOrFilename, channelIndex)
 
 if nargin < 1
     nsOrFilename = [];
+end
+if nargin < 2
+    channelIndex = [];
 end
 cl = class(nsOrFilename);
 
@@ -40,7 +43,9 @@ end
 % The user selects the recording channel. The stimulus trigger channel is
 % assumed to be 'ainp1'
 channelNames = {ns.ElectrodesInfo.Label}; 
-channelIndex = listdlg('ListString', channelNames);
+if isempty(channelIndex)
+    channelIndex = listdlg('ListString', channelNames);
+end
 channelName = channelNames{channelIndex};
 channelIndexStim = find(contains(channelNames, 'ainp1'));
 
