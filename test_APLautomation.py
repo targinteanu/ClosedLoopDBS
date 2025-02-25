@@ -42,12 +42,23 @@ try:
     output = shell.recv(1024).decode()
     print(output)
 
-    # Keep session open to see ongoing output
+    print("Program is running. Press Enter to stop...")
+    
+    # Keep reading output
     while True:
         if shell.recv_ready():
             output = shell.recv(1024).decode()
             print(output, end="")
-        time.sleep(1)
+
+        # Stop when the user presses Enter
+        if input().strip() == "":
+            print("\nStopping the program...")
+            shell.send("\x03")  # Send Ctrl+C
+            break
+
+    time.sleep(2)  # Allow time for program to terminate
+    output = shell.recv(1024).decode()
+    print(output)
 
     ssh.close()
 
