@@ -13,27 +13,41 @@ ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 try:
     ssh.connect(hostname, username=username, password=password)
+    
+    # Start an interactive shell session
+    shell = ssh.invoke_shell()
+
+    # Wait for shell to be ready
+    time.sleep(1)
 
     # Get the current datetime of this computer
     current_datetime = datetime.now().strftime('%Y%m%d %H:%M:%S')
 
     # Set the date of the device
     command = f'sudo -S date --set="{current_datetime}"'
-    stdin, stdout, stderr = ssh.exec_command(command)
-    stdin.write(password + '\n')
-    stdin.flush()
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+    shell.send(command + '\n')
     time.sleep(1)
+    shell.send(password + '\n')
+    time.sleep(1)
+    output = shell.recv(1024).decode()
+    print(output)
     
-    # Execute command
-    command = "bash -i -c 'cd app/neuromod_software && ./run_neuro_modulation.sh realtime_analog_recording.yaml'"
-    stdin, stdout, stderr = ssh.exec_command(command)
-    time.sleep(5)
+    # Send commands
+    shell.send("cd app/neuromod_software\n")
+    time.sleep(1)
+    shell.send("./run_neuro_modulation.sh realtime_analog_recording.yaml\n")
 
-    # Print output in real time
-    for line in iter(stdout.readline, ""):
-        print(line, end="")
+    # Read output
+    time.sleep(2)  # Adjust this delay if needed
+    output = shell.recv(1024).decode()
+    print(output)
+
+    # Keep session open to see ongoing output
+    while True:
+        if shell.recv_ready():
+            output = shell.recv(1024).decode()
+            print(output, end="")
+        time.sleep(1)
 
     ssh.close()
 
