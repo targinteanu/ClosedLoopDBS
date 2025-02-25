@@ -83,15 +83,10 @@ try:
     print(stderr.read().decode())
     time.sleep(1)
     
-    # Change directory to app/neuromod_software
-    command = 'cd app/neuromod_software'
-    stdin, stdout, stderr = client.exec_command(command)
-    print(stdout.read().decode())
-    print(stderr.read().decode())
-
     # run the neuro modulation script for initial data
-    command = './run_neuro_modulation.sh realtime_analog_recording.yaml'
+    command = 'cd app/neuromod_software && ./run_neuro_modulation.sh realtime_analog_recording.yaml'
     stdin, stdout, stderr = client.exec_command(command)
+    stdin.write(password + '\n')
     print(stdout.read().decode())
     print(stderr.read().decode())
     time.sleep(10)
