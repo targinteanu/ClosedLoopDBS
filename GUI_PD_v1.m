@@ -183,29 +183,26 @@ if StimSel == 1
     handles.StimTriggerMode = false;
     handles.HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
     handles.HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
-    handles.HardwareFuncs.SetTriggerModeStimulator = @stimTriggerMode_cerestim; % *** are these duplicated?
     handles.HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
     handles.HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
     handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
     handles.HardwareFuncs.PulseStimulator = @stimPulse_cerestim;
-    handles.HardwareFuncs.SetStimTriggerMode = @(s) s;                          % *** are these duplicated?
+    handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;  
 elseif StimSel == 2
     % c-pod + CereStim in trig mode 
     handles.StimTriggerMode = true;
     handles.HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
     handles.HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
-    handles.HardwareFuncs.SetTriggerModeStimulator = @stimTriggerMode_cerestim; % *** are these duplicated?
     handles.HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
     handles.HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
     handles.HardwareFuncs.SetupStimTTL = @srlSetup_cpod;
     handles.HardwareFuncs.PulseStimulator = @stimPulse_cpod; 
-    handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;       % *** are these duplicated?
+    handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;       
 else
     % dummy mode / no stimulation 
     handles.StimTriggerMode = false;
     handles.HardwareFuncs.SetupStimulator = @(~) 0;
     handles.HardwareFuncs.ShutdownStimulator = @(~,~) 0;
-    handles.HardwareFuncs.SetTriggerModeStimulator = @(~,~) 0;                  % *** are these duplicated?
     handles.HardwareFuncs.CheckConnectionStimulator = @() 0;
     handles.HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
     handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
@@ -551,8 +548,6 @@ try
     end
 
     % timing 
-    % pause(.05); % s between displays - is this necessary since timer has
-    %                                    fixed spacing period?
     tNow = datetime;
     timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
     handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
