@@ -11,7 +11,7 @@ def copy_files_from_device(remote_path, local_path):
     try:
         file_list = sftp.listdir_attr(remote_path)
         if not file_list:
-            print("No files found in the remote directory.")
+            print("UI: No files found in the remote directory.")
             return None
         
         # Find the most recent file based on modification time
@@ -20,7 +20,7 @@ def copy_files_from_device(remote_path, local_path):
         local_file = os.path.join(local_path, most_recent_file.filename)
         
         sftp.get(remote_file, local_file)
-        print(f"Copied {remote_file} to {local_file}")
+        print(f"UI: Copied {remote_file} to {local_file}")
         return most_recent_file.filename
     finally:
         sftp.close()
@@ -35,8 +35,21 @@ if not os.path.exists(local_folder):
 # Specify the remote folder path
 remote_folder = 'jhuadmin@192.168.50.70:/home/jhuadmin/app/neuromod_software/output/'
 
+def run_neuromod(myShell):
+    myShell.send("./run_neuro_modulation.sh realtime_analog_recording.yaml\n")
+    time.sleep(2)  # Adjust this delay if needed
+    output = myShell.recv(1024).decode()
+    print(output)
+
+def stop_neuromod(myShell):
+    myShell.send("\x03")  # Send Ctrl+C
+    time.sleep(2)  # Allow time for program to terminate
+    output = myShell.recv(1024).decode()
+    print(output)
+
 # function to modify AR coefficients 
 def modify_ar_coefficients(myClient, NewArCoeffs):
+    print("UI: Modifying AR coefficients in the YAML file")
 
     # Read the YAML file
     command = 'cat configs/realtime_analog_recording.yaml'
@@ -67,14 +80,19 @@ client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 try:
     # Connect to the device
+    print("UI: attempting to connect to device")
     client.connect(hostname, username=username, password=password)
-    print("Connected successfully to", hostname)
+    print("UI: Connected successfully to", hostname)
+    time.sleep(1)
+    # Start an interactive shell session
+    shell = client.invoke_shell()
     time.sleep(1)
 
     # Get the current datetime of this computer
     current_datetime = datetime.now().strftime('%Y%m%d %H:%M:%S')
 
     # Set the date of the device
+    print("UI: setting date and time of device")
     command = f'sudo -S date --set="{current_datetime}"'
     stdin, stdout, stderr = client.exec_command(command)
     stdin.write(password + '\n')
@@ -84,20 +102,19 @@ try:
     time.sleep(1)
     
     # run the neuro modulation script for initial data
-    command = 'cd app/neuromod_software && ./run_neuro_modulation.sh realtime_analog_recording.yaml'
-    stdin, stdout, stderr = client.exec_command(command)
-    stdin.write(password + '\n')
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+    print("UI: running neuro modulation for initial data")
+    shell.send("cd app/neuromod_software\n")
+    time.sleep(1)
+    run_neuromod(shell)
     time.sleep(10)
     # Stop the neuro modulation script
-    command = 'pkill -f run_neuro_modulation.sh'
-    stdin, stdout, stderr = client.exec_command(command)
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+    print("UI: stopping neuro modulation")
+    stop_neuromod(shell)
     time.sleep(1)
     # Copy the most recent file from the device to the specified folder
+    print("UI: copying CSV file")
     csvfilename = copy_files_from_device(remote_folder, local_folder)
+    print("UI: getting AR coefficients...")
     arcoeffs = ar_from_csv(local_folder, csvfilename)
     print(arcoeffs)
     modify_ar_coefficients(client, arcoeffs)
@@ -108,10 +125,8 @@ try:
     print(stderr.read().decode())
 
     # run the neuro modulation script for additional data
-    command = './run_neuro_modulation.sh realtime_analog_recording.yaml'
-    stdin, stdout, stderr = client.exec_command(command)
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+    print("UI: resuming neuro modulation")
+    run_neuromod(shell)
     time.sleep(1)
 
     while True:
@@ -119,15 +134,15 @@ try:
         
         if (user_input == 'r') or (user_input == 't'):
             # Stop the neuro modulation script
-            command = 'pkill -f run_neuro_modulation.sh'
-            stdin, stdout, stderr = client.exec_command(command)
-            print(stdout.read().decode())
-            print(stderr.read().decode())
+            print("UI: stopping neuro modulation")
+            stop_neuromod(shell)
             time.sleep(1)
 
             if user_input == 'r':
                 # modify the AR coefficients 
+                print("UI: copying CSV file")
                 csvfilename = copy_files_from_device(remote_folder, local_folder)
+                print("UI: getting AR coefficients...")
                 arcoeffs = ar_from_csv(local_folder, csvfilename)
                 print(arcoeffs)
                 modify_ar_coefficients(client, arcoeffs)
@@ -141,42 +156,37 @@ try:
                 # Update the threshold value
                 new_threshold = input("Enter the new threshold value: ").strip()
                 # Modify line 52 of the YAML file
+                print("UI: Modifying threshold value in the YAML file")
                 command = f'sed -i "52s/.*/thresholdSetting                 : {new_threshold}/" configs/realtime_analog_recording.yaml'
                 stdin, stdout, stderr = client.exec_command(command)
                 print(stdout.read().decode())
                 print(stderr.read().decode())
 
             # aquire new data with the updated settings 
-            command = './run_neuro_modulation.sh realtime_analog_recording.yaml'
-            stdin, stdout, stderr = client.exec_command(command)
-            print(stdout.read().decode())
-            print(stderr.read().decode())
+            print("UI: running neuro modulation for additional data")
+            run_neuromod(shell)
             time.sleep(20) 
             # Stop the neuro modulation script
-            command = 'pkill -f run_neuro_modulation.sh'
-            stdin, stdout, stderr = client.exec_command(command)
-            print(stdout.read().decode())
-            print(stderr.read().decode())
+            print("UI: stopping neuro modulation")
+            stop_neuromod(shell)
             time.sleep(1)
             # Copy the most recent file for analysis elsewhere 
+            print("UI: copying CSV file")
             csvfilename = copy_files_from_device(remote_folder, local_folder)
 
             # leave the neuro modulation script running 
-            command = './run_neuro_modulation.sh realtime_analog_recording.yaml'
-            stdin, stdout, stderr = client.exec_command(command)
-            print(stdout.read().decode())
-            print(stderr.read().decode())
+            print("UI: resuming neuro modulation")
+            run_neuromod(shell)
             time.sleep(1)          
 
         elif user_input == 'q':
-            print("Terminating the loop.")
+            print("UI: Terminating the loop.")
             # Stop the neuro modulation script
-            command = 'pkill -f run_neuro_modulation.sh'
-            stdin, stdout, stderr = client.exec_command(command)
-            print(stdout.read().decode())
-            print(stderr.read().decode())
+            print("UI: stopping neuro modulation")
+            stop_neuromod(shell)
             time.sleep(1)
             # Copy the most recent file for analysis elsewhere 
+            print("UI: copying CSV file")
             csvfilename = copy_files_from_device(remote_folder, local_folder)
             break
         else:
