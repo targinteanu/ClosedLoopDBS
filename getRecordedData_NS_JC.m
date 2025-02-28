@@ -1,6 +1,6 @@
 function [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
     channelName, channelIndex, channelIndexStim, channelNames]...
-    = getRecordedData_NS(nsOrFilename, idx)
+    = getRecordedData_NS_JC(nsOrFilename, idx)
 
 if nargin < 1
     nsOrFilename = [];
