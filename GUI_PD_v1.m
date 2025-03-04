@@ -1455,7 +1455,7 @@ try
 
     pause(.01);
     if isempty(fltD4{1})
-        pause(1);
+        pause(5);
     end
     y = fltD4{1}(:,2); % ISSUE HERE - sometimes does not index, always fixes itself when debugging - add delay?
     L = min(length(y), 3*PDSwin) - 1;
