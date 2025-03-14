@@ -68,7 +68,7 @@ handles.ax_polar = gca;
 % analysis/plotting
 handles.timer = timer(...
     'ExecutionMode', 'fixedSpacing', ...       % Run timer repeatedly
-    'Period', 0.01, ...                      % Initial period is 100 ms
+    'Period', 0.01, ...                      
     'TimerFcn', {@updateDisplay,hObject}, ... % callback function.  Pass the figure handle
     'StartFcn', {@StartMainLoop,hObject}, ... % callback to execute when timer starts
     'StopFcn',  {@StopMainLoop,hObject}, ...
@@ -160,8 +160,8 @@ handles.ControllerResult = 0;
 
 % hardware-specific functions 
 waitbar(.25, wb, 'Setting up hardware...')
-RecOpts = {'Blackrock NSP'}; % TO DO: add Neuro Omega AlphaRS
-StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'None'}; 
+RecOpts = {'Blackrock NSP', 'Alpha Omega AlphaRS'}; % TO DO: add Neuro Omega ?
+StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'AlphaRS', 'None'}; 
 RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
     "ListString",RecOpts, "SelectionMode","single");
 StimSel = listdlg("PromptString", "Stimulator Hardware Configuration:", ...
@@ -175,6 +175,12 @@ if RecSel == 1
         'InitRecording', @InitializeRecording_cbmex, ...
         'GetNewRawData', @getNewRawData_cbmex, ...
         'GetTime', @getTime_cbmex); 
+elseif RecSel == 2
+    % AO AlphaRS; might also work with Neuro Omega (untested) 
+    handles.HardwareFuncs = struct(...
+        'SetupRecording', @connect_AO, ...
+        'ShutdownRecording', @disconnect_AO, ...
+        'GetTime', @getTime_AO);
 else
     error('Recording option must be specified.')
 end
@@ -198,6 +204,11 @@ elseif StimSel == 2
     handles.HardwareFuncs.SetupStimTTL = @srlSetup_cpod;
     handles.HardwareFuncs.PulseStimulator = @stimPulse_cpod; 
     handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;       
+elseif StimSel == 3
+    % AO AlphaRS; might also work with Neuro Omega (untested) 
+    handles.StimTriggerMode = false; 
+    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
+    handles.HardwareFuncs.SetStimTriggerMode = @(s) s; 
 else
     % dummy mode / no stimulation 
     handles.StimTriggerMode = false;
@@ -207,7 +218,7 @@ else
     handles.HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
     handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
     handles.HardwareFuncs.PulseStimulator = @(~,~) 0;
-    handles.HardwareFuncs.SetStimTriggerMode = @(s) s;                          % *** are these duplicated?
+    handles.HardwareFuncs.SetStimTriggerMode = @(s) s;                          
 end
 handles.initTic = tic;
 
