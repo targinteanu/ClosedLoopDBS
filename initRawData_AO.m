@@ -13,8 +13,9 @@ function [emptyData, contData, buffData, chanInfo, startTic] = ...
 % chanInfo has fields: SampleRate, Name, Unit, IDnumber
 
 %% connect to hardware 
-connect_AO(); startTic = tic; 
-pause(1);
+%connect_AO(); 
+startTic = tic; 
+%pause(1);
 
 %% setup
 
@@ -27,16 +28,48 @@ chnum = [channelsData.channelID];
 chname = {channelsData.channelName};
 
 % limit to only desired continuous data channels
+chincl = false(size(chnum));
+for ch = 1:length(chnum)
+    chname_ch = chname{ch};
+    %
+    % currently excluding SPK (spike?), FE/RM Audio, RM AO, UD, InPort,
+    % StimMarker, Internal Detection, TTL, DOUT, TS Sync, ACC_X/Y/Z
+    % (acceleration?)
+    %
+    % Channel names on Neuro Omega need to be included here!!! (unsure if they
+    % are the same)
+    % 
+    if contains(chname_ch, 'LFP')
+        n = sscanf(chname_ch, 'LFP %f'); 
+        chincl(ch) = n < 97;
+        %{
+    elseif contains(chname_ch, 'SEG')
+        %SEEG (?)
+        n = sscanf(chname_ch, 'SEG %f'); 
+        chincl(ch) = n < 97;
+        %}
+    elseif contains(chname_ch, 'RAW')
+        % ?
+        n = sscanf(chname_ch, 'RAW %f'); 
+        chincl(ch) = n < 11;
+    elseif contains(chname_ch, 'AI')
+        % Analog In (?)
+        n = sscanf(chname_ch, 'AI %f'); 
+        chincl(ch) = n < 9;
+    end
+    % 
+    % TO DO: can above chan inclusion be automated, i.e. try 
+    % [Result, contData, DataCapture] = AO_GetChannelData(chsel(ch)) and
+    % exclude channels with nonzero error / nan DataCapture? 
+    % 
+end
+%{
 chincl = ...
     contains(chname, 'LFP') | ...
     contains(chname, 'SEG') | ... SEEG (?)
     contains(chname, 'RAW') | ... ?
     contains(chname, 'AI') ; % Analog In (?)
-% currently excluding SPK (spike?), FE/RM Audio, RM AO, UD, InPort,
-% StimMarker, Internal Detection, TTL, DOUT, TS Sync, ACC_X/Y/Z
-% (acceleration?)
-% Channel names on Neuro Omega need to be included here!!! (unsure if they 
-% are the same)
+%}
 chnum = chnum(chincl); chname = chname(chincl);
 
 if isempty(chsel)
@@ -62,6 +95,8 @@ end
 %% set (desired) AO params here
 fs = 22000; % sampling rate, Hz 
 bufferSizeAO = ceil(1.1*1000*max(bufferSize)/fs); % ms
+bufferSizeAO = max(bufferSizeAO, 5000);  % min allowed 
+bufferSizeAO = min(bufferSizeAO, 20000); % max allowed
 ChannelGain = 20;
 BitResolution = 2500000/(2^16*ChannelGain);
 
@@ -85,9 +120,10 @@ AO_ClearChannelData();
 pause(1);
 
 % get initial data 
-[Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);
+[Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel); % REMEMBER TO CONVERT TIME TO SECONDS - here and getNewRawData
 if Results
     msg = ['Failed to acquire data with error code ',num2str(Results)];
+    keyboard
     error(msg); % consider trying again until success 
 end
 continuousData = continuousData(1:DataCapture); 
