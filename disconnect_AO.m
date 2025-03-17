@@ -8,7 +8,7 @@ else
     disp(['Connection close error code ',num2str(Results)]);
 end
 
-if AO_isConnected()
+if AO_IsConnected()
     error('Did not disconnect.')
 end
 
