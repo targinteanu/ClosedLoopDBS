@@ -26,9 +26,12 @@ forecastwin = 1000; % # samples ahead to forecast
 buffSize = 20000; % samples
 chInd = 65;
 
-connect_cbmex();
-[~,~,~,allChannelInfo] = initRawData_cbmex([], ceil(.02*buffSize));
-disconnect_cbmex();
+%connect_cbmex();
+connect_AO();
+%[~,~,~,allChannelInfo] = initRawData_cbmex([], ceil(.02*buffSize));
+[~,~,~,allChannelInfo] = initRawData_AO([], ceil(.02*buffSize));
+%disconnect_cbmex();
+disconnect_AO();
 UserArgs.allChannelInfo = allChannelInfo;
 
     selRaw2Art = chInd;
@@ -43,8 +46,13 @@ UserArgs.allChannelInfo = allChannelInfo;
         'selRaw2Art', selRaw2Art, ...
         'selRaw2For', selRaw2For);
 
+    %{
     [rawD, artD, fltD, forD, timeBuffs, initTic] = ...
         InitializeRecording_cbmex(buffSize, filtorder, forecastwin, ...
+        [], selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
+    %}
+    [rawD, artD, fltD, forD, timeBuffs, initTic] = ...
+        InitializeRecording_AO(buffSize, filtorder, forecastwin, ...
         [], selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
     rawD1 = rawD(1,:); rawD4 = rawD(4,:);
     artD1 = artD(1,:); artD4 = artD(4,:);
@@ -82,7 +90,7 @@ UserArgs.check_artifact.Value = true;
 UserArgs.SerialArgs = struct('UserData',struct('ReceivedData',''), 'NoSerial',true);
 
 %% loop 
-%%{
+%{
 bg_PhaseDetect(UserArgs, DQ, [], ...
     @connect_cbmex, @disconnect_cbmex, ...
     @stimSetup_cerestim, @stimShutdown_cerestim, ...
@@ -91,6 +99,11 @@ bg_PhaseDetect(UserArgs, DQ, [], ...
     @getNewRawData_cbmex, @getTime_cbmex);
 %}
 %bg_PhaseDetect_BlackRock(UserArgs, DQ, @Controller_PDS_PD);
+bg_PhaseDetect(UserArgs, DQ, [], ...
+    @connect_AO, @disconnect_AO, ...
+    @(~) 0, @(~,~) 0, ...
+    @(~,~) 0, @(~) [], ...
+    @getNewRawData_AO, @getTime_AO);
 
 catch ME
     getReport(ME)

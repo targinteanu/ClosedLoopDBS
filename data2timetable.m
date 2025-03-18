@@ -23,9 +23,11 @@ for ch = 1:size(datas,2)
     
         timestamps = ~isnan(t);
         timestamps = [1; find(timestamps); length(t)];
+        % *** Is this the cause of x axis jumping around? First block may
+        % not have timestamp? ***
         for tsi = 1:(length(timestamps)-1)
             n1 = timestamps(tsi); n2 = timestamps(tsi+1)-1;
-            Di = data(n1:n2,2);
+            Di = double(data(n1:n2,2));
             if scaleunits
                 Di = Di - chinfo.MinDigital; 
                 Di = Di .* chinfo.Resolution; 
