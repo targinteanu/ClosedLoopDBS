@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d76808fe-cec6-417d-9001-9c848450bcb9</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>ClosedLoopDBS.py</StartupFile>
+    <StartupFile>GUI_APL_v0.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

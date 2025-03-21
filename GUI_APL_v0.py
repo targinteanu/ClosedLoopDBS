@@ -33,7 +33,8 @@ if not os.path.exists(local_folder):
     os.makedirs(local_folder)
 
 # Specify the remote folder path
-remote_folder = 'jhuadmin@192.168.50.70:/home/jhuadmin/app/neuromod_software/output/'
+remote_folder = '/home/jhuadmin/app/neuromod_software/output/'
+remote_yaml = '/home/jhuadmin/app/neuromod_software/configs/realtime_analog_recording.yaml'
 
 def run_neuromod(myShell):
     myShell.send("./run_neuro_modulation.sh realtime_analog_recording.yaml\n")
@@ -48,26 +49,31 @@ def stop_neuromod(myShell):
     print(output)
 
 # function to modify AR coefficients 
-def modify_ar_coefficients(myClient, NewArCoeffs):
+def modify_ar_coefficients(myClient, NewArCoeffs, remote_path, local_path):
     print("UI: Modifying AR coefficients in the YAML file")
 
+    # Download the YAML file
+    sftp = myClient.open_sftp()
+    local_yaml = os.path.join(local_path, os.path.basename(remote_path))
+    sftp.get(remote_path, local_yaml)
+
     # Read the YAML file
-    command = 'cat configs/realtime_analog_recording.yaml'
-    stdin, stdout, stderr = myClient.exec_command(command)
-    yaml_content = stdout.read().decode()
+    with open(local_yaml, 'r') as file:
+        lines = file.readlines()
 
     # Modify the YAML content
-    lines = yaml_content.split('\n')
-    for i in range(41, 51):
-        lines[i] = f"arCoeff{i-41} : {NewArCoeffs[i-41]}"
-
-    new_yaml_content = '\n'.join(lines)
+    for i in range(40, 50):
+        print(i)
+        print(lines[i])
+        lines[i] = f"   arCoeff{i-40} : {NewArCoeffs[i-40]}\n"
 
     # Write the modified content back to the YAML file
-    command = f'echo "{new_yaml_content}" > configs/realtime_analog_recording.yaml'
-    stdin, stdout, stderr = myClient.exec_command(command)
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+    with open(local_yaml, 'w') as file:
+        file.writelines(lines)
+
+    # Upload the modified YAML file back to the remote server
+    sftp.put(local_yaml, remote_path)
+    sftp.close()
 
 # Device credentials
 hostname = '192.168.50.70'
@@ -86,7 +92,7 @@ try:
     time.sleep(1)
     # Start an interactive shell session
     shell = client.invoke_shell()
-    time.sleep(1)
+    time.sleep(5)
 
     # Get the current datetime of this computer
     current_datetime = datetime.now().strftime('%Y%m%d %H:%M:%S')
@@ -110,14 +116,15 @@ try:
     # Stop the neuro modulation script
     print("UI: stopping neuro modulation")
     stop_neuromod(shell)
-    time.sleep(1)
+    time.sleep(5)
     # Copy the most recent file from the device to the specified folder
     print("UI: copying CSV file")
     csvfilename = copy_files_from_device(remote_folder, local_folder)
+    time.sleep(5)
     print("UI: getting AR coefficients...")
     arcoeffs = ar_from_csv(local_folder, csvfilename)
     print(arcoeffs)
-    modify_ar_coefficients(client, arcoeffs)
+    modify_ar_coefficients(client, arcoeffs, remote_yaml, local_folder)
     # Print line 52 of the YAML file, i.e. current threshold value
     command = 'sed -n "52p" configs/realtime_analog_recording.yaml'
     stdin, stdout, stderr = client.exec_command(command)
@@ -145,7 +152,7 @@ try:
                 print("UI: getting AR coefficients...")
                 arcoeffs = ar_from_csv(local_folder, csvfilename)
                 print(arcoeffs)
-                modify_ar_coefficients(client, arcoeffs)
+                modify_ar_coefficients(client, arcoeffs, remote_yaml, local_folder)
 
             elif user_input == 't':
                 # Print line 52 of the YAML file, i.e. current threshold value
