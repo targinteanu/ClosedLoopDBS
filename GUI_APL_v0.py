@@ -48,6 +48,36 @@ def stop_neuromod(myShell):
     output = myShell.recv(1024).decode()
     print(output)
 
+# function to modify threshold 
+def modify_threshold(myClient, new_thresh, remote_path, local_path):
+    print("UI: Modifying threshold value in the YAML file")
+
+    # round new_threshold to the nearest integer
+    new_thresh = round(new_thresh)
+
+    # Download the YAML file
+    sftp = myClient.open_sftp()
+    local_yaml = os.path.join(local_path, os.path.basename(remote_path))
+    sftp.get(remote_path, local_yaml)
+
+    # Read the YAML file
+    with open(local_yaml, 'r') as file:
+        lines = file.readlines()
+
+    # Modify line 52
+    lines[51] = f"    thresholdSetting                 : {new_thresh} # FFT Magnitude threshold. Unitless. Must be tuned using threshold results during recording (don't forget the THRESHOLD_DETERMINATION_BLOCK_EXPONENT value [i.e the binary left shift] in the results when trying to use the output to determine this number)\n"
+    currentthresh = lines[51]
+
+    # Write the modified content back to the YAML file
+    with open(local_yaml, 'w') as file:
+        file.writelines(lines)
+
+    # Upload the modified YAML file back to the remote server
+    sftp.put(local_yaml, remote_path)
+    sftp.close()
+
+    return currentthresh
+
 # function to modify AR coefficients 
 def modify_ar_coefficients(myClient, NewArCoeffs, remote_path, local_path):
     print("UI: Modifying AR coefficients in the YAML file")
@@ -63,9 +93,11 @@ def modify_ar_coefficients(myClient, NewArCoeffs, remote_path, local_path):
 
     # Modify the YAML content
     for i in range(40, 50):
-        print(i)
-        print(lines[i])
-        lines[i] = f"   arCoeff{i-40} : {NewArCoeffs[i-40]}\n"
+        #print(lines[i])
+        lines[i] = f"    arCoeff{i-40} : {NewArCoeffs[i-40]}\n"
+
+    # read the curent threshold value
+    currentthresh = lines[51]
 
     # Write the modified content back to the YAML file
     with open(local_yaml, 'w') as file:
@@ -74,6 +106,8 @@ def modify_ar_coefficients(myClient, NewArCoeffs, remote_path, local_path):
     # Upload the modified YAML file back to the remote server
     sftp.put(local_yaml, remote_path)
     sftp.close()
+
+    return currentthresh
 
 # Device credentials
 hostname = '192.168.50.70'
@@ -124,12 +158,9 @@ try:
     print("UI: getting AR coefficients...")
     arcoeffs = ar_from_csv(local_folder, csvfilename)
     print(arcoeffs)
-    modify_ar_coefficients(client, arcoeffs, remote_yaml, local_folder)
+    curthreshinfo = modify_ar_coefficients(client, arcoeffs, remote_yaml, local_folder)
     # Print line 52 of the YAML file, i.e. current threshold value
-    command = 'sed -n "52p" configs/realtime_analog_recording.yaml'
-    stdin, stdout, stderr = client.exec_command(command)
-    print("Line 52:", stdout.read().decode().strip())
-    print(stderr.read().decode())
+    print("Line 52:", curthreshinfo)
 
     # run the neuro modulation script for additional data
     print("UI: resuming neuro modulation")
@@ -152,22 +183,16 @@ try:
                 print("UI: getting AR coefficients...")
                 arcoeffs = ar_from_csv(local_folder, csvfilename)
                 print(arcoeffs)
-                modify_ar_coefficients(client, arcoeffs, remote_yaml, local_folder)
+                curthreshinfo = modify_ar_coefficients(client, arcoeffs, remote_yaml, local_folder)
 
             elif user_input == 't':
                 # Print line 52 of the YAML file, i.e. current threshold value
-                command = 'sed -n "52p" configs/realtime_analog_recording.yaml'
-                stdin, stdout, stderr = client.exec_command(command)
-                print("Line 52:", stdout.read().decode().strip())
-                print(stderr.read().decode())
+                print("Line 52:", curthreshinfo)
                 # Update the threshold value
                 new_threshold = input("Enter the new threshold value: ").strip()
+                new_threshold = round(float(new_threshold))
                 # Modify line 52 of the YAML file
-                print("UI: Modifying threshold value in the YAML file")
-                command = f'sed -i "52s/.*/thresholdSetting                 : {new_threshold}/" configs/realtime_analog_recording.yaml'
-                stdin, stdout, stderr = client.exec_command(command)
-                print(stdout.read().decode())
-                print(stderr.read().decode())
+                curthreshinfo = modify_threshold(client, new_threshold, remote_yaml, local_folder)
 
             # aquire new data with the updated settings 
             print("UI: running neuro modulation for additional data")
