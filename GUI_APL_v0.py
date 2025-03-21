@@ -127,19 +127,28 @@ try:
     # Start an interactive shell session
     shell = client.invoke_shell()
     time.sleep(5)
+    output = shell.recv(1024).decode()
+    print(output)
 
     # Get the current datetime of this computer
     current_datetime = datetime.now().strftime('%Y%m%d %H:%M:%S')
-
     # Set the date of the device
     print("UI: setting date and time of device")
-    command = f'sudo -S date --set="{current_datetime}"'
-    stdin, stdout, stderr = client.exec_command(command)
-    stdin.write(password + '\n')
-    stdin.flush()
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+    shell.send('date \n')
+    time.sleep(2)
+    output = shell.recv(1024).decode()
+    print(output)
+    command = f'sudo -S date --set="{current_datetime}" \n'
+    shell.send(command)
+    time.sleep(2)
+    shell.send(password + '\n')
     time.sleep(1)
+    output = shell.recv(1024).decode()
+    print(output)
+    shell.send('date \n')
+    time.sleep(5)
+    output = shell.recv(1024).decode()
+    print(output)
     
     # run the neuro modulation script for initial data
     print("UI: running neuro modulation for initial data")
@@ -168,9 +177,9 @@ try:
     time.sleep(1)
 
     while True:
-        user_input = input("Enter 'r' to re-set AR coefficients, 't' to adjust threshold, or 'q' to terminate: ").strip().lower()
+        user_input = input("Enter 's' to save data, 'r' to re-set AR coefficients, 't' to adjust threshold, or 'q' to quit: ").strip().lower()
         
-        if (user_input == 'r') or (user_input == 't'):
+        if (user_input == 's') or ((user_input == 'r') or (user_input == 't')):
             # Stop the neuro modulation script
             print("UI: stopping neuro modulation")
             stop_neuromod(shell)
@@ -197,7 +206,8 @@ try:
             # aquire new data with the updated settings 
             print("UI: running neuro modulation for additional data")
             run_neuromod(shell)
-            time.sleep(20) 
+            time.sleep(10) 
+
             # Stop the neuro modulation script
             print("UI: stopping neuro modulation")
             stop_neuromod(shell)
