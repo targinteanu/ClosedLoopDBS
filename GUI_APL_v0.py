@@ -235,6 +235,11 @@ try:
             print("Invalid input. Please enter 'r', 't', or 'q'.")
 
 finally:
-    # Close the connection
-    client.close()
-    print("Connection closed")
+    user_input = input("Power off device? [y/n]: ").strip().lower()
+    if user_input == 'y':
+        print("UI: powering off device")
+        shell.send("sudo poweroff \n")
+    else:
+        # Close the connection
+        client.close()
+        print("UI: Connection closed")
