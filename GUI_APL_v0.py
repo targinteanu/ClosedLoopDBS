@@ -239,6 +239,11 @@ finally:
     if user_input == 'y':
         print("UI: powering off device")
         shell.send("sudo poweroff \n")
+        time.sleep(2)
+        shell.send(password + '\n')
+        time.sleep(2)
+        output = shell.recv(1024).decode()
+        print(output)
     else:
         # Close the connection
         client.close()
