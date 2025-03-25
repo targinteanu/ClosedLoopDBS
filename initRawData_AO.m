@@ -13,24 +13,36 @@ function [emptyData, contData, buffData, chanInfo, startTic] = ...
 % chanInfo has fields: SampleRate, Name, Unit, IDnumber
 
 %% connect to hardware 
-%connect_AO(); 
-startTic = tic; 
-%pause(1);
+connect_AO(); startTic = tic; 
+pause(1);
 
 %% setup
 
 [Results, channelsData] = AO_GetAllChannels();
+%{
+if Results == 4
+    % give it some time and try again 
+    disconnect_AO(); 
+    pause(1); 
+    connect_AO();
+    pause(1);
+    [Results, channelsData] = AO_GetAllChannels();
+end
+%}
 if Results
     error(['Failed to obtain channel info with error code ',num2str(Results)])
 end
 
-chnum = [channelsData.channelID];
+chnum = [channelsData.channelID]; chnum = double(chnum);
 chname = {channelsData.channelName};
 
 % limit to only desired continuous data channels
 chincl = false(size(chnum));
 for ch = 1:length(chnum)
     chname_ch = chname{ch};
+    % 
+    % Currently including only LFP channels because they have the same
+    % sample rate. TO DO: include other channels with their sample rates 
     %
     % currently excluding SPK (spike?), FE/RM Audio, RM AO, UD, InPort,
     % StimMarker, Internal Detection, TTL, DOUT, TS Sync, ACC_X/Y/Z
@@ -42,6 +54,7 @@ for ch = 1:length(chnum)
     if contains(chname_ch, 'LFP')
         n = sscanf(chname_ch, 'LFP %f'); 
         chincl(ch) = n < 97;
+        %{
         %{
     elseif contains(chname_ch, 'SEG')
         %SEEG (?)
@@ -56,6 +69,7 @@ for ch = 1:length(chnum)
         % Analog In (?)
         n = sscanf(chname_ch, 'AI %f'); 
         chincl(ch) = n < 9;
+        %}
     end
     % 
     % TO DO: can above chan inclusion be automated, i.e. try 
@@ -76,6 +90,7 @@ if isempty(chsel)
     % select all channels
     chsel = chnum;
 end
+chsel = double(chsel);
 
 emptyData = cell(1,length(chsel)); 
 contData = emptyData; 
@@ -120,16 +135,22 @@ AO_ClearChannelData();
 pause(1);
 
 % get initial data 
-[Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel); % REMEMBER TO CONVERT TIME TO SECONDS - here and getNewRawData
+[Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel); 
+if Results == -3
+    % no samples; give it more time 
+    pause(1); 
+    [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);
+end
 if Results
     msg = ['Failed to acquire data with error code ',num2str(Results)];
-    keyboard
     error(msg); % consider trying again until success 
 end
+time = time/1510; % TO DO: make sure this is correct time in seconds!
 continuousData = continuousData(1:DataCapture); 
 L = DataCapture/W;
 continuousData = reshape(continuousData, ...
     L, W); % columns = channels 
+continuousData = double(continuousData);
 
 %% assign data to the structure 
 

@@ -26,13 +26,13 @@ forecastwin = 1000; % # samples ahead to forecast
 buffSize = 20000; % samples
 chInd = 65;
 
-%connect_cbmex();
-connect_AO();
 %[~,~,~,allChannelInfo] = initRawData_cbmex([], ceil(.02*buffSize));
 [~,~,~,allChannelInfo] = initRawData_AO([], ceil(.02*buffSize));
 %disconnect_cbmex();
 disconnect_AO();
 UserArgs.allChannelInfo = allChannelInfo;
+allChannelInfo = [allChannelInfo{:}];
+UserArgs.allChannelIDs = [allChannelInfo.IDnumber];
 
     selRaw2Art = chInd;
         selRaw2Flt = chInd;
@@ -81,7 +81,6 @@ UserArgs.FilterOrder = filtorder; UserArgs.BPF = filtwts;
 UserArgs.hicutoff = hico; UserArgs.locutoff = loco; 
 UserArgs.Mdl = ARmdl; 
 UserArgs.channelIndex = chInd; 
-UserArgs.allChannelIDs = [];
 UserArgs.PDSwin1 = forecastwin; UserArgs.PDSwin2 = ceil(.02*forecastwin);
 UserArgs.bufferSize = buffSize; UserArgs.bufferSizeGrid = ceil(.02*buffSize);
 UserArgs.PhaseOfInterest = [0 pi];

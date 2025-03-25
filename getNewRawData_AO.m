@@ -5,13 +5,19 @@ function [newContData, chname, chnum] = getNewRawData_AO(chsel)
 W = length(chsel);
 [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);
 if Results
-    msg = ['Failed to acquire data with error code ',num2str(Results)];
+    if Results == -3
+        msg = ['No continuous data; error code ',num2str(Results)];
+    else
+        msg = ['Failed to acquire data with error code ',num2str(Results)];
+    end
     error(msg); % consider trying again until success 
 end
+time = time/1510; % TO DO: make sure this is correct time in seconds!
 continuousData = continuousData(1:DataCapture); 
 L = DataCapture/W;
 continuousData = reshape(continuousData, ...
     L, W); % columns = channels 
+continuousData = double(continuousData);
 
 newContData = cell(1,W);
 for ch = 1:W
