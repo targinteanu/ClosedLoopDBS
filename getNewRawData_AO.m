@@ -5,7 +5,7 @@ function [newContData, chname, chnum] = getNewRawData_AO(chsel)
 W = length(chsel);
 [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);
 if Results
-    if Results == -3
+    if (Results == -3) || (Results == 4) || (Results == 8)
         msg = ['No continuous data; error code ',num2str(Results)];
     else
         msg = ['Failed to acquire data with error code ',num2str(Results)];

@@ -19,7 +19,7 @@ pause(1);
 %% setup
 
 [Results, channelsData] = AO_GetAllChannels();
-%{
+%%{
 if Results == 4
     % give it some time and try again 
     disconnect_AO(); 
@@ -27,6 +27,9 @@ if Results == 4
     connect_AO();
     pause(1);
     [Results, channelsData] = AO_GetAllChannels();
+    if Results
+        error('tried again and still failed to connect')
+    end
 end
 %}
 if Results
