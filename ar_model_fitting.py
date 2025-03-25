@@ -38,7 +38,7 @@ def ar_from_csv(fp, fn, fs=1000, order=10, fractional_scaling=13):
     ARmdl = AutoReg(y, lags=order, old_names=False).fit()
 
     # Extract and scale AR coefficients
-    ar_coeffs = -ARmdl.params[1:]  # Negate to match MATLAB convention
+    ar_coeffs = ARmdl.params[1:] 
     formatted_ar_coeffs = np.round(ar_coeffs * 2**fractional_scaling).astype(np.int32)
 
     return formatted_ar_coeffs
