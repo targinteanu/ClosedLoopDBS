@@ -160,8 +160,8 @@ handles.ControllerResult = 0;
 
 % hardware-specific functions 
 waitbar(.25, wb, 'Setting up hardware...')
-RecOpts = {'Blackrock NSP', 'Alpha Omega AlphaRS'}; % TO DO: add Neuro Omega ?
-StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'AlphaRS', 'None'}; 
+RecOpts = {'Blackrock NSP'; 'Alpha Omega AlphaRS'}; % TO DO: add Neuro Omega ?
+StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'AlphaRS'; 'None'}; 
 RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
     "ListString",RecOpts, "SelectionMode","single");
 StimSel = listdlg("PromptString", "Stimulator Hardware Configuration:", ...
@@ -333,6 +333,7 @@ handles.HardwareFuncs.ShutdownRecording();
 % set channel popup menu to hold channels
 handles.fSamples = cellfun(@(ch) ch.SampleRate, allChannelInfo);
 handles.channelIDlist = cellfun(@(ch) ch.IDnumber, allChannelInfo);
+handles.allChannelIDs = handles.channelIDlist; % resets channel selection 
 handles.channelList = cellfun(@(ch) [num2str(ch.IDnumber),': ',ch.Name], ...
     allChannelInfo, 'UniformOutput',false);
 chL = [handles.channelList, 'None'];
@@ -976,6 +977,7 @@ try
     end
 
     % handles = disconnectSerial(handles);
+    handles.HardwareFuncs.ShutdownRecording();
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
     requeryPhaseDetect(hObject, 1);
