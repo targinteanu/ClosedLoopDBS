@@ -56,7 +56,7 @@ for ch = 1:length(chnum)
     % 
     if contains(chname_ch, 'LFP')
         n = sscanf(chname_ch, 'LFP %f'); 
-        chincl(ch) = n < 97;
+        chincl(ch) = (n < 97) && (n >= 33);
         %{
         %{
     elseif contains(chname_ch, 'SEG')
@@ -111,7 +111,7 @@ if length(bufferSize) < length(chsel)
 end
 
 %% set (desired) AO params here
-fs = 22000; % sampling rate, Hz 
+fs = 1875; % sampling rate, Hz 
 bufferSizeAO = ceil(1.1*1000*max(bufferSize)/fs); % ms
 bufferSizeAO = max(bufferSizeAO, 5000);  % min allowed 
 bufferSizeAO = min(bufferSizeAO, 20000); % max allowed
