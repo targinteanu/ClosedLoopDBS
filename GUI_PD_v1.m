@@ -160,69 +160,7 @@ handles.ControllerResult = 0;
 
 % hardware-specific functions 
 waitbar(.25, wb, 'Setting up hardware...')
-RecOpts = {'Blackrock NSP'; 'Alpha Omega AlphaRS'}; % TO DO: add Neuro Omega ?
-StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'AlphaRS'; 'None'}; 
-RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
-    "ListString",RecOpts, "SelectionMode","single");
-StimSel = listdlg("PromptString", "Stimulator Hardware Configuration:", ...
-    "ListString",StimOpts, "SelectionMode","single");
-if RecSel == 1
-    % Blackrock NSP 
-    handles.HardwareFuncs = struct(...
-        'SetupRecording', @connect_cbmex, ...
-        'ShutdownRecording', @disconnect_cbmex, ...
-        'InitRawData', @initRawData_cbmex, ...
-        'InitRecording', @InitializeRecording_cbmex, ...
-        'GetNewRawData', @getNewRawData_cbmex, ...
-        'GetTime', @getTime_cbmex); 
-elseif RecSel == 2
-    % AO AlphaRS; might also work with Neuro Omega (untested) 
-    handles.HardwareFuncs = struct(...
-        'SetupRecording', @connect_AO, ...
-        'ShutdownRecording', @disconnect_AO, ...
-        'InitRawData', @initRawData_AO, ...
-        'InitRecording', @InitializeRecording_AO, ...
-        'GetNewRawData', @getNewRawData_AO, ...
-        'GetTime', @getTime_AO);
-else
-    error('Recording option must be specified.')
-end
-if StimSel == 1
-    % Blackrock CereStim API
-    handles.StimTriggerMode = false;
-    handles.HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
-    handles.HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
-    handles.HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
-    handles.HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
-    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
-    handles.HardwareFuncs.PulseStimulator = @stimPulse_cerestim;
-    handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;  
-elseif StimSel == 2
-    % c-pod + CereStim in trig mode 
-    handles.StimTriggerMode = true;
-    handles.HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
-    handles.HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
-    handles.HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
-    handles.HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
-    handles.HardwareFuncs.SetupStimTTL = @srlSetup_cpod;
-    handles.HardwareFuncs.PulseStimulator = @stimPulse_cpod; 
-    handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;       
-elseif StimSel == 3
-    % AO AlphaRS; might also work with Neuro Omega (untested) 
-    handles.StimTriggerMode = false; 
-    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
-    handles.HardwareFuncs.SetStimTriggerMode = @(s) s; 
-else
-    % dummy mode / no stimulation 
-    handles.StimTriggerMode = false;
-    handles.HardwareFuncs.SetupStimulator = @(~) 0;
-    handles.HardwareFuncs.ShutdownStimulator = @(~,~) 0;
-    handles.HardwareFuncs.CheckConnectionStimulator = @() 0;
-    handles.HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
-    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
-    handles.HardwareFuncs.PulseStimulator = @(~,~) 0;
-    handles.HardwareFuncs.SetStimTriggerMode = @(s) s;                          
-end
+[handles.HardwareFuncs, handles.StimTriggerMode] = helperGUIv1_DefHardwareFuncs();
 handles.initTic = tic;
 
 % start parallel pool(s) 

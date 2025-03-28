@@ -162,15 +162,12 @@ handles.check_artifact_Value = false;
 handles.ControllerResult = 0;
 
 % hardware-specific functions 
-handles.HardwareFuncs = struct(...
-    'SetupRecording', @connect_cbmex, 'ShutdownRecording', @disconnect_cbmex, 'InitRawData', @initRawData_cbmex, 'InitRecording', @InitializeRecording_cbmex, 'GetNewRawData', @getNewRawData_cbmex, 'GetTime', @getTime_cbmex, ... BlackRock NSP
-    'SetupStimulator', @stimSetup_cerestim, 'ShutdownStimulator', @stimShutdown_cerestim, 'PulseStimulator', @stimPulse_cerestim, 'CheckConnectionStimulator', @stimCheckConnection_cerestim, 'CalibrateStimulator', @stimCalibrate_cerestim ... BlackRock CereStim
-    ...'SetupStimulator', @(~) 0, 'ShutdownStimulator', @(~,~) 0, 'PulseStimulator', @(~,~) 0, 'CheckConnectionStimulator', @() 0, 'CalibrateStimulator', @(~,~,~,~,~,~,~,~,~,~) 0 ... dummy/no stimulator
-    );
+waitbar(.25, wb, 'Setting up hardware...')
+[handles.HardwareFuncs, handles.StimTriggerMode] = helperGUIv1_DefHardwareFuncs();
 handles.initTic = tic;
 
 % start parallel pool(s) 
-waitbar(.25, wb, 'Starting parallel pool...')
+waitbar(.3, wb, 'Starting parallel pool...')
 handles.pool = gcp('nocreate');
 if isempty(handles.pool)
     handles.pool = parpool;
