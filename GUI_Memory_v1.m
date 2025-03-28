@@ -256,66 +256,9 @@ function cmd_cbmexOpen_Callback(hObject, eventdata, handles)
 % hObject    handle to cmd_cbmexOpen (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-% Use a TRY-CATCH in case cbmex is already open.  If you try to open it
-% when it's already open, Matlab throws a 'MATLAB:unassignedOutputs'
-% MException.
 try
 
-if handles.DAQstatus
-    error('DSP already connected. Please disconnect first.')
-end
-
-handles.HardwareFuncs.SetupRecording();
-handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic));
-
-handles.DAQstatus = true;
-
-% Acquire some data to get channel information.  Determine which channels
-% are enabled
-[~,~,~,allChannelInfo] = handles.HardwareFuncs.InitRawData(handles.allChannelIDs, handles.bufferSizeGrid);
-handles.allChannelInfo = allChannelInfo;
-
-handles.HardwareFuncs.ShutdownRecording();
-
-% set channel popup meno to hold channels
-handles.fSamples = cellfun(@(ch) ch.SampleRate, allChannelInfo);
-handles.channelIDlist = cellfun(@(ch) ch.IDnumber, allChannelInfo);
-handles.channelList = cellfun(@(ch) [num2str(ch.IDnumber),': ',ch.Name], ...
-    allChannelInfo, 'UniformOutput',false);
-chL = [handles.channelList, 'None'];
-set(handles.pop_channels, 'String', handles.channelList);
-for pop_ = [handles.pop_channel1, ...
-            handles.pop_channel2] %, ...
-%            handles.pop_channel3, ...
-%            handles.pop_channel4, ...
-%            handles.pop_channel5]
-    set(pop_, 'String', chL);
-end
-
-% electrode grid 
-gridmaxval = eval(handles.txt_gridmax.String);
-gridminval = eval(handles.txt_gridmin.String);
-axes(handles.ax_elecgrid)
-ncol = 3;
-nrow = 21;
-img = nan(nrow, ncol);
-[X,Y] = meshgrid(1:ncol, 1:nrow);
-handles.elecGridImg = imagesc(img, [gridminval, gridmaxval]); 
-xticks([]); yticks([]);
-colormap('parula'); colorbar; hold on;
-chL_ = handles.channelList(1:min((ncol*nrow), length(handles.channelList)));
-X = X(:); X = X(1:length(chL_));
-Y = Y(:); Y = Y(1:length(chL_));
-text(X,Y, chL_, ...
-    'HorizontalAlignment','center', ...
-    'VerticalAlignment','middle', ...
-    'FontWeight', 'bold', ...
-    'Color',[.8 0 0]);
-
-% Set the Start/Stop toggle button to stopped state (String is 'Start' and
-% Value is 1)
-set(handles.tgl_StartStop,'String','Start', 'Value',0)
+handles = helperGUIv1_DAQopen(handles);
 
 guidata(hObject,handles)
 
@@ -621,84 +564,14 @@ try
         end
     end
 
-    % update filtered data 
     if handles.FilterSetUp
         try
-        if numel(fltPlt)
-            set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
-            set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
-        end
-        if ~sum(isnan(ext_xlim))
-            set(handles.ax_filt, 'XLim', ext_xlim);
-        end
+        % update filtered data plot
+        handles = helperGUIv1_plotFlt(handles, tNow, fltPlt, ext_xlim);
 
-        % update model-forecasted data 
         if handles.MdlSetUp
             try
-            if handles.check_polar.Value
-                if numel(forPlt)
-                set(handles.h_predTrace,'YData',forPlt.Variables);
-                set(handles.h_predTrace,'XData',forPlt.Time - tNow);
-                end
-            end
-            tPk = forBuff(:,1); tTr = forBuff(:,2); % time to peak, trough (s)
-            set(handles.h_peakTrace,'YData',zeros(size(tPk)));
-            set(handles.h_peakTrace,'XData',handles.time0 + seconds(tPk) - tNow);
-            set(handles.h_trouTrace,'YData',zeros(size(tTr)));
-            set(handles.h_trouTrace,'XData',handles.time0 + seconds(tTr) - tNow);
-            set(handles.h_stimTrace,'YData',zeros(size(tSt)));
-            set(handles.h_stimTrace,'XData',handles.time0 + seconds(tSt) - tNow);
-
-            % update artifact-removed plot
-            if handles.check_artifact.Value
-                if ~isempty(artPlt)
-                    set(handles.h_artDataTrace,'YData',artPlt.Variables);
-                    set(handles.h_artDataTrace,'XData',artPlt.Time - tNow);
-                end
-            end
-
-            % plot sine wave 
-            if handles.check_polar.Value
-                % set(handles.h_sineTrace,'YData', ...
-                % set(handles.h_sineTrace,'XData', ...
-            end
-
-            % evaluate accuracy of above --> polar histogram
-            if handles.check_polar.Value
-
-                % row indexes of peak events 
-                rowPk = nan(size(tPk)); 
-                for r = 1:height(tPk)
-                    % find time of current event relative to time now
-                    tPk_r = handles.time0 + seconds(tPk(r)) ;
-                    if (tPk_r >= min(fltPlt.Time)) && (tPk_r <= max(fltPlt.Time))
-                        % current event is in time range shown on screen,
-                        % so let row index be the nearest 
-                        [~,rowPk(r)] = min(abs( tPk_r - fltPlt.Time ));
-                    end
-                end
-                rowPk = rowPk(~isnan(rowPk));
-
-                % row indexes of trough events 
-                rowTr = nan(size(tTr)); 
-                for r = 1:height(tTr)
-                    % find time of current event relative to time now
-                    tTr_r = handles.time0 + seconds(tTr(r)) ;
-                    if (tTr_r >= min(fltPlt.Time)) && (tTr_r <= max(fltPlt.Time))
-                        % current event is in time range shown on screen,
-                        % so let row index be the nearest 
-                        [~,rowTr(r)] = min(abs( tTr_r - fltPlt.Time ));
-                    end
-                end
-                rowTr = rowTr(~isnan(rowTr));
-
-                % calc phase and histogram
-                phi = instPhaseFreq(fltPlt.Variables, handles.fSample);
-                phiPk = phi(rowPk); phiTr = phi(rowTr);
-                set(handles.h_peakPhase,'Data',phiPk);
-                set(handles.h_trouPhase,'Data',phiTr);
-            end
-
+                handles = helperGUIv1_plotMdl(handles, tNow, fltPlt, forPlt, forBuff, tSt, artPlt);
             catch ME2
                 getReport(ME2)
                 errordlg(ME2.message, 'Model Prediction Issue');
@@ -719,18 +592,7 @@ try
     end
 
     % update raw data and timing plots
-    set(handles.h_rawDataTrace,'YData',rawPlt.Variables);
-    set(handles.h_rawDataTrace,'XData',rawPlt.Time - tNow);
-    set(handles.h_timingTrace,'YData',[nan; diff(timeBuff)]);
-    set(handles.h_timingTrace,'XData', ...
-        handles.time0 + seconds(timeBuff) - tNow );
-    set(handles.h_timeDispTrace,'YData',[nan; diff(handles.timeDispBuff)]);
-    set(handles.h_timeDispTrace,'XData', ...
-        handles.time0 + seconds(handles.timeDispBuff) - tNow );
-    if ~sum(isnan(common_xlim)) % why is it sometimes nan??
-        set(handles.ax_raw, 'XLim', common_xlim);
-        set(handles.ax_timing, 'XLim', common_xlim);
-    end
+    handles = helperGUIv1_plotRaw(handles, tNow, rawPlt, timeBuff, common_xlim);
 
     guidata(hObject,handles)
 
