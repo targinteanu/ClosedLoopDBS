@@ -525,27 +525,9 @@ try
     % update electrode grid 
     if handles.showElecGrid
         try
-            elecimg = handles.elecGridImg.CData;
-            for ch = 1:numel(elecimg)
-                chID = handles.channelIDlist(ch); 
-                xInd = find(rawIDs == chID); 
-                if numel(xInd)
-                    x = rawD4{xInd}(:,2); L = handles.bufferSizeGrid(xInd);
-                    if height(x) > L
-                        x = x((end-L+1):end, :);
-                    end
-                    if height(x) < L
-                        warning(['Channel ',num2str(ch),...
-                            ' / ID ',num2str(chID),...
-                            ' Electrode Grid buffer is not full length!'])
-                    end
-                    fSample_ch = handles.fSamples(xInd);
-                    elecimg(ch) = handles.elecGridFunc(x, fSample_ch);
-                else
-                    elecimg(ch) = nan;
-                end
-            end
-            handles.elecGridImg.CData = elecimg;
+            handles.elecGridImg.CData = helperGUIv1_ElectrodeGridUpdate(handles, ...
+                handles.channelIDlist, rawIDs, rawD4, ...
+                handles.bufferSizeGrid, handles.fSamples);
         catch ME4 
             getReport(ME4);
             errordlg(ME4.message, 'Electrode Grid Issue');
@@ -1592,26 +1574,10 @@ function pop_elecgrid_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from pop_elecgrid
 contents = cellstr(get(hObject,'String'));
 sel = contents{get(hObject,'Value')};
-handles.showElecGrid = ~strcmp(sel, 'None');
 try
-if handles.showElecGrid
-    if strcmp(sel, 'PAC')
-        % ***** TO DO: phase amplitude coupling: handles.elecGridFunc = ... 
-    else
-        % __ band power
-        if strcmp(sel, 'Selected Band Power')
-            if ~handles.FilterSetUp
-                error('Filter must be set for this selection.')
-            end
-            fbnd = [handles.locutoff, handles.hicutoff];
-        elseif strcmp(sel, 'Beta Power')
-            fbnd = [13, 30]; % Hz
-        elseif strcmp(sel, 'Gamma Power')
-            fbnd = [50, 200]; % Hz 
-        end
-        handles.elecGridFunc = @(data, fs) bandpower(data, fs, fbnd);
-    end
-end
+    [handles.showElecGrid, handles.elecGridFunc] = ...
+        helperGUIv1_ElectrodeGridFuncSelect(sel, ...
+        handles.FilterSetUp, handles.locutoff, handles.hicutoff);
 catch ME4
     getReport(ME4);
     errordlg(ME4.message, 'Electrode Grid Selection Issue');

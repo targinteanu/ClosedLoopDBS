@@ -1,5 +1,17 @@
-function handles = helperGUIv1_DAQopen(handles)
+function handles = helperGUIv1_DAQopen(handles, nrow, ncol)
 % TO DO: add pop_channel3-5 to memory GUI
+
+if nargin < 2
+    nrow = []; ncol = [];
+end
+if isempty(nrow)
+    % default to 21-by-3 grid 
+    nrow = 21;
+end
+if isempty(ncol)
+    % default to 21-by-3 grid
+    ncol = 3;
+end
 
 if handles.DAQstatus
     error('DSP already connected. Please disconnect first.')
@@ -37,21 +49,8 @@ end
 gridmaxval = eval(handles.txt_gridmax.String);
 gridminval = eval(handles.txt_gridmin.String);
 axes(handles.ax_elecgrid)
-ncol = 3; % # of columns
-nrow = 21;
-img = nan(nrow, ncol);
-[X,Y] = meshgrid(1:ncol, 1:nrow);
-handles.elecGridImg = imagesc(img, [gridminval, gridmaxval]); 
-xticks([]); yticks([]);
-colormap('parula'); colorbar; hold on;
-chL_ = handles.channelList(1:min((ncol*nrow), length(handles.channelList)));
-X = X(:); X = X(1:length(chL_));
-Y = Y(:); Y = Y(1:length(chL_));
-text(X,Y, chL_, ...
-    'HorizontalAlignment','center', ...
-    'VerticalAlignment','middle', ...
-    'FontWeight', 'bold', ...
-    'Color',[.8 0 0]);
+handles.elecGridImg = helperGUIv1_ElectrodeGridInit(handles.ax_elecgrid, ...
+    handles.channelList, nrow, ncol, gridminval, gridmaxval);
 
 % Set the Start/Stop toggle button to stopped state (String is 'Start' and
 % Value is 1)
