@@ -22,7 +22,7 @@ function varargout = GUI_Memory_v1(varargin)
 
 % Edit the above text to modify the response to help GUI_Memory_v1
 
-% Last Modified by GUIDE v2.5 30-Jan-2025 00:35:54
+% Last Modified by GUIDE v2.5 28-Mar-2025 17:45:47
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -203,10 +203,11 @@ handles.rmfieldList = {...
     'text25', 'text26', 'text24', 'text23', 'text22', 'text21', 'text20', ...
     'text19', 'text17', 'text16', 'text15', ...
     'text14', 'text12', 'text13', 'text11', 'text9', 'text8', 'text7', 'text6', ...
+    'text27', 'text28', 'text29', ...
     'ax_elecgrid', 'ax_polar', 'ax_timing', 'ax_filt', 'ax_raw', ...
     'elecGridImg', ...
     'pop_elecgrid', 'pop_HoldStim', 'pop_EncodeStim', 'pop_DecodeStim', ...
-    'pop_channel2', 'pop_channel1', 'pop_channels', ...
+    'pop_channel5', 'pop_channel4', 'pop_channel3', 'pop_channel2', 'pop_channel1', 'pop_channels', ...
     'tgl_stim', 'tgl_StartStop', ...
     'push_AR', 'push_filter', 'push_remchan', 'push_stimCalibrate', ...
     'cmd_cbmexOpen', 'cmd_cbmexClose'};
@@ -1324,6 +1325,11 @@ if get(hObject, 'Value') == 1
 
     handles.StimSetupArgs = stimGetSetupArgs(handles);
 
+    if handles.StimTriggerMode
+        stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
+        stimulator = handles.HardwareFuncs.SetStimTriggerMode(stimulator);
+    end
+
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
 
@@ -1337,6 +1343,9 @@ if get(hObject, 'Value') == 1
 
 else
     % stop stimulus 
+    if handles.StimTriggerMode
+        stimulator = handles.HardwareFuncs.ShutdownStimulator(handles.StimSetupArgs);
+    end
     handles.StimActive = false;
     set(hObject, 'String', 'Stim Off');
 end
@@ -1519,3 +1528,75 @@ handles.StimulatorLagTime = handles.HardwareFuncs.CalibrateStimulator(...
     handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, ...
     handles.HardwareFuncs.PulseStimulator);
 guidata(hObject, handles);
+
+
+% --- Executes on selection change in pop_channel3.
+function pop_channel3_Callback(hObject, eventdata, handles)
+% hObject    handle to pop_channel3 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns pop_channel3 contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from pop_channel3
+setTgl(hObject, eventdata, handles, handles.tgl_stim, 0);
+
+
+% --- Executes during object creation, after setting all properties.
+function pop_channel3_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pop_channel3 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in pop_channel4.
+function pop_channel4_Callback(hObject, eventdata, handles)
+% hObject    handle to pop_channel4 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns pop_channel4 contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from pop_channel4
+setTgl(hObject, eventdata, handles, handles.tgl_stim, 0);
+
+
+% --- Executes during object creation, after setting all properties.
+function pop_channel4_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pop_channel4 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in pop_channel5.
+function pop_channel5_Callback(hObject, eventdata, handles)
+% hObject    handle to pop_channel5 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns pop_channel5 contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from pop_channel5
+setTgl(hObject, eventdata, handles, handles.tgl_stim, 0);
+
+
+% --- Executes during object creation, after setting all properties.
+function pop_channel5_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pop_channel5 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
