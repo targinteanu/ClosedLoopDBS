@@ -525,11 +525,11 @@ try
     % update electrode grid 
     if handles.showElecGrid
         try
-            handles.elecGridImg.CData = helperGUIv1_ElectrodeGridUpdate(handles, ...
+            handles.elecGridImg.CData = helperGUIv1_ElectrodeGridUpdate(handles.elecGridImg, ...
                 handles.channelIDlist, rawIDs, rawD4, ...
                 handles.bufferSizeGrid, handles.fSamples);
         catch ME4 
-            getReport(ME4);
+            getReport(ME4)
             errordlg(ME4.message, 'Electrode Grid Issue');
             handles.showElecGrid = false;
             guidata(hObject, handles);
@@ -1435,7 +1435,7 @@ try
         helperGUIv1_ElectrodeGridFuncSelect(sel, ...
         handles.FilterSetUp, handles.locutoff, handles.hicutoff);
 catch ME4
-    getReport(ME4);
+    getReport(ME4)
     errordlg(ME4.message, 'Electrode Grid Selection Issue');
     handles.showElecGrid = false;
     guidata(hObject, handles);
