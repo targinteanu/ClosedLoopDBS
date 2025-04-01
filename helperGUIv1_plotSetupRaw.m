@@ -53,13 +53,6 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     fltPlt = data2timetable(fltD4,fltD1,handles.time0); fltPlt = fltPlt{1};
     forPlt = data2timetable(forD4,forD1,handles.time0); forPlt = forPlt{1};
     artPlt = data2timetable(artD4,artD1,handles.time0); artPlt = artPlt{1};
-    if numel(rawPlt)
-        tPltRng = rawPlt.Time;
-    else
-        tPltRng = tNow + nan;
-    end
-    tPltRng = [min(tPltRng), max(tPltRng)];
-    tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
     recDataStructs.forBuffs = {forBuff}; recDataStructs.stimBuff = tSt;
     for v = ["rawD", "artD", "fltD", "forD", "timeBuffs", "initTic"]
         eval("recDataStructs."+v+" = "+v+";");
@@ -72,17 +65,27 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     handles.timeDisp1 = tic; handles.timeDisp0 = timeBuff(end, :);
     handles.timeDispBuff = nan(size(timeBuff));
 
-    % initiate raw data plot
-    axes(handles.ax_raw);
+    % time axis 
     if isempty(rawPlt)
         error('Raw data was not initialized properly.')
     end
+    tRaw = rawPlt.Time - tNow; 
+    if ~handles.check_polar.Value
+        % do not track time exactly 
+        tRaw = seconds(((-length(tRaw)+1):0)/handles.fSample);
+    end
+    tPltRng = tRaw; 
+    tPltRng = [min(tPltRng), max(tPltRng)];
+    tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng); % do we actually want this extra space? 
+
+    % initiate raw data plot
+    axes(handles.ax_raw);
     hold off; 
-    handles.h_rawDataTrace = plot(rawPlt.Time - tNow, rawPlt.Variables);
+    handles.h_rawDataTrace = plot(tRaw, rawPlt.Variables);
     grid on; title('Raw Channel Data'); 
     xlabel('time'); ylabel(rawPlt.Properties.VariableNames{1});
-    if sum(~isnat(tPltRng))
-        common_xlim = tPltRng - tNow; 
+    if sum(~isnan(tPltRng))
+        common_xlim = tPltRng; 
         xlim(common_xlim);
     else
         common_xlim = xlim();
@@ -101,10 +104,14 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     end
 
     % initiate timing stem plot
+    %if handles.check_polar.Value
+        tStem = handles.time0 + seconds(timeBuff) - tNow;
+    %else
+    %    tStem = [seconds(nan), tRaw]; % TO DO: fix data2timetable eating one sample, then get rid of the nan
+    %end
     axes(handles.ax_timing); hold off;
     handles.h_timingTrace = ...
-        stem(handles.time0 + seconds(timeBuff) - tNow, ...
-        [nan; diff(timeBuff)], 's');
+        stem(tStem, [nan; diff(timeBuff)], 's');
     hold on;
     handles.h_timeDispTrace = ...
         stem(handles.time0 + seconds(handles.timeDispBuff) - tNow, ...

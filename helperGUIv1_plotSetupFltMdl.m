@@ -10,7 +10,12 @@ function handles = helperGUIv1_plotSetupFltMdl(handles, tNow, ...
         if isempty(fltPlt)
             error('Filter was not actually set up. Something is wrong in the code.')
         end
-        handles.h_filtDataTrace = plot(fltPlt.Time - tNow, fltPlt.Variables); 
+        tFlt = fltPlt.Time - tNow; 
+        if ~handles.check_polar.Value
+            % do not track time exactly
+            tFlt = seconds(((-length(tFlt)+1):0)/handles.fSample);
+        end
+        handles.h_filtDataTrace = plot(tFlt, fltPlt.Variables); 
         grid on; hold on; 
         title('Filtered & Predicted Data'); xlabel('time (s)'); ylabel(unitname);
         xlim(ext_xlim);

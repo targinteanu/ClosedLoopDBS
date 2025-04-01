@@ -9,17 +9,21 @@ function handles = helperGUIv1_plotMdl(handles, tNow, fltPlt, forPlt, forBuff, t
             end
             tPk = forBuff(:,1); tTr = forBuff(:,2); % time to peak, trough (s)
             set(handles.h_peakTrace,'YData',zeros(size(tPk)));
-            set(handles.h_peakTrace,'XData',handles.time0 + seconds(tPk) - tNow);
             set(handles.h_trouTrace,'YData',zeros(size(tTr)));
-            set(handles.h_trouTrace,'XData',handles.time0 + seconds(tTr) - tNow);
             set(handles.h_stimTrace,'YData',zeros(size(tSt)));
+            if handles.check_polar.Value
+            set(handles.h_peakTrace,'XData',handles.time0 + seconds(tPk) - tNow);
+            set(handles.h_trouTrace,'XData',handles.time0 + seconds(tTr) - tNow);
             set(handles.h_stimTrace,'XData',handles.time0 + seconds(tSt) - tNow);
+            end
 
             % update artifact-removed plot
             if handles.check_artifact.Value
                 if ~isempty(artPlt)
                     set(handles.h_artDataTrace,'YData',artPlt.Variables);
+                    if handles.check_polar.Value
                     set(handles.h_artDataTrace,'XData',artPlt.Time - tNow);
+                    end
                 end
             end
 

@@ -40,7 +40,7 @@ end
 if numel(IndShiftFIR) && numel(selRaw2Flt)
     fltH = initFilteredData(rawH(selRaw2Flt), IndShiftFIR); 
     fltT = cellfun(@(D) [1,0].*D, rawT(selRaw2Flt), 'UniformOutput',false);
-    fltB = cellfun(@(D) [1,0].*D, rawB(selRaw2Flt), 'UniformOutput',false);
+    fltB = cellfun(@(D) [1,0].*D(1:(end-IndShiftFIR),:), rawB(selRaw2Flt), 'UniformOutput',false);
     fltN = rawN(selRaw2Flt);
     fltD = [fltN; fltH; fltT; fltB];
 else
