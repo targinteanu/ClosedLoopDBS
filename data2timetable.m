@@ -22,9 +22,17 @@ for ch = 1:size(datas,2)
         end
     
         timestamps = ~isnan(t);
-        timestamps = [1; find(timestamps); length(t)];
-        % *** Is this the cause of x axis jumping around? First block may
-        % not have timestamp? ***
+        timestamps = find(timestamps);
+        % project/estimate time of t1; although strictly speaking, this is
+        % not accurate and could appear misleading
+        if isnan(t(1)) % almost always true
+            if numel(timestamps)
+                n2 = timestamps(1);
+                T12 = (n2-1)/chinfo.SampleRate;
+                t(1) = t(n2) - T12;
+            end
+        end
+        timestamps = [1; timestamps; length(t)];
         for tsi = 1:(length(timestamps)-1)
             n1 = timestamps(tsi); n2 = timestamps(tsi+1)-1;
             Di = double(data(n1:n2,2));
@@ -39,6 +47,7 @@ for ch = 1:size(datas,2)
                 'VariableNames', {chinfo.Name});
             TT = [TT; TTi];
         end
+        clear timestamps
     
         TT.Properties.VariableUnits = {Unit};
         TT.Properties.UserData = chinfo;
