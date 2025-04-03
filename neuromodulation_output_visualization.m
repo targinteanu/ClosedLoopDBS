@@ -1,4 +1,5 @@
-function [siginf,asiginf,sigin] = neuromodulation_output_visualization(filename, Hmag_Threshold)
+function [siginf,asiginf,sigin,figtime,figpolar] = ...
+    neuromodulation_output_visualization(filename, Hmag_Threshold)
     % This function parses and plots the data and stimulation output
     % from the `output/neuromod_output_YYYY-MM-DD_HH_MM_SS.csv` output
     % log produced by the neuromod_app.py application
@@ -63,7 +64,7 @@ function [siginf,asiginf,sigin] = neuromodulation_output_visualization(filename,
 
     %%
     times_secs = timein/Fs;
-    figure;
+    figtime = figure;
     hold on;
     yyaxis("right");
     plot(times_secs, asiginf,'-', 'DisplayName','θ Beta-filtered Signal','Color',[1 .8 .6]);
@@ -87,7 +88,8 @@ function [siginf,asiginf,sigin] = neuromodulation_output_visualization(filename,
 
     %%
     polar_edges = deg2rad(-5:+10:355);
-    figure;polarhistogram(phase_angle_siginf(logical(stims)), polar_edges);
+    figpolar = figure;
+    polarhistogram(phase_angle_siginf(logical(stims)), polar_edges);
     %%%% OR Select just the part we xlim the plot to %%%%%
     % min_sample_idx = 512;
     % max_sample_idx = 1900;
