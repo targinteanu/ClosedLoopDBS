@@ -16,11 +16,12 @@ elseif strcmp(yn, 'No')
     [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
     channelName, channelIndex, channelIndexStim, channelNames]...
     = getRecordedData_NS();
+    channelNameStim = channelNames{channelIndexStim};
     for varn = {'dataAllChannels', 'SamplingFreq', 't', 'tRel', 'channelIndex', 'channelNames'}
         v = varn{:};
         eval([v,'Stim = ',v,';']);
-    end
-    channelNameStim = 'ainp1';
+    end 
+    resampleStim = false;
 else
     % end/error here ?
 end
@@ -58,10 +59,7 @@ if SamplingFreqAPL ~= SamplingFreq
 end
 
 %% get stim indexes 
-StimInd1 = diff(StimTrainRec1); 
-StimInd1 = max(0, StimInd1);
-StimInd1 = StimInd1 > 1e3;
-StimInd1 = [false, StimInd1];
+StimInd1 = StimTrainRec1; 
 figure; 
 plot(tStim1, StimTrainRec1); hold on; grid on; 
 plot(tStim1(StimInd1), StimTrainRec1(StimInd1), '*r');

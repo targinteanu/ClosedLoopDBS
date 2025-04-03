@@ -113,7 +113,7 @@ dataOneChannel = dataAllChannels(channelIndex,:);
 %StimTrainRec = dataAllChannels(channelIndexStim,:) > 3000;
 StimTrainRec = [false, diff(dataAllChannels(channelIndexStim,:)) > 2000]; % rising edge
 if ~numel(channelIndexStim)
-    StimTrainRec = zeros(size(dataOneChannel));
+    StimTrainRec = false(size(dataOneChannel));
 end
 
 end
