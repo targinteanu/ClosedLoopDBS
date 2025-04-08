@@ -25,6 +25,8 @@ elseif strcmp(yn, 'No')
 else
     % end/error here ?
 end
+dataOneChannelWithArtifact = dataOneChannel;
+t0 = t(1);
 
 [t(1) t(end)]
 [tStim(1) tStim(end)]
@@ -35,11 +37,57 @@ neuromodulation_output_visualization(fullfile(fp,fn)); % APL internal eval
 tbl = readtable(fullfile(fp,fn));
 
 %% interpret APL data
-SamplingFreqAPL = 1000; % Hz
+SamplingFreqAPL = 950; % Hz
 dataAPL = (tbl.data)';
 tAPL = (tbl.dataTimestamp)'/SamplingFreqAPL; % s
 StimIndAPL = (tbl.stimOut > 0);
 phaseAPL = (tbl.projPhase)';
+
+%% artifact removal 
+
+% detect artifacts 
+artExtend = 10; % extend artifact by __ samples 
+artIndAll = StimTrainRec; 
+artIndAll = movsum(artIndAll, artExtend) > 0;
+artIndAll(1) = true; artIndAll(end) = true;
+artIndAll = find(artIndAll);
+[~,baselineStartInd] = max(diff(artIndAll));
+baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(baselineStartInd); 
+
+% set baseline to fit model 
+if ~isempty(artIndAll)
+baselineWinLen = 1000; ARlen = 10; % samples 
+dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
+dataBaseline = Myeegfilt(dataBaseline,SamplingFreq,13,30);
+baselineWin = (baselineEndInd-baselineStartInd) + [-1,1]*baselineWinLen; 
+baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
+baselineWin(1) = max(1,baselineWin(1)); baselineWin(2) = min(length(dataBaseline),baselineWin(2));
+dataBaseline = dataBaseline(baselineWin(1):baselineWin(2));
+ARmdl = ar(iddata(dataBaseline', [], 1/SamplingFreq), ARlen, 'yw');
+
+% remove artifact 
+dataOneChannel = dataOneChannelWithArtifact;
+dataOneChannel = dataOneChannel - mean(dataOneChannel); % correct DC offset
+
+for ind = artIndAll
+    ind0 = ind - ARlen;
+    if ind0 > 0
+        dataOneChannel(ind) = myFastForecastAR(ARmdl, dataOneChannel(ind0:(ind-1))', 1);
+    end
+end
+
+% plot artifact removal 
+figure; 
+ax(1) = subplot(211); 
+plot(t, dataOneChannelWithArtifact, 'k'); 
+grid on; hold on; 
+plot(t, dataOneChannel, 'b'); 
+title('Artifact Removal'); ylabel(channelName);
+ax(2) = subplot(212); 
+plot(t, dataAllChannels(channelIndexStim,:)); 
+ylabel('ainp1');
+grid on; linkaxes(ax, 'x'); 
+end
 
 %% resample 
 dataAPL1 = dataAPL; dataOneChannel1 = dataOneChannel;
@@ -54,7 +102,7 @@ end
 if SamplingFreqAPL ~= SamplingFreq
     % resample ns to match APL
     dataOneChannel1 = resample(dataOneChannel1,SamplingFreqAPL,SamplingFreq);
-    tRel1 = resample(tRel1,SamplingFreqAPL,SamplingFreq);
+    tRel1 = ((1:length(dataOneChannel1)) - 1) / SamplingFreq;
     t1 = seconds(tRel1) + t0;
 end
 
