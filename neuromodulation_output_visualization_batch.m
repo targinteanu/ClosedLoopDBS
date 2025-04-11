@@ -1,6 +1,6 @@
 % User selects folder; MATLAB runs all csv files 
-%filepath = uigetdir; 
-%csvFiles = dir(fullfile(filepath,'*.csv'));
+filepath = uigetdir; 
+csvFiles = dir(fullfile(filepath,'*.csv'));
 for f = csvFiles'
     fpfn = fullfile(f.folder, f.name);
     [~,~,~,figTime,figPolr] = neuromodulation_output_visualization(fpfn);
