@@ -97,7 +97,7 @@ end
 % t0 = date/time at start of recording 
 tRel = linspace(0, datadur, datalen) + t1Rel;
 t = seconds(tRel);
-t0 = datetime(ns.MetaTags.DateTime); 
+t0 = datetime(ns.MetaTags.DateTime, 'TimeZone','UTC'); 
 t = t+t0; 
 
 % Interpret data from ns structure: 
