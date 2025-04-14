@@ -116,6 +116,12 @@ plot(tStim1(StimInd1), StimTrainRec1(StimInd1), '*r');
 dataOneChannel1 = Myeegfilt(dataOneChannel1,SamplingFreqAPL,13,30);
 dataAPL1 = Myeegfilt(dataAPL1,SamplingFreqAPL,13,30);
 
+%% normalize 
+dataOneChannel1 = dataOneChannel1 - mean(dataOneChannel1);
+dataOneChannel1 = dataOneChannel1 / std(dataOneChannel1);
+dataAPL1 = dataAPL1 - mean(dataAPL1);
+dataAPL1 = dataAPL1 / std(dataAPL1);
+
 %% align APL-ns timing 
 % assumes APL data is shorter-duration than blackrock recording 
 if length(dataAPL1) > length(dataOneChannel1)
