@@ -39,7 +39,7 @@ neuromodulation_output_visualization(fullfile(fp,fn)); % APL internal eval
 tbl = readtable(fullfile(fp,fn));
 
 %% interpret APL data
-SamplingFreqAPL = 950; % Hz
+SamplingFreqAPL = 951; % Hz
 dataAPL = (tbl.data)';
 tRelAPL = (tbl.dataTimestamp)'/SamplingFreqAPL; % s
 tRelAPL = tRelAPL - tRelAPL(1); % relative time; start at 0
