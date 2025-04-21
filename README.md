@@ -22,8 +22,8 @@
 
 # Versions 
  - Version 0 (v0): the first version run successfully in the OR/EMU, built using MATLAB GUIDE; does not use parallel processing, and only supports Blackrock hardware. Due to delays caused by having all processes run on a single loop, timing accuracy and frequency of stimulus actually delivered are limited.
- - Version 1 (v1): updated MATLAB GUIDE-based interfaces that use parallel processing using Blackrock hardware.
- - Version 2 (planned) will be rebuilt in the mlapp format and will support phase-dependent stimulation using Blackrock or AlphaOmega hardware.
+ - Version 1 (v1): updated MATLAB GUIDE-based interfaces that use parallel processing using Blackrock or AlphaOmega hardware.
+ - Version 2 (planned) will be rebuilt in the mlapp format.
 
 # Internal/Testing Scripts 
  The following scripts are for internal testing purposes and should not be run generally: 

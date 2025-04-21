@@ -33,7 +33,8 @@ if not os.path.exists(local_folder):
     os.makedirs(local_folder)
 
 # Specify the remote folder path
-remote_folder = 'jhuadmin@192.168.50.70:/home/jhuadmin/app/neuromod_software/output/'
+remote_folder = '/home/jhuadmin/app/neuromod_software/output/'
+remote_yaml = '/home/jhuadmin/app/neuromod_software/configs/realtime_analog_recording.yaml'
 
 def run_neuromod(myShell):
     myShell.send("./run_neuro_modulation.sh realtime_analog_recording.yaml\n")
@@ -47,27 +48,66 @@ def stop_neuromod(myShell):
     output = myShell.recv(1024).decode()
     print(output)
 
-# function to modify AR coefficients 
-def modify_ar_coefficients(myClient, NewArCoeffs):
-    print("UI: Modifying AR coefficients in the YAML file")
+# function to modify threshold 
+def modify_threshold(myClient, new_thresh, remote_path, local_path):
+    print("UI: Modifying threshold value in the YAML file")
+
+    # round new_threshold to the nearest integer
+    new_thresh = round(new_thresh)
+
+    # Download the YAML file
+    sftp = myClient.open_sftp()
+    local_yaml = os.path.join(local_path, os.path.basename(remote_path))
+    sftp.get(remote_path, local_yaml)
 
     # Read the YAML file
-    command = 'cat configs/realtime_analog_recording.yaml'
-    stdin, stdout, stderr = myClient.exec_command(command)
-    yaml_content = stdout.read().decode()
+    with open(local_yaml, 'r') as file:
+        lines = file.readlines()
 
-    # Modify the YAML content
-    lines = yaml_content.split('\n')
-    for i in range(41, 51):
-        lines[i] = f"arCoeff{i-41} : {NewArCoeffs[i-41]}"
-
-    new_yaml_content = '\n'.join(lines)
+    # Modify line 52
+    lines[51] = f"    thresholdSetting                 : {new_thresh} # FFT Magnitude threshold. Unitless. Must be tuned using threshold results during recording (don't forget the THRESHOLD_DETERMINATION_BLOCK_EXPONENT value [i.e the binary left shift] in the results when trying to use the output to determine this number)\n"
+    currentthresh = lines[51]
 
     # Write the modified content back to the YAML file
-    command = f'echo "{new_yaml_content}" > configs/realtime_analog_recording.yaml'
-    stdin, stdout, stderr = myClient.exec_command(command)
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+    with open(local_yaml, 'w') as file:
+        file.writelines(lines)
+
+    # Upload the modified YAML file back to the remote server
+    sftp.put(local_yaml, remote_path)
+    sftp.close()
+
+    return currentthresh
+
+# function to modify AR coefficients 
+def modify_ar_coefficients(myClient, NewArCoeffs, remote_path, local_path):
+    print("UI: Modifying AR coefficients in the YAML file")
+
+    # Download the YAML file
+    sftp = myClient.open_sftp()
+    local_yaml = os.path.join(local_path, os.path.basename(remote_path))
+    sftp.get(remote_path, local_yaml)
+
+    # Read the YAML file
+    with open(local_yaml, 'r') as file:
+        lines = file.readlines()
+
+    # Modify the YAML content
+    for i in range(40, 50):
+        #print(lines[i])
+        lines[i] = f"    arCoeff{i-40} : {NewArCoeffs[i-40]}\n"
+
+    # read the curent threshold value
+    currentthresh = lines[51]
+
+    # Write the modified content back to the YAML file
+    with open(local_yaml, 'w') as file:
+        file.writelines(lines)
+
+    # Upload the modified YAML file back to the remote server
+    sftp.put(local_yaml, remote_path)
+    sftp.close()
+
+    return currentthresh
 
 # Device credentials
 hostname = '192.168.50.70'
@@ -86,20 +126,29 @@ try:
     time.sleep(1)
     # Start an interactive shell session
     shell = client.invoke_shell()
-    time.sleep(1)
+    time.sleep(5)
+    output = shell.recv(1024).decode()
+    print(output)
 
     # Get the current datetime of this computer
     current_datetime = datetime.now().strftime('%Y%m%d %H:%M:%S')
-
     # Set the date of the device
     print("UI: setting date and time of device")
-    command = f'sudo -S date --set="{current_datetime}"'
-    stdin, stdout, stderr = client.exec_command(command)
-    stdin.write(password + '\n')
-    stdin.flush()
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+    shell.send('date \n')
+    time.sleep(2)
+    output = shell.recv(1024).decode()
+    print(output)
+    command = f'sudo -S date --set="{current_datetime}" \n'
+    shell.send(command)
+    time.sleep(2)
+    shell.send(password + '\n')
     time.sleep(1)
+    output = shell.recv(1024).decode()
+    print(output)
+    shell.send('date \n')
+    time.sleep(5)
+    output = shell.recv(1024).decode()
+    print(output)
     
     # run the neuro modulation script for initial data
     print("UI: running neuro modulation for initial data")
@@ -110,19 +159,17 @@ try:
     # Stop the neuro modulation script
     print("UI: stopping neuro modulation")
     stop_neuromod(shell)
-    time.sleep(1)
+    time.sleep(5)
     # Copy the most recent file from the device to the specified folder
     print("UI: copying CSV file")
     csvfilename = copy_files_from_device(remote_folder, local_folder)
+    time.sleep(5)
     print("UI: getting AR coefficients...")
     arcoeffs = ar_from_csv(local_folder, csvfilename)
     print(arcoeffs)
-    modify_ar_coefficients(client, arcoeffs)
+    curthreshinfo = modify_ar_coefficients(client, arcoeffs, remote_yaml, local_folder)
     # Print line 52 of the YAML file, i.e. current threshold value
-    command = 'sed -n "52p" configs/realtime_analog_recording.yaml'
-    stdin, stdout, stderr = client.exec_command(command)
-    print("Line 52:", stdout.read().decode().strip())
-    print(stderr.read().decode())
+    print("Line 52:", curthreshinfo)
 
     # run the neuro modulation script for additional data
     print("UI: resuming neuro modulation")
@@ -130,9 +177,9 @@ try:
     time.sleep(1)
 
     while True:
-        user_input = input("Enter 'r' to re-set AR coefficients, 't' to adjust threshold, or 'q' to terminate: ").strip().lower()
+        user_input = input("Enter 's' to save data, 'r' to re-set AR coefficients, 't' to adjust threshold, or 'q' to quit: ").strip().lower()
         
-        if (user_input == 'r') or (user_input == 't'):
+        if (user_input == 's') or ((user_input == 'r') or (user_input == 't')):
             # Stop the neuro modulation script
             print("UI: stopping neuro modulation")
             stop_neuromod(shell)
@@ -145,27 +192,22 @@ try:
                 print("UI: getting AR coefficients...")
                 arcoeffs = ar_from_csv(local_folder, csvfilename)
                 print(arcoeffs)
-                modify_ar_coefficients(client, arcoeffs)
+                curthreshinfo = modify_ar_coefficients(client, arcoeffs, remote_yaml, local_folder)
 
             elif user_input == 't':
                 # Print line 52 of the YAML file, i.e. current threshold value
-                command = 'sed -n "52p" configs/realtime_analog_recording.yaml'
-                stdin, stdout, stderr = client.exec_command(command)
-                print("Line 52:", stdout.read().decode().strip())
-                print(stderr.read().decode())
+                print("Line 52:", curthreshinfo)
                 # Update the threshold value
                 new_threshold = input("Enter the new threshold value: ").strip()
+                new_threshold = round(float(new_threshold))
                 # Modify line 52 of the YAML file
-                print("UI: Modifying threshold value in the YAML file")
-                command = f'sed -i "52s/.*/thresholdSetting                 : {new_threshold}/" configs/realtime_analog_recording.yaml'
-                stdin, stdout, stderr = client.exec_command(command)
-                print(stdout.read().decode())
-                print(stderr.read().decode())
+                curthreshinfo = modify_threshold(client, new_threshold, remote_yaml, local_folder)
 
             # aquire new data with the updated settings 
             print("UI: running neuro modulation for additional data")
             run_neuromod(shell)
-            time.sleep(20) 
+            time.sleep(10) 
+
             # Stop the neuro modulation script
             print("UI: stopping neuro modulation")
             stop_neuromod(shell)
@@ -193,6 +235,16 @@ try:
             print("Invalid input. Please enter 'r', 't', or 'q'.")
 
 finally:
-    # Close the connection
-    client.close()
-    print("Connection closed")
+    user_input = input("Power off device? [y/n]: ").strip().lower()
+    if user_input == 'y':
+        print("UI: powering off device")
+        shell.send("sudo poweroff \n")
+        time.sleep(2)
+        shell.send(password + '\n')
+        time.sleep(2)
+        output = shell.recv(1024).decode()
+        print(output)
+    else:
+        # Close the connection
+        client.close()
+        print("UI: Connection closed")

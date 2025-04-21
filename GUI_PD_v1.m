@@ -160,69 +160,7 @@ handles.ControllerResult = 0;
 
 % hardware-specific functions 
 waitbar(.25, wb, 'Setting up hardware...')
-RecOpts = {'Blackrock NSP', 'Alpha Omega AlphaRS'}; % TO DO: add Neuro Omega ?
-StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'AlphaRS', 'None'}; 
-RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
-    "ListString",RecOpts, "SelectionMode","single");
-StimSel = listdlg("PromptString", "Stimulator Hardware Configuration:", ...
-    "ListString",StimOpts, "SelectionMode","single");
-if RecSel == 1
-    % Blackrock NSP 
-    handles.HardwareFuncs = struct(...
-        'SetupRecording', @connect_cbmex, ...
-        'ShutdownRecording', @disconnect_cbmex, ...
-        'InitRawData', @initRawData_cbmex, ...
-        'InitRecording', @InitializeRecording_cbmex, ...
-        'GetNewRawData', @getNewRawData_cbmex, ...
-        'GetTime', @getTime_cbmex); 
-elseif RecSel == 2
-    % AO AlphaRS; might also work with Neuro Omega (untested) 
-    handles.HardwareFuncs = struct(...
-        'SetupRecording', @connect_AO, ...
-        'ShutdownRecording', @disconnect_AO, ...
-        'InitRawData', @initRawData_AO, ...
-        'InitRecording', @InitializeRecording_AO, ...
-        'GetNewRawData', @getNewRawData_AO, ...
-        'GetTime', @getTime_AO);
-else
-    error('Recording option must be specified.')
-end
-if StimSel == 1
-    % Blackrock CereStim API
-    handles.StimTriggerMode = false;
-    handles.HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
-    handles.HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
-    handles.HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
-    handles.HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
-    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
-    handles.HardwareFuncs.PulseStimulator = @stimPulse_cerestim;
-    handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;  
-elseif StimSel == 2
-    % c-pod + CereStim in trig mode 
-    handles.StimTriggerMode = true;
-    handles.HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
-    handles.HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
-    handles.HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
-    handles.HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
-    handles.HardwareFuncs.SetupStimTTL = @srlSetup_cpod;
-    handles.HardwareFuncs.PulseStimulator = @stimPulse_cpod; 
-    handles.HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;       
-elseif StimSel == 3
-    % AO AlphaRS; might also work with Neuro Omega (untested) 
-    handles.StimTriggerMode = false; 
-    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
-    handles.HardwareFuncs.SetStimTriggerMode = @(s) s; 
-else
-    % dummy mode / no stimulation 
-    handles.StimTriggerMode = false;
-    handles.HardwareFuncs.SetupStimulator = @(~) 0;
-    handles.HardwareFuncs.ShutdownStimulator = @(~,~) 0;
-    handles.HardwareFuncs.CheckConnectionStimulator = @() 0;
-    handles.HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
-    handles.HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
-    handles.HardwareFuncs.PulseStimulator = @(~,~) 0;
-    handles.HardwareFuncs.SetStimTriggerMode = @(s) s;                          
-end
+[handles.HardwareFuncs, handles.StimTriggerMode] = helperGUIv1_DefHardwareFuncs();
 handles.initTic = tic;
 
 % start parallel pool(s) 
@@ -314,60 +252,7 @@ function cmd_cbmexOpen_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 try
 
-if handles.DAQstatus
-    error('DSP already connected. Please disconnect first.')
-end
-
-handles.HardwareFuncs.SetupRecording();
-handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic));
-
-handles.DAQstatus = true;
-
-% Acquire some data to get channel information. Determine which channels
-% are enabled
-[~,~,~,allChannelInfo] = handles.HardwareFuncs.InitRawData(handles.allChannelIDs, handles.bufferSizeGrid);
-handles.allChannelInfo = allChannelInfo;
-
-handles.HardwareFuncs.ShutdownRecording();
-
-% set channel popup menu to hold channels
-handles.fSamples = cellfun(@(ch) ch.SampleRate, allChannelInfo);
-handles.channelIDlist = cellfun(@(ch) ch.IDnumber, allChannelInfo);
-handles.channelList = cellfun(@(ch) [num2str(ch.IDnumber),': ',ch.Name], ...
-    allChannelInfo, 'UniformOutput',false);
-chL = [handles.channelList, 'None'];
-set(handles.pop_channels, 'String', handles.channelList);
-for pop_ = [handles.pop_channel1, ...
-            handles.pop_channel2, ...
-            handles.pop_channel3, ...
-            handles.pop_channel4, ...
-            handles.pop_channel5]
-    set(pop_, 'String', chL);
-end
-
-% electrode grid 
-gridmaxval = eval(handles.txt_gridmax.String);
-gridminval = eval(handles.txt_gridmin.String);
-axes(handles.ax_elecgrid)
-ncol = 3; % # of columns
-nrow = 21;
-img = nan(nrow, ncol);
-[X,Y] = meshgrid(1:ncol, 1:nrow);
-handles.elecGridImg = imagesc(img, [gridminval, gridmaxval]); 
-xticks([]); yticks([]);
-colormap('parula'); colorbar; hold on;
-chL_ = handles.channelList(1:min((ncol*nrow), length(handles.channelList)));
-X = X(:); X = X(1:length(chL_));
-Y = Y(:); Y = Y(1:length(chL_));
-text(X,Y, chL_, ...
-    'HorizontalAlignment','center', ...
-    'VerticalAlignment','middle', ...
-    'FontWeight', 'bold', ...
-    'Color',[.8 0 0]);
-
-% Set the Start/Stop toggle button to stopped state (String is 'Start' and
-% Value is 1)
-set(handles.tgl_StartStop,'String','Start', 'Value',0)
+handles = helperGUIv1_DAQopen(handles);
 
 guidata(hObject,handles)
 
@@ -640,29 +525,12 @@ try
     % update electrode grid 
     if handles.showElecGrid
         try
-            elecimg = handles.elecGridImg.CData;
-            for ch = 1:numel(elecimg)
-                chID = handles.channelIDlist(ch); 
-                xInd = find(rawIDs == chID); 
-                if numel(xInd)
-                    x = rawD4{xInd}(:,2); L = handles.bufferSizeGrid(xInd);
-                    if height(x) > L
-                        x = x((end-L+1):end, :);
-                    end
-                    if height(x) < L
-                        warning(['Channel ',num2str(ch),...
-                            ' / ID ',num2str(chID),...
-                            ' Electrode Grid buffer is not full length!'])
-                    end
-                    fSample_ch = handles.fSamples(xInd);
-                    elecimg(ch) = handles.elecGridFunc(x, fSample_ch);
-                else
-                    elecimg(ch) = nan;
-                end
-            end
-            handles.elecGridImg.CData = elecimg;
+            handles.elecGridImg.CData = helperGUIv1_ElectrodeGridUpdate(...
+                handles.elecGridImg, handles.elecGridFunc, ...
+                handles.channelIDlist, rawIDs, rawD4, ...
+                handles.bufferSizeGrid, handles.fSamples);
         catch ME4 
-            getReport(ME4);
+            getReport(ME4)
             errordlg(ME4.message, 'Electrode Grid Issue');
             handles.showElecGrid = false;
             guidata(hObject, handles);
@@ -670,84 +538,14 @@ try
         end
     end
 
-    % update filtered data plot
     if handles.FilterSetUp
         try
-        if numel(fltPlt)
-            set(handles.h_filtDataTrace,'YData',fltPlt.Variables);
-            set(handles.h_filtDataTrace,'XData',fltPlt.Time - tNow);
-        end
-        if ~sum(isnan(ext_xlim))
-            set(handles.ax_filt, 'XLim', ext_xlim);
-        end
+        % update filtered data plot
+        handles = helperGUIv1_plotFlt(handles, tNow, fltPlt, ext_xlim);
 
-        % update model-forecasted data plot
         if handles.MdlSetUp
             try
-            if handles.check_polar.Value
-                if numel(forPlt)
-                set(handles.h_predTrace,'YData',forPlt.Variables);
-                set(handles.h_predTrace,'XData',forPlt.Time - tNow);
-                end
-            end
-            tPk = forBuff(:,1); tTr = forBuff(:,2); % time to peak, trough (s)
-            set(handles.h_peakTrace,'YData',zeros(size(tPk)));
-            set(handles.h_peakTrace,'XData',handles.time0 + seconds(tPk) - tNow);
-            set(handles.h_trouTrace,'YData',zeros(size(tTr)));
-            set(handles.h_trouTrace,'XData',handles.time0 + seconds(tTr) - tNow);
-            set(handles.h_stimTrace,'YData',zeros(size(tSt)));
-            set(handles.h_stimTrace,'XData',handles.time0 + seconds(tSt) - tNow);
-
-            % update artifact-removed plot
-            if handles.check_artifact.Value
-                if ~isempty(artPlt)
-                    set(handles.h_artDataTrace,'YData',artPlt.Variables);
-                    set(handles.h_artDataTrace,'XData',artPlt.Time - tNow);
-                end
-            end
-
-            % plot sine wave 
-            if handles.check_polar.Value
-                % set(handles.h_sineTrace,'YData', ...
-                % set(handles.h_sineTrace,'XData', ...
-            end
-
-            % evaluate accuracy of above --> polar histogram
-            if handles.check_polar.Value
-
-                % row indexes of peak events 
-                rowPk = nan(size(tPk)); 
-                for r = 1:height(tPk)
-                    % find time of current event relative to time now
-                    tPk_r = handles.time0 + seconds(tPk(r)) ;
-                    if (tPk_r >= min(fltPlt.Time)) && (tPk_r <= max(fltPlt.Time))
-                        % current event is in time range shown on screen,
-                        % so let row index be the nearest 
-                        [~,rowPk(r)] = min(abs( tPk_r - fltPlt.Time ));
-                    end
-                end
-                rowPk = rowPk(~isnan(rowPk));
-
-                % row indexes of trough events 
-                rowTr = nan(size(tTr)); 
-                for r = 1:height(tTr)
-                    % find time of current event relative to time now
-                    tTr_r = handles.time0 + seconds(tTr(r)) ;
-                    if (tTr_r >= min(fltPlt.Time)) && (tTr_r <= max(fltPlt.Time))
-                        % current event is in time range shown on screen,
-                        % so let row index be the nearest 
-                        [~,rowTr(r)] = min(abs( tTr_r - fltPlt.Time ));
-                    end
-                end
-                rowTr = rowTr(~isnan(rowTr));
-
-                % calc phase and histogram
-                phi = instPhaseFreq(fltPlt.Variables, handles.fSample);
-                phiPk = phi(rowPk); phiTr = phi(rowTr);
-                set(handles.h_peakPhase,'Data',phiPk);
-                set(handles.h_trouPhase,'Data',phiTr);
-            end
-
+                handles = helperGUIv1_plotMdl(handles, tNow, fltPlt, forPlt, forBuff, tSt, artPlt);
             catch ME2
                 getReport(ME2)
                 errordlg(ME2.message, 'Model Prediction Issue');
@@ -768,18 +566,7 @@ try
     end
 
     % update raw data and timing plots
-    set(handles.h_rawDataTrace,'YData',rawPlt.Variables);
-    set(handles.h_rawDataTrace,'XData',rawPlt.Time - tNow);
-    set(handles.h_timingTrace,'YData',[nan; diff(timeBuff)]);
-    set(handles.h_timingTrace,'XData', ...
-        handles.time0 + seconds(timeBuff) - tNow );
-    set(handles.h_timeDispTrace,'YData',[nan; diff(handles.timeDispBuff)]);
-    set(handles.h_timeDispTrace,'XData', ...
-        handles.time0 + seconds(handles.timeDispBuff) - tNow );
-    if ~sum(isnan(common_xlim)) % why is it sometimes nan??
-        set(handles.ax_raw, 'XLim', common_xlim);
-        set(handles.ax_timing, 'XLim', common_xlim);
-    end
+    handles = helperGUIv1_plotRaw(handles, tNow, rawPlt, timeBuff, common_xlim);
 
     guidata(hObject,handles)
 
@@ -810,159 +597,15 @@ try
 
     tNow = datetime;
 
-    % Check which channel is selected and get some data to plot
-    handles.channelIndex = get(handles.pop_channels,'Value'); 
-    % Now we know the sampling rate of the selected channel
-    handles.fSample = handles.fSamples(handles.channelIndex);
-    handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
-    handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
-    guidata(hObject, handles)
-
-    % assign channel indexes (NOT IDs!) to use for filtering and forecasting
-    chInd = handles.channelIndex;
-    selRaw2Flt = []; selFlt2For = []; selFor2Art = [];
-    selRaw2Art = chInd;
-    if handles.FilterSetUp
-        selRaw2Flt = chInd;
-        if handles.MdlSetUp
-            selFlt2For = 1;
-            selFor2Art = 1;
-        end
-    end
-    selRaw2For = [];
-    handles.selInds = struct(...
-        'selRaw2Flt', selRaw2Flt, ...
-        'selFlt2For', selFlt2For, ...
-        'selFor2Art', selFor2Art, ...
-        'selRaw2Art', selRaw2Art, ...
-        'selRaw2For', selRaw2For);
-
-    % (re-)init data structs
-    handles.HardwareFuncs.ShutdownRecording(); % is this necessary ?
-    buffSize = handles.bufferSizeGrid .* ones(size(handles.allChannelInfo)); % samples
-    buffSize(chInd) = handles.bufferSize;
-    if handles.FilterSetUp
-        filtOrds = [handles.FilterOrder]; % array with chans as cols
-    else
-        filtOrds = [];
-    end
-    [rawD, artD, fltD, forD, timeBuffs, initTic] = ...
-        handles.HardwareFuncs.InitRecording(buffSize, filtOrds, handles.PDSwin1, ...
-        handles.allChannelIDs, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
-    rawD1 = rawD(1,:); rawD4 = rawD(4,:);
-    artD1 = artD(1,:); artD4 = artD(4,:);
-    fltD1 = fltD(1,:); fltD4 = fltD(4,:);
-    forD1 = forD(1,:); forD4 = forD(4,:);
-    timeBuff = timeBuffs{chInd};
-    buffSize2 = (handles.bufferSize / rawD1{chInd}.SampleRate) * .5 * handles.stimMaxFreq;
-    buffSize2 = ceil(buffSize2);
-    forBuff = nan(buffSize2,2);
-    tSt = nan(buffSize2,1);
-    handles.allChannelInfo = rawD1;
-    rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),handles.time0); rawPlt = rawPlt{1};
-    fltPlt = data2timetable(fltD4,fltD1,handles.time0); fltPlt = fltPlt{1};
-    forPlt = data2timetable(forD4,forD1,handles.time0); forPlt = forPlt{1};
-    artPlt = data2timetable(artD4,artD1,handles.time0); artPlt = artPlt{1};
-    if numel(rawPlt)
-        tPltRng = rawPlt.Time;
-    else
-        tPltRng = tNow + nan;
-    end
-    tPltRng = [min(tPltRng), max(tPltRng)];
-    tPltRng = tPltRng + [-1,1]*.1*diff(tPltRng);
-    recDataStructs.forBuffs = {forBuff}; recDataStructs.stimBuff = tSt;
-    for v = ["rawD", "artD", "fltD", "forD", "timeBuffs", "initTic"]
-        eval("recDataStructs."+v+" = "+v+";");
-    end
-    handles.recDataStructs = recDataStructs;
-
-    unitname = handles.allChannelInfo{handles.channelIndex}.Unit;
-
-    % keep track of the display time 
-    handles.timeDisp1 = tic; handles.timeDisp0 = timeBuff(end, :);
-    handles.timeDispBuff = nan(size(timeBuff));
-
-    % initiate raw data plot
-    axes(handles.ax_raw);
-    if isempty(rawPlt)
-        error('Raw data was not initialized properly.')
-    end
-    hold off; 
-    handles.h_rawDataTrace = plot(rawPlt.Time - tNow, rawPlt.Variables);
-    grid on; title('Raw Channel Data'); 
-    xlabel('time'); ylabel(rawPlt.Properties.VariableNames{1});
-    if sum(~isnat(tPltRng))
-        common_xlim = tPltRng - tNow; 
-        xlim(common_xlim);
-    else
-        common_xlim = xlim();
-    end
-    % add artifact removal if applicable 
-    if handles.FilterSetUp && handles.MdlSetUp
-        if handles.check_artifact.Value
-            if isempty(artPlt)
-                set(handles.check_artifact,'Value',false);
-                handles.check_artifact_Value = false;
-                error('Artifact removal was not actually set up. Something is wrong in the code.')
-            end
-            hold on;
-            handles.h_artDataTrace = plot(artPlt.Time - tNow, artPlt.Variables, ':');
-        end
-    end
-
-    % initiate timing stem plot
-    axes(handles.ax_timing); hold off;
-    handles.h_timingTrace = ...
-        stem(handles.time0 + seconds(timeBuff) - tNow, ...
-        [nan; diff(timeBuff)], 's');
-    hold on;
-    handles.h_timeDispTrace = ...
-        stem(handles.time0 + seconds(handles.timeDispBuff) - tNow, ...
-        [nan; diff(handles.timeDispBuff)], 'o');
-    grid on; title('Update Duration'); xlabel('time (s)'); ylabel('s');
-    xlim(common_xlim);
+    % setup data and initiate raw and timing plots
+    [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
+        helperGUIv1_plotSetupRaw(handles, tNow);
 
     % initiate filtered data plot
     if handles.FilterSetUp
         try        
-        common_xdiff = diff(common_xlim); 
-        ext_xdiff = common_xdiff * handles.ax_filt.InnerPosition(3) / ...
-            handles.ax_raw.InnerPosition(3); 
-        ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left 
-        axes(handles.ax_filt); hold off; 
-        if isempty(fltPlt)
-            error('Filter was not actually set up. Something is wrong in the code.')
-        end
-        handles.h_filtDataTrace = plot(fltPlt.Time - tNow, fltPlt.Variables); 
-        grid on; hold on; 
-        title('Filtered & Predicted Data'); xlabel('time (s)'); ylabel(unitname);
-        xlim(ext_xlim);
-
-        % initiate prediction & peak/trough indicators overlayed on
-        % filtered plot
-        if handles.MdlSetUp
-            if isempty(forPlt)
-                error('Forecast was not actually set up. Something is wrong in the code.')
-            end
-            tPk = forBuff(:,1); tTr = forBuff(:,2);
-            handles.h_peakTrace = plot(handles.time0 + seconds(tPk) - tNow, zeros(size(tPk)), ...
-                '^', 'Color',"#EDB120"); 
-            handles.h_trouTrace = plot(handles.time0 + seconds(tTr) - tNow, zeros(size(tTr)), ...
-                'v', 'Color',"#EDB120"); 
-            handles.h_stimTrace = plot(handles.time0 + seconds(tSt) - tNow, zeros(size(tSt)), ...
-                '*', 'Color','r'); 
-            handles.h_predTrace = plot(forPlt.Time - tNow, forPlt.Variables, ':');
-            %handles.h_sineTrace = plot(xValues3,handles.sineDataBuffer,'--');
-
-            % initiate polar histogram 
-            bedge = (-1:2:35)*pi/18; 
-            axes(handles.ax_polar); hold off;
-            handles.h_peakPhase = polarhistogram(nan, bedge);
-            hold on; 
-            handles.h_trouPhase = polarhistogram(nan, bedge);
-            title('Actual Phase')
-        end
-
+            handles = helperGUIv1_plotSetupFltMdl(handles, tNow, ...
+                fltPlt, forPlt, forBuff, tSt, common_xlim, unitname);
         catch ME1
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
@@ -976,6 +619,7 @@ try
     end
 
     % handles = disconnectSerial(handles);
+    handles.HardwareFuncs.ShutdownRecording();
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
     requeryPhaseDetect(hObject, 1);
@@ -1787,28 +1431,12 @@ function pop_elecgrid_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from pop_elecgrid
 contents = cellstr(get(hObject,'String'));
 sel = contents{get(hObject,'Value')};
-handles.showElecGrid = ~strcmp(sel, 'None');
 try
-if handles.showElecGrid
-    if strcmp(sel, 'PAC')
-        % ***** TO DO: phase amplitude coupling: handles.elecGridFunc = ... 
-    else
-        % __ band power
-        if strcmp(sel, 'Selected Band Power')
-            if ~handles.FilterSetUp
-                error('Filter must be set for this selection.')
-            end
-            fbnd = [handles.locutoff, handles.hicutoff];
-        elseif strcmp(sel, 'Beta Power')
-            fbnd = [13, 30]; % Hz
-        elseif strcmp(sel, 'Gamma Power')
-            fbnd = [50, 200]; % Hz 
-        end
-        handles.elecGridFunc = @(data, fs) bandpower(data, fs, fbnd);
-    end
-end
+    [handles.showElecGrid, handles.elecGridFunc] = ...
+        helperGUIv1_ElectrodeGridFuncSelect(sel, ...
+        handles.FilterSetUp, handles.locutoff, handles.hicutoff);
 catch ME4
-    getReport(ME4);
+    getReport(ME4)
     errordlg(ME4.message, 'Electrode Grid Selection Issue');
     handles.showElecGrid = false;
     guidata(hObject, handles);
