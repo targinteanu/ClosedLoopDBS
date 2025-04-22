@@ -1,5 +1,5 @@
-patient_data_cond = 'datafile001.ns2';  % Condition 1
-% patient_data_cond2 = 'PDS001.ns2';       % Condition 2
+patient_data_cond = 'datafile001.ns2';  %PD22N009 - 'datafile001.ns2'
+% patient_data_cond2 = 'PDS001.ns2';    
 freq_range = 'beta';   % 'beta' or 'theta'
 
 recollect_artifactRemoved = false;
@@ -12,9 +12,11 @@ timestamps_sec = nev.NEV.Data.SerialDigitalIO.TimeStampSec;
 events = nev.NEV.Data.SerialDigitalIO.UnparsedData;  
 
 
-baseline_interval = [1,1202530];
+baseline_interval = {[1 1202530]};
 
-condition_intervals = [2215000 2302550];  
+
+condition_intervals = {[2050000 2170675],[2215000 2302550],[2350000 2411100]};
+
 
 baseline_end = 1202530;
 threshold = 0.1;
@@ -282,8 +284,9 @@ function average_sync = compute_average_sync_map(data, freq_range, condition_int
     for ch1 = 1:numChannels
         for ch2 = ch1+1:numChannels
             plv_vals = [];
-            for k = 1:size(condition_intervals, 1)
-                interval = condition_intervals(k, :);
+            for k = 1:length(condition_intervals)
+                interval = condition_intervals{k};
+
                 i_start = interval(1);
                 i_end = interval(2);
             
