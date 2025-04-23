@@ -46,6 +46,11 @@ dataBaseline = dataAllChannels(channelIndices, baseline_start:baseline_end);
 patient_data = patient_data(channelIndices, :);
 dataBaseline = dataBaseline(channelIndices, :);
 
+% correct DC offset in each channel
+DCOS = mean(dataBaseline, 2); 
+patient_data = patient_data - DCOS; 
+dataBaseline = dataBaseline - DCOS;
+
 % get stim points of DBS 
 stim_points = detectStimPoints(patient_data, dataBaseline, num_channel_threshold);
 
