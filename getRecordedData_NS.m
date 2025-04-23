@@ -1,12 +1,15 @@
 function [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
     channelName, channelIndex, channelIndexStim, channelNames]...
-    = getRecordedData_NS(nsOrFilename, channelIndex)
+    = getRecordedData_NS(nsOrFilename, channelIndex, channelIndexStim)
 
 if nargin < 1
     nsOrFilename = [];
 end
 if nargin < 2
     channelIndex = [];
+end
+if nargin < 3
+    channelIndexStim = [];
 end
 cl = class(nsOrFilename);
 
@@ -40,14 +43,21 @@ else
 end
 
 % User selects channel: 
-% The user selects the recording channel. The stimulus trigger channel is
-% assumed to be 'ainp1'
+% If no channels specified, user selects both channels. 
+% If only recording channel specified, stim channel defaults to ainp1. 
 channelNames = {ns.ElectrodesInfo.Label}; 
 if isempty(channelIndex)
-    channelIndex = listdlg('ListString', channelNames);
+    channelIndex = listdlg('ListString', channelNames, ...
+        'PromptString', 'Select Recording Channel');
+    if isempty(channelIndexStim)
+        channelIndexStim = listdlg('ListString', channelNames, ...
+            'PromptString', 'Select Stim Trigger Channel (usually ainp1)');
+    end
+end
+if isempty(channelIndexStim)
+    channelIndexStim = find(contains(channelNames, 'ainp1'));
 end
 channelName = channelNames{channelIndex};
-channelIndexStim = find(contains(channelNames, 'ainp1'));
 
 %% interpret data from loaded file 
 % obtain usable data variables and other information from the file. 
@@ -87,7 +97,7 @@ end
 % t0 = date/time at start of recording 
 tRel = linspace(0, datadur, datalen) + t1Rel;
 t = seconds(tRel);
-t0 = datetime(ns.MetaTags.DateTime); 
+t0 = datetime(ns.MetaTags.DateTime, 'TimeZone','UTC'); 
 t = t+t0; 
 
 % Interpret data from ns structure: 
@@ -103,7 +113,7 @@ dataOneChannel = dataAllChannels(channelIndex,:);
 %StimTrainRec = dataAllChannels(channelIndexStim,:) > 3000;
 StimTrainRec = [false, diff(dataAllChannels(channelIndexStim,:)) > 2000]; % rising edge
 if ~numel(channelIndexStim)
-    StimTrainRec = zeros(size(dataOneChannel));
+    StimTrainRec = false(size(dataOneChannel));
 end
 
 end

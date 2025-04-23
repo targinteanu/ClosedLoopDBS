@@ -5,7 +5,7 @@ thetaPowerResults = struct();
 
 %% User selects folder; MATLAB loads all files 
 filepath = uigetdir('Saved Data Memory'); 
-OnlineFiles = dir([filepath,filesep,'OnlineDisplaySavedData*.mat']);
+OnlineFiles = dir([filepath,filesep,'OnlineDisplaySavedData.mat']);
 OnlineFile = OnlineFiles(1); 
 NSFiles = dir([filepath,filesep,'*.ns*']); 
 NSFile = NSFiles(1); 
@@ -15,9 +15,13 @@ cd(cd00);
 
 for idx = 1:length(channelIndices)
 
+% [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
+% channelName, channelIndex, channelIndexStim, channelNames]...
+% = getRecordedData_NS_JC(ns,cell2mat(channelIndices(idx)));
+
 [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
 channelName, channelIndex, channelIndexStim, channelNames]...
-= getRecordedData_NS_JC(ns,cell2mat(channelIndices(idx)));
+= getRecordedData_NS('memory.ns2');
 
 dataOneChannelWithArtifact = dataOneChannel; 
 t0 = t(1);
