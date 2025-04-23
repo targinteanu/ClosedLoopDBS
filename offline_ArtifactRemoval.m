@@ -6,22 +6,26 @@
 
 num_channel_threshold = 0.1;
 % An outlier value in at least this proportion of channels simultaneously
-% will be considered the onset of a DBS pulse. 
+% will be considered the onset of a DBS pulse. Value 0.1 works well. 
 
 AR_order = 10;
 % order of AR model 
 
+artifact_duration = .007; % seconds
+% Expected duration of the artifact (seconds) to be replaced by
+% model-forecasted data. Value 0.007 works well for subject PD22N009.
+
 baseline_start = 1; % sample
 baseline_end = 120000; % sample 
 % Time index of the start/end of baseline (no stim) period to use for AR 
-% model fitting. First 120 seconds are used for subject PD22N009
-
-%% load data 
+% model fitting. First 120 seconds are used for subject PD22N009.
 
 filename = '';
-% This can be empty or point to an ns2 or mat file. If left empty, a dialog
+% Preferably empty or point to an ns2 or mat file. If left empty, a dialog
 % will prompt the user to select a file. It is assumed that cortical
 % stimulation pulses are logged on channel 'ainp1'.
+
+%% load data 
 
 [~, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
         ~, ~, channelIndStim, channelNames] = ...
@@ -51,11 +55,11 @@ stim_points = sort(unique(stim_points));
 
 % remove artifact
 patient_data_artifactRemoved = removeArtifactsAR(patient_data, stim_points, ...
-    dataBaseline, AR_order, SamplingFreq);
+    dataBaseline, AR_order, SamplingFreq, artifact_duration);
 
 %% display results 
 
-plot_channel = 59;
+plot_channel = 59; % display this channel 
 
 original = patient_data(plot_channel, :);
 cleaned  = patient_data_artifactRemoved(plot_channel, :);
@@ -64,8 +68,8 @@ figure;
 plot(t, original, 'r', 'DisplayName', 'Original'); hold on;
 plot(t, cleaned,  'b', 'DisplayName', 'Cleaned');
 xlabel('Time (s)');
-ylabel(channelNames{plot_channel});
-title(['Full Signal - Channel ', num2str(plot_channel)]);
+ylabel('Amplitude (\muV)');
+title(['Full Signal - Channel ', channelNames{plot_channel}]);
 legend;
 grid on;
 
@@ -102,10 +106,11 @@ function stim_points = detectStimPoints(patient_data, baseline_data, threshold)
     stim_proportion = mean(stim_mask, 1);         % 1 x (timepoints - 1)
 
     % === Timepoints where > threshold fraction of channels fire ===
-    stim_points = find(stim_proportion > threshold) + 1;  % shift for diff()
+    stim_points = find(stim_proportion > threshold) - 1;  % shift for diff()
 end
 
-function patient_data_artifactRemoved = removeArtifactsAR(patient_data, stim_points, dataBaseline, AR_order, fs)
+function patient_data_artifactRemoved = removeArtifactsAR(patient_data, stim_points, ...
+    dataBaseline, AR_order, fs, artdur)
 % removeArtifactsAR - Remove stimulation artifacts using AR model
 % original by Jack in testing4_15_JC.m / edited by Toren 
 %
@@ -114,12 +119,12 @@ function patient_data_artifactRemoved = removeArtifactsAR(patient_data, stim_poi
 %   stim_points    - vector of time indices (stim onsets) to remove artifact from
 %   dataBaseline   - matrix of baseline data (channels x timepoints) for AR training
 %   AR_order       - scalar, order of AR model
-%   fs             - % Sampling rate (Hz)
+%   fs             - Sampling rate (Hz)
+%   artdur         - Duration of artifact (seconds)
 %
 % Output:
 %   patient_data_artifactRemoved - artifact-corrected data
 
-    artdur = 0.02;           % Duration of artifact (seconds)
     artdur_samples = ceil(artdur * fs);
     context_len = max(AR_order, 100);  
 
