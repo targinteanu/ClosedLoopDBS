@@ -3,7 +3,7 @@ patient_data_cond = 'datafile001.ns2';  %PD22N009 - 'datafile001.ns2'
 freq_range = 'beta';   % 'beta' or 'theta'
 
 recollect_artifactRemoved = false;
-recollect_avg_sync = true;
+recollect_avg_sync = false;
 
 nev = load('PD22N009_nev.mat');
 
@@ -11,14 +11,12 @@ nev = load('PD22N009_nev.mat');
 timestamps_sec = nev.NEV.Data.SerialDigitalIO.TimeStampSec;
 events = nev.NEV.Data.SerialDigitalIO.UnparsedData;  
 
-
-baseline_interval = {[1 1202530]};
-
+baseline_end = 1202530/10;
+baseline_interval = {[1 baseline_end]};
 
 condition_intervals = {[2050000 2170675],[2215000 2302550],[2350000 2411100]};
 
 
-baseline_end = 1202530;
 threshold = 0.1;
 AR_order = 10;
 
@@ -38,32 +36,30 @@ if recollect_artifactRemoved
     dataBaseline = dataBaseline(channelIndices, :); 
     patient_data_cond1 = dataBaseline;
     
-    downsample_factor = 20;
-    dataBaseline = dataBaseline(channelIndices, 1:downsample_factor:end);
+    % downsample_factor = 20;
+    % dataBaseline = dataBaseline(channelIndices, 1:downsample_factor:end);
     
     stim_points = detectStimPoints(patient_data, dataBaseline, threshold);
     patient_data_artifactRemoved = removeArtifactsAR(patient_data, stim_points, dataBaseline, AR_order);
     patient_data_cond2 = patient_data_artifactRemoved;
     
     
-    plot_channel = 23;
-    
-    original = patient_data(plot_channel, :);
-    cleaned  = patient_data_artifactRemoved(plot_channel, :);
-    t = (0:length(original)-1) / 1000;  % Assuming fs = 1000 Hz
-    
-    figure;
-    plot(t, original, 'r', 'DisplayName', 'Original'); hold on;
-    plot(t, cleaned,  'b', 'DisplayName', 'Cleaned');
-    xlabel('Time (s)');
-    ylabel('Amplitude');
-    title(['Full Signal - Channel ', num2str(plot_channel)]);
-    legend;
-    grid on;
-    
-    
-    
 end
+
+plot_channel = 59;
+
+original = patient_data(plot_channel, :);
+cleaned  = patient_data_artifactRemoved(plot_channel, :);
+t = (0:length(original)-1) / 1000;  % Assuming fs = 1000 Hz
+
+figure;
+plot(t, original, 'r', 'DisplayName', 'Original'); hold on;
+plot(t, cleaned,  'b', 'DisplayName', 'Cleaned');
+xlabel('Time (s)');
+ylabel('Amplitude');
+title(['Full Signal - Channel ', num2str(plot_channel)]);
+legend;
+grid on;
 
 patient_data_cond2 = patient_data_artifactRemoved;
 if recollect_avg_sync
@@ -81,6 +77,7 @@ avgPLV_conditions = {
     average_sync_2
 };
 
+figure;
 plotPLVGrids(avgPLV_conditions);
 
 
@@ -165,7 +162,7 @@ function patient_data_artifactRemoved = removeArtifactsAR(patient_data, stim_poi
 %   patient_data_artifactRemoved - artifact-corrected data
 
     fs = 1000;               % Sampling rate (Hz)
-    artdur = 0.02;           % Duration of artifact (seconds)
+    artdur = 0.013;           % Duration of artifact (seconds)
     artdur_samples = ceil(artdur * fs);
     context_len = max(AR_order, 100);  
 
@@ -241,7 +238,7 @@ function stim_points = detectStimPoints(patient_data, baseline_data, threshold)
     stim_proportion = mean(stim_mask, 1);         % 1 x (timepoints - 1)
 
     % === Timepoints where > threshold fraction of channels fire ===
-    stim_points = find(stim_proportion > threshold) + 1;  % shift for diff()
+    stim_points = find(stim_proportion > threshold)-1;  % shift for diff()
 end
 
 
