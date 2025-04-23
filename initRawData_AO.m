@@ -40,14 +40,14 @@ chnum = [channelsData.channelID]; chnum = double(chnum);
 chname = {channelsData.channelName};
 
 % limit to only desired continuous data channels
-chincl = false(size(chnum));
+chincl = false(size(chnum)); Fs = nan(size(chnum));
 for ch = 1:length(chnum)
     chname_ch = chname{ch};
     % 
     % Currently including only LFP channels because they have the same
     % sample rate. TO DO: include other channels with their sample rates 
     %
-    % currently excluding SPK (spike?), FE/RM Audio, RM AO, UD, InPort,
+    % currently excluding FE/RM Audio, RM AO, UD, InPort,
     % StimMarker, Internal Detection, TTL, DOUT, TS Sync, ACC_X/Y/Z
     % (acceleration?)
     %
@@ -57,21 +57,29 @@ for ch = 1:length(chnum)
     if contains(chname_ch, 'LFP')
         n = sscanf(chname_ch, 'LFP %f'); 
         chincl(ch) = (n < 97) && (n >= 33);
+        Fs(ch) = 1875;
         %{
         %{
     elseif contains(chname_ch, 'SEG')
-        %SEEG (?)
+        % timestamp of threshold crossing (spike sorting)
         n = sscanf(chname_ch, 'SEG %f'); 
         chincl(ch) = n < 97;
+        Fs(ch) = 30000;
         %}
     elseif contains(chname_ch, 'RAW')
-        % ?
+        % unprocessed (no filering/downsampling) ver of other signals 
         n = sscanf(chname_ch, 'RAW %f'); 
         chincl(ch) = n < 11;
+        Fs(ch) = 30000;
     elseif contains(chname_ch, 'AI')
         % Analog In (?)
         n = sscanf(chname_ch, 'AI %f'); 
         chincl(ch) = n < 9;
+        % what is the sampling rate??
+    elseif contains(chname_ch, 'SPK')
+        n = sscanf(chname_ch, 'SPK %f');
+        chincl(ch) = false;
+        Fs(ch) = 30000;
         %}
     end
     % 
@@ -87,7 +95,7 @@ chincl = ...
     contains(chname, 'RAW') | ... ?
     contains(chname, 'AI') ; % Analog In (?)
 %}
-chnum = chnum(chincl); chname = chname(chincl);
+chnum = chnum(chincl); chname = chname(chincl); Fs = Fs(chincl);
 
 if isempty(chsel)
     % select all channels
@@ -111,8 +119,7 @@ if length(bufferSize) < length(chsel)
 end
 
 %% set (desired) AO params here
-fs = 1875; % sampling rate, Hz 
-bufferSizeAO = ceil(1.1*1000*max(bufferSize)/fs); % ms
+bufferSizeAO = ceil(1.1*1000*max(bufferSize)/min(Fs)); % ms
 bufferSizeAO = max(bufferSizeAO, 5000);  % min allowed 
 bufferSizeAO = min(bufferSizeAO, 20000); % max allowed
 ChannelGain = 20;
@@ -166,6 +173,7 @@ for ch = 1:length(chsel)
         end
         chnum_ch = chsel(ch);
         chname_ch = chname{chInd};
+        fs = Fs(chInd);
 
         % Create raw data buffer of zeros of the correct length
         emptyData{ch} = [nan(bufferSize(ch),1), zeros(bufferSize(ch),1)];
