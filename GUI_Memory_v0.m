@@ -105,9 +105,6 @@ handles.showElecGrid = false;
 handles.srlLastMsg  = ud.ReceivedData;
 handles.stimLastTime = -inf;
 handles.stimNewTime = -inf;
-handles.lasti2peak = inf; 
-handles.lasti2trou = inf;
-handles.StimulatorLagTime = .012; % s
 
 emptyStorage = nan(100000,1);
 handles.pkStorage1 = emptyStorage; handles.pkP1 = 1;
@@ -499,18 +496,7 @@ try
             t2 = max(t2,0); i2 = max(i2,1);
             t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
-            if handles.lasti2peak - N < (handles.StimulatorLagTime*handles.fSample)
-                % prev point passed out of accessible future 
-                i2peak = handles.lasti2peak - N;
-                t2peak = i2peak/handles.fSample;
-            end
-            if handles.lasti2trou - N < (handles.StimulatorLagTime*handles.fSample)
-                % prev point passed out of accessible future 
-                i2trou = handles.lasti2trou - N;
-                t2trou = i2trou/handles.fSample;
-            end
-            handles.lasti2peak = i2peak; handles.lasti2trou = i2trou;
-            dataPk(max(1,i2peak)) = true; dataTr(max(1,i2trou)) = true;
+            dataPk(i2peak) = true; dataTr(i2trou) = true;
             [handles.peakDataBuffer, oldPeak] = CombineAndCycle(...
                 handles.peakDataBuffer, dataPk, N); 
             [handles.trouDataBuffer, oldTrou] = CombineAndCycle(...
