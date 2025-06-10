@@ -124,6 +124,13 @@ mkdir(svloc);
 handles.SaveFileLoc = svloc;
 handles.SaveFileN = 1;
 
+    handles.QueuedStim = timer(...
+        'StartDelay', 10, ...
+        'TimerFcn',   {@myPULSE, hObject}, ...
+        'StopFcn',    {@finishPULSE, hObject}, ...
+        'StartFcn',   {@schedulePULSE, hObject}, ...
+        'UserData',   Inf);
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -569,27 +576,33 @@ try
                         Stim2Q = true;
                     end
                 end
-            if strcmp(handles.QueuedStim.Running, 'on')
-                stop(handles.QueuedStim);
-            end
             end
             end
             if Stim2Q
-                if strcmp(handles.QueuedStim.Running, 'on')
-                    % should not get here, because it should have been
-                    % turned off above 
-                    keyboard
-                end
-                % overwrite existing timer with new one
+                % possibly overwrite existing timer with new one
                 t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
                 if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
                     t2Qabs = t2Q + handles.lastSampleProcTime; % in NSP time "absolute"
                     Dt2Q = t2Qabs - handles.stimLastTime; 
                     if 1/Dt2Q <= handles.stimMaxFreq
-                        handles.QueuedStim.StartDelay = t2Q;
-                        handles.QueuedStim.UserData = t2Qabs;
-                        start(handles.QueuedStim);
+                        stim2Q_proceed = true;
+                        if strcmp(handles.QueuedStim.Running, 'on')
+                            % last queued stim has not yet fired 
+                            stim2Q_proceed = handles.QueuedStim.UserData > t2Qabs; % BANDAID - FIX THIS
+                        end
+                        if stim2Q_proceed
+                            if strcmp(handles.QueuedStim.Running, 'on')
+                                stop(handles.QueuedStim);
+                            end
+                            handles.QueuedStim.StartDelay = t2Q;
+                            handles.QueuedStim.UserData = t2Qabs;
+                            start(handles.QueuedStim);
+                        end
                     end
+                end
+            else
+                if strcmp(handles.QueuedStim.Running, 'on')
+                    stop(handles.QueuedStim);
                 end
             end
 
@@ -1642,13 +1655,6 @@ if get(hObject, 'Value') == 1
 
     handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
         width1, width2, interphase, frequency, pulses);
-
-    handles.QueuedStim = timer(...
-        'StartDelay', 10, ...
-        'TimerFcn',   {@myPULSE, hObject}, ...
-        'StopFcn',    {@finishPULSE, hObject}, ...
-        'StartFcn',   {@schedulePULSE, hObject}, ...
-        'UserData',   -1);
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
