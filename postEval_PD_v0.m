@@ -42,7 +42,8 @@ baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(bas
 if ~isempty(artIndAll)
 baselineWinLen = 1000; ARlen = 10; % samples 
 dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
-dataBaseline = Myeegfilt(dataBaseline,SamplingFreq,13,30);
+DCOS = mean(dataBaseline);
+dataBaseline = Myeegfilt(dataBaseline,SamplingFreq,13,30, 0, 1024);
 baselineWin = (baselineEndInd-baselineStartInd) + [-1,1]*baselineWinLen; 
 baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
 baselineWin(1) = max(1,baselineWin(1)); baselineWin(2) = min(length(dataBaseline),baselineWin(2));
@@ -51,7 +52,7 @@ ARmdl = ar(iddata(dataBaseline', [], 1/SamplingFreq), ARlen, 'yw');
 
 %% remove artifact 
 dataOneChannel = dataOneChannelWithArtifact;
-dataOneChannel = dataOneChannel - mean(dataOneChannel); % correct DC offset
+dataOneChannel = dataOneChannel - DCOS; % correct DC offset
 
 for ind = artIndAll
     ind0 = ind - ARlen;
@@ -63,7 +64,7 @@ end
 % plot artifact removal 
 figure; 
 ax(1) = subplot(211); 
-plot(t, dataOneChannelWithArtifact, 'k'); 
+plot(t, dataOneChannelWithArtifact-DCOS, 'k', 'LineWidth',1.5); 
 grid on; hold on; 
 plot(t, dataOneChannel, 'b'); 
 title('Artifact Removal'); ylabel(channelName);
@@ -74,7 +75,7 @@ grid on; linkaxes(ax, 'x');
 end
 
 %% filter 
-dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,13,30);
+dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,13,30, 0, 1024);
 
 %% determine red/yellow/green phases of experiment 
 if ~isempty(SerialLog)
