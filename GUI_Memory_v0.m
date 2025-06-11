@@ -565,7 +565,7 @@ try
             % queue stimulus pulse, if applicable 
             % ***** TO DO: can this be moved elsewhere to avoid delays?  
             Stim2Q = false;
-            if bp > 10 % min band power cutoff; orig at 1000
+            if bp > 1000 % min band power cutoff; orig at 1000
             if handles.StimActive
                 ParadigmPhase = handles.srl.UserData.ParadigmPhase;
                 if ~strcmpi(ParadigmPhase,'WAIT')
@@ -596,7 +596,17 @@ try
                         stim2Q_proceed = true;
                         if strcmp(handles.QueuedStim.Running, 'on')
                             % last queued stim has not yet fired 
-                            stim2Q_proceed = handles.QueuedStim.UserData > t2Qabs; % BANDAID - FIX THIS
+                            if t2Qabs > handles.QueuedStim.UserData
+                                % new requested point is later than current timer
+                                stim2Q_proceed = t2Q > .015; 
+                                    % is there enough time to make a change
+                                stim2Q_proceed = stim2Q_proceed && ...
+                                    (t2Qabs - handles.QueuedStim.UserData) > .015; 
+                                    % is the change outside margin of error
+                                stim2Q_proceed = stim2Q_proceed && ...
+                                    (t2Qabs - handles.QueuedStim.UserData) < .1; 
+                                    % is it trying to target the next cycle
+                            end
                         end
                         if stim2Q_proceed
                             if strcmp(handles.QueuedStim.Running, 'on')
