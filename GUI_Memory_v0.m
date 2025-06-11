@@ -124,12 +124,13 @@ mkdir(svloc);
 handles.SaveFileLoc = svloc;
 handles.SaveFileN = 1;
 
-    handles.QueuedStim = timer(...
-        'StartDelay', 10, ...
-        'TimerFcn',   {@myPULSE, hObject}, ...
-        'StopFcn',    {@finishPULSE, hObject}, ...
-        'StartFcn',   {@schedulePULSE, hObject}, ...
-        'UserData',   Inf);
+handles.StimulatorLagTime = 0.012; 
+handles.QueuedStim = timer(...
+    'StartDelay', 10, ...
+    'TimerFcn',   {@myPULSE, hObject}, ...
+    'StopFcn',    {@finishPULSE, hObject}, ...
+    'StartFcn',   {@schedulePULSE, hObject}, ...
+    'UserData',   Inf);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -498,8 +499,10 @@ try
             dataTr = dataPk; % dataSt = dataPk;  
             [t2,i2,phi_inst,f_inst] = ...
                 blockPDS(dataPast,dataFutu2, handles.fSample, [0,pi], ...
-                handles.TimeShiftFIR, handles.locutoff, handles.hicutoff);
-            t2 = t2 - handles.TimeShiftFIR; i2 = i2 - handles.IndShiftFIR; 
+                handles.TimeShiftFIR + handles.StimulatorLagTime, ...
+                handles.locutoff, handles.hicutoff);
+            t2 = t2 - handles.TimeShiftFIR - handles.StimulatorLagTime; 
+            i2 = i2 - handles.IndShiftFIR - round(handles.fSample*handles.StimulatorLagTime); 
             %t2 = max(t2,0); i2 = max(i2,1);
             t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
@@ -598,13 +601,13 @@ try
                             % last queued stim has not yet fired 
                             if t2Qabs > handles.QueuedStim.UserData
                                 % new requested point is later than current timer
-                                stim2Q_proceed = t2Q > .015; 
+                                stim2Q_proceed = t2Q > handles.StimulatorLagTime; 
                                     % is there enough time to make a change
                                 stim2Q_proceed = stim2Q_proceed && ...
-                                    (t2Qabs - handles.QueuedStim.UserData) > .015; 
+                                    (t2Qabs - handles.QueuedStim.UserData) > handles.StimulatorLagTime; 
                                     % is the change outside margin of error
                                 stim2Q_proceed = stim2Q_proceed && ...
-                                    (t2Qabs - handles.QueuedStim.UserData) < .1; 
+                                    (t2Qabs - handles.QueuedStim.UserData) < 1/handles.hicutoff; 
                                     % is it trying to target the next cycle
                             end
                         end
