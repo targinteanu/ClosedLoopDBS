@@ -500,10 +500,15 @@ try
                 blockPDS(dataPast,dataFutu2, handles.fSample, [0,pi], ...
                 handles.TimeShiftFIR, handles.locutoff, handles.hicutoff);
             t2 = t2 - handles.TimeShiftFIR; i2 = i2 - handles.IndShiftFIR; 
-            t2 = max(t2,0); i2 = max(i2,1);
+            %t2 = max(t2,0); i2 = max(i2,1);
             t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
-            dataPk(i2peak) = true; dataTr(i2trou) = true;
+            if i2peak > 0
+                dataPk(i2peak) = true;
+            end
+            if i2trou > 0
+                dataTr(i2trou) = true;
+            end
             [handles.peakDataBuffer, oldPeak] = CombineAndCycle(...
                 handles.peakDataBuffer, dataPk, N); 
             [handles.trouDataBuffer, oldTrou] = CombineAndCycle(...
@@ -581,7 +586,7 @@ try
                 end
             end
             end
-            if Stim2Q
+            if Stim2Q && (t2Q >= 0)
                 % possibly overwrite existing timer with new one
                 t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
                 if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
