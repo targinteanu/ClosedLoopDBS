@@ -533,10 +533,13 @@ try
                     if ~isempty(artInd)
                     artPastStart = artInd(1) - handles.PDSwin1;
                     artPastStart = max(1, artPastStart); 
+                    rawOffset = mean(handles.rawDataBuffer);
                     artPastData1 = handles.rawDataBuffer(artPastStart:(artInd(1)-1),:);
+                    artPastData1 = artPastData1 - rawOffset;
                     artPastN = size(artPastData1,1);
                     artPastData((end-artPastN+1):end,:) = artPastData1;
                     artReplace = myFastForecastAR(handles.Mdl, artPastData, length(artInd));
+                    artReplace = artReplace + rawOffset;
                     handles.rawDataBuffer(artInd) = artReplace;
                     end
                     catch ME3 
@@ -1262,7 +1265,7 @@ srate = handles.fSample;
 nyq            = srate*0.5;  % Nyquist frequency
 
 % filtering bound rules 
-minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % access desired parameters
