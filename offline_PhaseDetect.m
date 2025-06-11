@@ -57,6 +57,7 @@ else
     end
 end
 
+dataOneChannel = dataOneChannel - mean(dataOneChannel);
 dataOneChannelWithArtifact = dataOneChannel; 
 
 % Get indexes of stimulus: 
