@@ -1391,7 +1391,7 @@ function push_AR_Callback(hObject, eventdata, handles)
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
-handles.PDSwin2 = ceil(.02*PDSwin); 
+handles.PDSwin2 = ceil(.1*PDSwin); 
 
 try
 
