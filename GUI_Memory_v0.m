@@ -124,7 +124,7 @@ mkdir(svloc);
 handles.SaveFileLoc = svloc;
 handles.SaveFileN = 1;
 
-handles.StimulatorLagTime = 0.012; 
+handles.StimulatorLagTime = 0.03; 
 handles.QueuedStim = timer(...
     'StartDelay', 10, ...
     'TimerFcn',   {@myPULSE, hObject}, ...
@@ -502,7 +502,7 @@ try
                 handles.TimeShiftFIR + handles.StimulatorLagTime, ...
                 handles.locutoff, handles.hicutoff);
             t2 = t2 - handles.TimeShiftFIR - handles.StimulatorLagTime; 
-            i2 = i2 - handles.IndShiftFIR - round(handles.fSample*handles.StimulatorLagTime); 
+            i2 = i2 - handles.IndShiftFIR; % - round(handles.fSample*handles.StimulatorLagTime); 
             %t2 = max(t2,0); i2 = max(i2,1);
             t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
