@@ -80,22 +80,42 @@ end
 
 % handle packet loss 
 if (length(t1Rel) > 1) || (length(datadur) > 1)
-    warning('Packet loss. Largest packet will be selected.') % replace with something better?
+    warning('Packet loss. Splicing packets together.') 
     tStartEnd = [t1Rel; t1Rel + datadur];
     packetdur = diff(tStartEnd);
-    [~,p] = max(packetdur); 
-    dta = ns.Data{p}; datalen = datalen(p); datadur = datadur(p);
-    if length(t1Rel) > 1
-        t1Rel = t1Rel(p);
+    packetgap = tStartEnd(1,2:end) - tStartEnd(2,1:(end-1));
+    Dta = ns.Data;
+    TRel = arrayfun(@(p) linspace(tStartEnd(1,p), tStartEnd(2,p), datalen(p)), ...
+        1:max(length(t1Rel), length(datadur)), 'UniformOutput',false);
+    if sum(packetgap < 0)
+        % some packets begin before the previous packet has ended. 
+        % Solution: trust data from the longer packet
+        for p = find(packetgap < 0)
+            % packet p and p+1 overlap
+            warning(['There is overlap between packets ',num2str(p),' and ',num2str(p+1)]);
+            overlapSize = packetgap(p)/SamplingFreq; % samples 
+            if packetdur(p) > packetdur(p+1)
+                % shave off start of packet p+1
+                Dta{p+1} = Dta{p+1}(:,(overlapSize+1):end);
+                TRel{p+1} = TRel{p+1}(:,(overlapSize+1):end);
+                warning([num2str(overlapSize),' samples have been removed from packet ',num2str(p+1)]);
+            else
+                % shave off end of packet p
+                Dta{p} = Dta{p}(:,1:(end-overlapSize));
+                TRel{p} = TRel{p}(:,1:(end-overlapSize));
+                warning([num2str(overlapSize),' samples have been removed from packet ',num2str(p)]);
+            end
+        end
     end
+    dta = cell2mat(Dta); tRel = cell2mat(TRel);
 else
     dta = ns.Data;
+    tRel = linspace(0, datadur, datalen) + t1Rel;
 end
 
 % tRel = time relative to start of recording, in seconds 
 % t = absolute date/time 
 % t0 = date/time at start of recording 
-tRel = linspace(0, datadur, datalen) + t1Rel;
 t = seconds(tRel);
 t0 = datetime(ns.MetaTags.DateTime, 'TimeZone','UTC'); 
 t = t+t0; 

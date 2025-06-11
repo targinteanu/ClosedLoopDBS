@@ -124,6 +124,14 @@ mkdir(svloc);
 handles.SaveFileLoc = svloc;
 handles.SaveFileN = 1;
 
+handles.StimulatorLagTime = 0.03; 
+handles.QueuedStim = timer(...
+    'StartDelay', 10, ...
+    'TimerFcn',   {@myPULSE, hObject}, ...
+    'StopFcn',    {@finishPULSE, hObject}, ...
+    'StartFcn',   {@schedulePULSE, hObject}, ...
+    'UserData',   Inf);
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -491,12 +499,19 @@ try
             dataTr = dataPk; % dataSt = dataPk;  
             [t2,i2,phi_inst,f_inst] = ...
                 blockPDS(dataPast,dataFutu2, handles.fSample, [0,pi], ...
-                handles.TimeShiftFIR, handles.locutoff, handles.hicutoff);
-            t2 = t2 - handles.TimeShiftFIR; i2 = i2 - handles.IndShiftFIR; 
-            t2 = max(t2,0); i2 = max(i2,1);
+                handles.TimeShiftFIR + handles.StimulatorLagTime, ...
+                handles.locutoff, handles.hicutoff);
+            t2 = t2 - handles.TimeShiftFIR - handles.StimulatorLagTime; 
+            i2 = i2 - handles.IndShiftFIR; % - round(handles.fSample*handles.StimulatorLagTime); 
+            %t2 = max(t2,0); i2 = max(i2,1);
             t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
-            dataPk(i2peak) = true; dataTr(i2trou) = true;
+            if i2peak > 0
+                dataPk(i2peak) = true;
+            end
+            if i2trou > 0
+                dataTr(i2trou) = true;
+            end
             [handles.peakDataBuffer, oldPeak] = CombineAndCycle(...
                 handles.peakDataBuffer, dataPk, N); 
             [handles.trouDataBuffer, oldTrou] = CombineAndCycle(...
@@ -526,10 +541,13 @@ try
                     if ~isempty(artInd)
                     artPastStart = artInd(1) - handles.PDSwin1;
                     artPastStart = max(1, artPastStart); 
+                    rawOffset = mean(handles.rawDataBuffer);
                     artPastData1 = handles.rawDataBuffer(artPastStart:(artInd(1)-1),:);
+                    artPastData1 = artPastData1 - rawOffset;
                     artPastN = size(artPastData1,1);
                     artPastData((end-artPastN+1):end,:) = artPastData1;
                     artReplace = myFastForecastAR(handles.Mdl, artPastData, length(artInd));
+                    artReplace = artReplace + rawOffset;
                     handles.rawDataBuffer(artInd) = artReplace;
                     end
                     catch ME3 
@@ -550,7 +568,7 @@ try
             % queue stimulus pulse, if applicable 
             % ***** TO DO: can this be moved elsewhere to avoid delays?  
             Stim2Q = false;
-            if bp > 10 % min band power cutoff; orig at 1000
+            if bp > 1000 % min band power cutoff; orig at 1000
             if handles.StimActive
                 ParadigmPhase = handles.srl.UserData.ParadigmPhase;
                 if ~strcmpi(ParadigmPhase,'WAIT')
@@ -569,27 +587,43 @@ try
                         Stim2Q = true;
                     end
                 end
-            if strcmp(handles.QueuedStim.Running, 'on')
-                stop(handles.QueuedStim);
             end
             end
-            end
-            if Stim2Q
-                if strcmp(handles.QueuedStim.Running, 'on')
-                    % should not get here, because it should have been
-                    % turned off above 
-                    keyboard
-                end
-                % overwrite existing timer with new one
+            if Stim2Q && (t2Q >= 0)
+                % possibly overwrite existing timer with new one
                 t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
                 if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
                     t2Qabs = t2Q + handles.lastSampleProcTime; % in NSP time "absolute"
                     Dt2Q = t2Qabs - handles.stimLastTime; 
                     if 1/Dt2Q <= handles.stimMaxFreq
-                        handles.QueuedStim.StartDelay = t2Q;
-                        handles.QueuedStim.UserData = t2Qabs;
-                        start(handles.QueuedStim);
+                        stim2Q_proceed = true;
+                        if strcmp(handles.QueuedStim.Running, 'on')
+                            % last queued stim has not yet fired 
+                            if t2Qabs > handles.QueuedStim.UserData
+                                % new requested point is later than current timer
+                                stim2Q_proceed = t2Q > handles.StimulatorLagTime; 
+                                    % is there enough time to make a change
+                                stim2Q_proceed = stim2Q_proceed && ...
+                                    (t2Qabs - handles.QueuedStim.UserData) > handles.StimulatorLagTime; 
+                                    % is the change outside margin of error
+                                stim2Q_proceed = stim2Q_proceed && ...
+                                    (t2Qabs - handles.QueuedStim.UserData) < 1/handles.hicutoff; 
+                                    % is it trying to target the next cycle
+                            end
+                        end
+                        if stim2Q_proceed
+                            if strcmp(handles.QueuedStim.Running, 'on')
+                                stop(handles.QueuedStim);
+                            end
+                            handles.QueuedStim.StartDelay = t2Q;
+                            handles.QueuedStim.UserData = t2Qabs;
+                            start(handles.QueuedStim);
+                        end
                     end
+                end
+            else
+                if strcmp(handles.QueuedStim.Running, 'on')
+                    stop(handles.QueuedStim);
                 end
             end
 
@@ -1249,7 +1283,7 @@ srate = handles.fSample;
 nyq            = srate*0.5;  % Nyquist frequency
 
 % filtering bound rules 
-minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % access desired parameters
@@ -1360,7 +1394,7 @@ function push_AR_Callback(hObject, eventdata, handles)
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
-handles.PDSwin2 = ceil(.02*PDSwin); 
+handles.PDSwin2 = ceil(.1*PDSwin); 
 
 try
 
@@ -1642,13 +1676,6 @@ if get(hObject, 'Value') == 1
 
     handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
         width1, width2, interphase, frequency, pulses);
-
-    handles.QueuedStim = timer(...
-        'StartDelay', 10, ...
-        'TimerFcn',   {@myPULSE, hObject}, ...
-        'StopFcn',    {@finishPULSE, hObject}, ...
-        'StartFcn',   {@schedulePULSE, hObject}, ...
-        'UserData',   -1);
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
