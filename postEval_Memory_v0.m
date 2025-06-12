@@ -26,13 +26,14 @@ PeakInd = trimToSize(PeakInd,t); TroughInd = trimToSize(TroughInd,t); StimInd = 
 artExtend = 10; % extend artifact by __ samples 
 if numel(channelIndexStim)
     artIndAll = StimTrainRec; % cerestim trigs
+    StimInd = find(StimTrainRec); % replace sent stim with observed
     % no other sources of artifact in the memory protocol
 else
     warning('Stimulus channel ainp1 was not connected.')
     % assume there are cerestim trigs, but they are not recorded
     artIndAll = isoutlier(dataOneChannel, 'mean');
+    artIndAll(StimInd) = true;
 end 
-artIndAll(StimInd) = true;
 artIndAll = movsum(artIndAll, artExtend) > 0;
 artIndAll_PulseTrain = artIndAll;
 artIndAll = find(artIndAll);
