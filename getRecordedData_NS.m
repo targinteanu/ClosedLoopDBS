@@ -1,7 +1,43 @@
 function [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
-    channelName, channelIndex, channelIndexStim, channelNames]...
+    channelName, channelIndex, channelIndexStim, channelNames, packetLoss]...
     = getRecordedData_NS(nsOrFilename, channelIndex, channelIndexStim)
-
+% 
+% Extract data from BlackRock ns_ files using the NPMK and output data
+% useful for analyzing closed-loop stimulation with one recording channel
+% and a stimulus trigger channel. 
+% 
+% Inputs: 
+%   nsOrFilename: Can be the data structure obtained by running the NPMK
+%                 (i.e. openNSx) or a filepath to a .ns_ or .mat file. 
+%                 If omitted, the user will be prompted to choose a .ns_ or
+%                 .mat file graphically. 
+%   channelIndex: Index of recording/analysis channel. If omitted, the user
+%                 will be prompted to choose graphically from channel
+%                 names. 
+%   channelIndexStim: Index of stimulation trigger channel. If both this
+%                     and the above are omitted, user will be prompted to
+%                     choose graphically. If only this is omitted, it will
+%                     be assumed to be the channel called 'ainp1'
+% 
+% Outputs: 
+%   dataOneChannel: horizontal data vector of the recording channel. 
+%   StimTrainRec: horizontal vector of rising edges of the recorded
+%                 stimulus pulse train. This will be all false if there is
+%                 no stimulus trigger channel provided or selected.
+%   dataAllChannels: data matrix of all recorded channels as rows. 
+%   SamplingFreq: sample rate in Hz
+%   t: horizontal absolute time vector in UTC time in datetime format,
+%      corresponding to samples of data vector/matrix
+%   tRel: horizontal time vector in seconds relative to start of file 
+%   channelName: name of recording channel 
+%   channelIndex: index of recording channel 
+%   channelIndexStim: index of stimulation trigger channel 
+%   channelNames: names of all channels in cell array 
+%   packetLoss: Flag for whether there was any packet loss. If true, the
+%               packets have been stitched together, and the time and data
+%               vectors may not be uniformly sampled. 
+%                 
+%% parse inputs 
 if nargin < 1
     nsOrFilename = [];
 end
@@ -84,6 +120,7 @@ end
 
 % handle packet loss 
 if (length(t1Rel) > 1) || (length(datadur) > 1)
+    packetLoss = true;
     warning('Packet loss. Splicing packets together.') 
     tStartEnd = [t1Rel; t1Rel + datadur];
     packetdur = diff(tStartEnd);
@@ -113,6 +150,7 @@ if (length(t1Rel) > 1) || (length(datadur) > 1)
     end
     dta = cell2mat(Dta); tRel = cell2mat(TRel);
 else
+    packetLoss = false;
     dta = ns.Data;
     tRel = linspace(0, datadur, datalen) + t1Rel;
 end
