@@ -1,18 +1,79 @@
 %% User selects folder; MATLAB loads all files 
-filepath = uigetdir('Saved Data Memory'); 
-OnlineFiles = dir([filepath,filesep,'OnlineDisplaySavedData*.mat']);
+filepath00 = uigetdir('Saved Data Memory'); 
+OnlineFiles = dir([filepath00,filesep,'OnlineDisplaySavedData*.mat']);
 OnlineFile = OnlineFiles(1); 
-NSFiles = dir([filepath,filesep,'*.ns*']); 
-NSFile = NSFiles(1); 
-cd00 = cd; cd(filepath); 
-load(OnlineFile.name); ns = openNSx(NSFile.name, 'uV'); 
-cd(cd00); 
+NSFiles = dir([filepath00,filesep,'*.ns*']); 
+cd00 = cd; cd(filepath00); 
+load(OnlineFile.name); 
 
+% interpret first NS file (should be lower sample rate, e.g. ns2)
+NSFile = NSFiles(1); 
+ns = openNSx(NSFile.name, 'uV'); 
+cd(cd00); 
 [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
-    channelName, channelIndex, channelIndexStim, channelNames]...
+    channelName, channelIndex, channelIndexStim, channelNames, packetLoss]...
     = getRecordedData_NS(ns);
-dataOneChannelWithArtifact = dataOneChannel; 
+
+% interpret second NS file if there is one 
+if length(NSFiles) > 1
+    cd(filepath00); ns5 = openNSx(NSFiles(2).name, 'uV');
+    cd(cd00);
+    [dataOneChannel2, StimTrainRec2, dataAllChannels2, SamplingFreq2, t2, tRel2, ...
+        channelName2, channelIndex2, channelIndexStim2, channelNames2, packetLoss2]...
+        = getRecordedData_NS(ns5);
+    tNum = seconds(t - t(1)); tNum2 = seconds(t2 - t(1)); % to numeric
+
+    if isempty(dataOneChannel) && ~isempty(dataOneChannel2)
+        % resample everything to SamplingFreq2 
+        %dataAllChannels = resample(dataAllChannels', round(SamplingFreq2), round(SamplingFreq))';
+        dataAllChannels = interp1(tNum,dataAllChannels',tNum2,'nearest','extrap')';
+        %StimTrainRec = resample(StimTrainRec, round(SamplingFreq2), round(SamplingFreq));
+        if SamplingFreq2 < SamplingFreq
+            StimTrainRec = movmean(single(StimTrainRec), ceil(SamplingFreq/SamplingFreq2));
+        end
+        StimTrainRec = interp1(tNum,single(StimTrainRec),tNum2,'linear','extrap');
+        StimTrainRec = StimTrainRec > 0;
+        dataAllChannels = [dataAllChannels2; dataAllChannels];
+        SamplingFreq = SamplingFreq2; t = t2; tRel = tRel2;
+        channelName = channelName2; channelIndex = channelIndex2; 
+        StimTrainRec = StimTrainRec | StimTrainRec2;
+        channelIndexStim = [channelIndexStim+length(channelNames2), channelIndexStim2];
+        dataOneChannel = dataOneChannel2;
+        channelNames = [channelNames2, channelNames];
+
+    else
+        % resample everything to SamplingFreq 
+        %dataAllChannels2 = resample(dataAllChannels2', round(SamplingFreq), round(SamplingFreq2))';
+        dataAllChannels2 = interp1(tNum2,dataAllChannels2',tNum,'nearest','extrap')';
+        dataOneChannel2 = dataAllChannels2(channelIndex2,:);
+        %StimTrainRec2 = resample(StimTrainRec2, round(SamplingFreq), round(SamplingFreq2));
+        if SamplingFreq < SamplingFreq2
+            StimTrainRec2 = movmean(single(StimTrainRec2), ceil(SamplingFreq2/SamplingFreq));
+        end
+        StimTrainRec2 = interp1(tNum2,single(StimTrainRec2),tNum,'linear','extrap');
+        StimTrainRec2 = StimTrainRec2 > 0;
+        dataAllChannels = [dataAllChannels; dataAllChannels2];
+        StimTrainRec = StimTrainRec | StimTrainRec2;
+        channelIndexStim = [channelIndexStim2+length(channelNames), channelIndexStim];
+        channelNames = [channelNames, channelNames2];
+    end
+end
+
+% handle any packet loss 
+if packetLoss || packetLoss2
+    tRelInt = tRel(1):(1/SamplingFreq):tRel(end);
+    dataAllChannels = interp1(tRel,dataAllChannels',tRelInt,"nearest","extrap")';
+    dataOneChannel = dataAllChannels(channelIndex,:);
+    StimTrainRec = interp1(tRel,single(StimTrainRec),tRelInt,"linear","extrap");
+    StimTrainRec = StimTrainRec > 0;
+    t = seconds(tRelInt) + t(1); tRel = tRelInt;
+end
+
 t0 = t(1);
+dataOneChannelWithArtifact = dataOneChannel; 
+if numel(channelIndexStim)
+    channelIndexStim = channelIndexStim(1);
+end
 
 %% Get indexes of peaks, troughs, and stimulus pulses 
 PeakInd = PeakTime*SamplingFreq; 
@@ -29,7 +90,7 @@ if numel(channelIndexStim)
     StimInd = find(StimTrainRec); % replace sent stim with observed
     % no other sources of artifact in the memory protocol
 else
-    warning('Stimulus channel ainp1 was not connected.')
+    warning('Stimulus trigger channel was not found.')
     % assume there are cerestim trigs, but they are not recorded
     artIndAll = isoutlier(dataOneChannel, 'mean');
     artIndAll(StimInd) = true;
@@ -73,7 +134,7 @@ title('Artifact Removal'); ylabel(channelName);
 ax(2) = subplot(212); 
 if numel(channelIndexStim)
     plot(t, dataAllChannels(channelIndexStim,:)); 
-    ylabel('ainp1');
+    ylabel(channelNames{channelIndexStim});
 else
     plot(t, artIndAll_PulseTrain);
     ylabel('outlier?');
