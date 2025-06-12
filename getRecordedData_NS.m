@@ -57,7 +57,11 @@ end
 if isempty(channelIndexStim)
     channelIndexStim = find(contains(channelNames, 'ainp1'));
 end
-channelName = channelNames{channelIndex};
+if isempty(channelIndex)
+    channelName = '';
+else
+    channelName = channelNames{channelIndex};
+end
 
 %% interpret data from loaded file 
 % obtain usable data variables and other information from the file. 
