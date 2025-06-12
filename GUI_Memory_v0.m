@@ -534,7 +534,8 @@ try
                 if handles.check_artifact.Value
                     try
                     artInd = stimind - N; 
-                    artInd = (-5:104) + artInd; % set artifact duration 
+                    artInd = (-5:24) + artInd ... % set artifact duration 
+                        + round(handles.StimulatorLagTime/handles.fSample);
                     artInd = artInd(artInd > 0);
                     artInd = artInd(artInd <= handles.bufferSize); % !!!!!
                     artPastData = zeros(handles.PDSwin1,1); 
