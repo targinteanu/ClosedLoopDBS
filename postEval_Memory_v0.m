@@ -84,7 +84,8 @@ trimToSize = @(inds, x) inds((inds>=0) & (inds <= length(x)));
 PeakInd = trimToSize(PeakInd,t); TroughInd = trimToSize(TroughInd,t); StimInd = trimToSize(StimInd,t);
 
 %% artifact detection
-artExtend = 10; % extend artifact by __ samples 
+dataOneChannel = dataOneChannelWithArtifact;
+artExtend = 25; % extend artifact by __ samples 
 if numel(channelIndexStim)
     artIndAll = StimTrainRec; % cerestim trigs
     StimInd = find(StimTrainRec); % replace sent stim with observed
