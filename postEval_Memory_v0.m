@@ -57,6 +57,8 @@ if length(NSFiles) > 1
         channelIndexStim = [channelIndexStim2+length(channelNames), channelIndexStim];
         channelNames = [channelNames, channelNames2];
     end
+else
+    packetLoss2 = false;
 end
 
 % handle any packet loss 
