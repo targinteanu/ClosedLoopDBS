@@ -125,7 +125,7 @@ artIndAll = find(artIndAll);
 baselineEndInd = artIndAll(baselineStartInd+1); 
 baselineStartInd = artIndAll(baselineStartInd); 
 dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
-baselineWin = (baselineEndInd-baselineStartInd) + [-1,1]*ARwin; 
+baselineWin = (baselineEndInd-baselineStartInd) + [-3,3]*ARwin; 
 baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
 baselineWin(1) = max(1,baselineWin(1)); 
 baselineWin(2) = min(length(dataBaseline),baselineWin(2));
@@ -240,7 +240,12 @@ plot(t, dataOneChannelWithArtifact, 'k');
 grid on; hold on; 
 plot(t, dataOneChannel, 'b'); 
 hold on; plot(t, dataOneChannel.*(isArt), '--r');
-title('Artifact Removal'); ylabel(channelName);
+if artDur > 0
+    title('Artifact Removal'); 
+else
+    title('Artifact Removal Disabled');
+end
+ylabel(channelName);
 ax(2) = subplot(212); 
 plot(t, StimTrainRec); 
 ylabel('ainp1');
