@@ -17,24 +17,62 @@
 % 
 % An overview of the phase detection algorithm is as follows: ...
 
-function offline_PhaseDetect(dataOneChannel, StimTrainRec, SamplingFreq, t, channelName)
+function offline_PhaseDetect(dataOneChannel, StimTrainRec, SamplingFreq, t, channelName, ...
+    PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur)
+
+% signal to use default values if any arguments are not passed in 
+if nargin < 11
+    artDur = [];
+    if nargin < 10
+        predWin = [];
+        if nargin < 9
+            ARlen = [];
+            if nargin < 8
+                ARwin = [];
+                if nargin < 7
+                    FreqRange = [];
+                    if nargin < 6
+                        PhaseOfInterest = [];
+                    end
+                end
+            end
+        end
+    end
+end
+
 %% Constants: 
 
+
 % Simulate phase-dependent stimulation at this phase: 
-PhaseOfInterest = 0; % radians; i.e. 0 for peak, pi for trough stimulation
+PhaseOfInterest_default = 0; % radians; i.e. 0 for peak, pi for trough stimulation
 
 % frequency range: 
-loco = 13; hico = 30; % low and high cutoff (Hz); e.g. 13-30 for beta band
+loco_default = 13; hico_default = 30; % low and high cutoff (Hz); e.g. 13-30 for beta band
 
 % Artifact duration: 
-artExtend = 10; % artifact duration is extended by __ samples 
+artDur_default = 10; % artifact duration is extended by __ samples 
 
 % AR model parameters: 
-ARwin = 1000; % #samples of baseline to use to fit the AR model
-ARlen = 10; % AR model order 
+ARwin_default = 1000; % #samples of baseline to use to fit the AR model
+ARlen_default = 10; % AR model order 
 
 % AR-model prediction duration: 
-predWin = 20; % #samples ahead to predict at each time step 
+predWin_default = 20; % #samples ahead to predict at each time step 
+
+
+% apply default values if necessary 
+if isempty(FreqRange)
+    hico = hico_default; loco = loco_default;
+else
+    hico = FreqRange(2); loco = FreqRange(1);
+end
+varnames = ["PhaseOfInterest", "artDur", "ARwin", "ARlen", "predWin"];
+for v = varnames
+    if isempty(eval(v))
+        eval(v+" = "+v+"_default;");
+    end
+end
+clear v varnames
 
 %% Part A: Setup 
 % Load and preprocess brain recording data from a file. 
@@ -64,7 +102,7 @@ dataOneChannelWithArtifact = dataOneChannel;
 % find when artifacts are believed to occur 
 isOut = isoutlier(dataOneChannel, 'mean');
 isArt = isOut | StimTrainRec; 
-isArt = movsum(isArt, artExtend) > 0;
+isArt = movsum(isArt, artDur) > 0;
 
 %% A.2 Identify baseline and fit AR model
 % In real time, this would be determined by the research team at some point
