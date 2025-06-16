@@ -18,21 +18,24 @@
 % An overview of the phase detection algorithm is as follows: ...
 
 function offline_PhaseDetect(dataOneChannel, StimTrainRec, SamplingFreq, t, channelName, ...
-    PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur)
+    PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength)
 
 % signal to use default values if any arguments are not passed in 
-if nargin < 11
-    artDur = [];
-    if nargin < 10
-        predWin = [];
-        if nargin < 9
-            ARlen = [];
-            if nargin < 8
-                ARwin = [];
-                if nargin < 7
-                    FreqRange = [];
-                    if nargin < 6
-                        PhaseOfInterest = [];
+if nargin < 12
+    packetLength = [];
+    if nargin < 11
+        artDur = [];
+        if nargin < 10
+            predWin = [];
+            if nargin < 9
+                ARlen = [];
+                if nargin < 8
+                    ARwin = [];
+                    if nargin < 7
+                        FreqRange = [];
+                        if nargin < 6
+                            PhaseOfInterest = [];
+                        end
                     end
                 end
             end
@@ -59,6 +62,9 @@ ARlen_default = 10; % AR model order
 % AR-model prediction duration: 
 predWin_default = 20; % #samples ahead to predict at each time step 
 
+% length of packets of incomming data 
+packetLength_default = 1; % samples; e.g. 1 for each sample entered individually 
+
 
 % apply default values if necessary 
 if isempty(FreqRange)
@@ -66,7 +72,7 @@ if isempty(FreqRange)
 else
     hico = FreqRange(2); loco = FreqRange(1);
 end
-varnames = ["PhaseOfInterest", "artDur", "ARwin", "ARlen", "predWin"];
+varnames = ["PhaseOfInterest", "artDur", "ARwin", "ARlen", "predWin", "packetLength"];
 for v = varnames
     if isempty(eval(v))
         eval(v+" = "+v+"_default;");
@@ -166,10 +172,11 @@ dataOneChannelFilt = zeros(size(dataOneChannel));
 
 progTick = .05; prog = 0; % track progress
 
-for tind = 1:length(dataOneChannel)
+for tind = packetLength:packetLength:length(dataOneChannel)
+    tinds = (tind-packetLength+1):tind;
 
     % track progress
-    prog = prog + 1/length(dataOneChannel);
+    prog = prog + packetLength/length(dataOneChannel);
     if prog > progTick
         prog = prog - progTick; 
         disp(['Progress: ',num2str(100*tind/length(dataOneChannel)),'%']);
@@ -178,21 +185,21 @@ for tind = 1:length(dataOneChannel)
     % Step 1: Remove Artifact 
     % Replace artifact-corrupted signal with AR model-forecasted data.  
     if artDur > 0
-        if isArt(tind)
-            ind0 = tind - ARlen;
+        for ind1 = tinds(isArt(tinds))
+            ind0 = ind1 - ARlen;
             if ind0 > 0
-                dataOneChannel(tind) = myFastForecastAR(ARmdl_unfilt, ...
-                    dataOneChannel(ind0:(tind-1))', 1);
+                dataOneChannel(ind1) = myFastForecastAR(ARmdl_unfilt, ...
+                    dataOneChannel(ind0:(ind1-1))', 1);
             end
         end
     end
 
     % Step 2: Filter 
     % Extract data within desired frequency band, e.g. beta
-    [dataOneChannelFilt(tind),filtinit] = filter(filtwts,1, ...
-        dataOneChannel(tind), filtinit);
+    [dataOneChannelFilt(tinds),filtinit] = filter(filtwts,1, ...
+        dataOneChannel(tinds), filtinit);
 
-    ind0 = tind - ARwin;
+    ind0 = tinds(1) - ARwin;
     if ind0 > 0
         % Step 3: AR-based forecasting 
         % Predict some duration ahead using the AR model; this will be used
@@ -210,9 +217,9 @@ for tind = 1:length(dataOneChannel)
             loco, hico);
 
         % Step 5: Send a stimulus pulse when appropriate 
-        i2nextStim_prev = i2nextStim_prev - 1; % one sample passed
-        if i2nextStim_prev == 0
-            toStim(tind) = true;
+        i2nextStim_prev = i2nextStim_prev - packetLength; % one packet passed
+        if i2nextStim_prev < packetLength
+            toStim(tinds(1)-1+i2nextStim_prev) = true;
         end
         i2nextStim_prev = i2nextStim - filtdelay;
     end
