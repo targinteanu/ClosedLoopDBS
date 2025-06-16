@@ -5,7 +5,7 @@ thetaPowerResults = struct();
 
 %% User selects folder; MATLAB loads all files 
 filepath = uigetdir('Saved Data Memory'); 
-OnlineFiles = dir([filepath,filesep,'OnlineDisplaySavedData.mat']);
+OnlineFiles = dir([filepath,filesep,'OnlineDisplaySavedData*.mat']);
 OnlineFile = OnlineFiles(1); 
 NSFiles = dir([filepath,filesep,'*.ns*']); 
 NSFile = NSFiles(1); 
@@ -21,7 +21,7 @@ for idx = 1:length(channelIndices)
 
 [dataOneChannel, StimTrainRec, dataAllChannels, SamplingFreq, t, tRel, ...
 channelName, channelIndex, channelIndexStim, channelNames]...
-= getRecordedData_NS('memory.ns2');
+= getRecordedData_NS(fullfile(NSFile.folder, NSFile.name));
 
 dataOneChannelWithArtifact = dataOneChannel; 
 t0 = t(1);
@@ -218,7 +218,7 @@ encodingPowers = [thetaPowerResults.encodingPower];
 decodingPowers = [thetaPowerResults.decodingPower]; 
 encodingErrors = [thetaPowerResults.encodingError]; 
 decodingErrors = [thetaPowerResults.decodingError]; 
-
+%%
 figure;
 barVals = [encodingPowers; decodingPowers]'; % Grouped bar values
 bar(barVals, 'grouped'); % Plot bar chart
@@ -239,6 +239,7 @@ errorbar(x(1,:), encodingPowers, encodingErrors, 'k', 'linestyle', 'none', 'line
 errorbar(x(2,:), decodingPowers, decodingErrors, 'k', 'linestyle', 'none', 'linewidth', 1);
 
 % Customize plot
+set(gca, 'XTick', 1:length(channelNamesList));
 set(gca, 'XTickLabel', channelNamesList);
 legend({'Encoding', 'Decoding'});
 ylabel('Average Theta Power');
