@@ -23,6 +23,7 @@ fwinlen = floor(.1*N);
 %f_inst = mean(f_block(fwin,:));
 f_block = smoothdata(f_block, "gaussian", fwinlen);
 f_inst = f_block(N);
+%[~,f_inst] = zerocrossrate(blockData); f_inst = f_inst*fs/(2*length(blockData));
 T=1/f_inst;
 
 % time to next [desired] phi 
