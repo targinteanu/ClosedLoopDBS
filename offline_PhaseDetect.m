@@ -102,7 +102,9 @@ dataOneChannelWithArtifact = dataOneChannel;
 % find when artifacts are believed to occur 
 isOut = isoutlier(dataOneChannel, 'mean');
 isArt = isOut | StimTrainRec; 
-isArt = movsum(isArt, artDur) > 0;
+if artDur > 0
+    isArt = movsum(isArt, artDur) > 0;
+end
 
 %% A.2 Identify baseline and fit AR model
 % In real time, this would be determined by the research team at some point
@@ -175,11 +177,13 @@ for tind = 1:length(dataOneChannel)
 
     % Step 1: Remove Artifact 
     % Replace artifact-corrupted signal with AR model-forecasted data.  
-    if isArt(tind)
-        ind0 = tind - ARlen;
-        if ind0 > 0
-            dataOneChannel(tind) = myFastForecastAR(ARmdl_unfilt, ...
-                dataOneChannel(ind0:(tind-1))', 1);
+    if artDur > 0
+        if isArt(tind)
+            ind0 = tind - ARlen;
+            if ind0 > 0
+                dataOneChannel(tind) = myFastForecastAR(ARmdl_unfilt, ...
+                    dataOneChannel(ind0:(tind-1))', 1);
+            end
         end
     end
 
