@@ -573,7 +573,8 @@ try
                 handles.TimeShiftFIR + handles.StimulatorLagTime, ...
                 handles.locutoff, handles.hicutoff);
             t2 = t2 - handles.TimeShiftFIR - handles.StimulatorLagTime; 
-            i2 = i2 - handles.IndShiftFIR; % - round(handles.fSample*handles.StimulatorLagTime); 
+            StimulatorLagInd = ceil(handles.fSample*handles.StimulatorLagTime);
+            i2 = i2 - handles.IndShiftFIR; % - StimulatorLagInd; 
             %t2 = max(t2,0); i2 = max(i2,1);
             t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
@@ -583,10 +584,10 @@ try
             if i2trou > 0
                 dataTr(i2trou) = true;
             end
-            [handles.peakDataBuffer, oldPeak] = CombineAndCycle(...
-                handles.peakDataBuffer, dataPk, N); 
-            [handles.trouDataBuffer, oldTrou] = CombineAndCycle(...
-                handles.trouDataBuffer, dataTr, N);
+            [handles.peakDataBuffer, oldPeak] = HorizonAndCycle(...
+                handles.peakDataBuffer, dataPk, N, StimulatorLagInd); 
+            [handles.trouDataBuffer, oldTrou] = HorizonAndCycle(...
+                handles.trouDataBuffer, dataTr, N, StimulatorLagInd);
             set(handles.h_peakTrace,'YData',0*plotLogical(handles.peakDataBuffer));
             set(handles.h_trouTrace,'YData',0*plotLogical(handles.trouDataBuffer));
 
@@ -1026,12 +1027,14 @@ disp(['at ',eventTime,...
 % ----                                                                --- %
 % ----------------------------------------------------------------------- %
 
-function newBuffer = cycleBuffer(oldBuffer, newData)
+function [newBuffer, lastBuffer] = cycleBuffer(oldBuffer, newData)
 N = length(newData);
 if N >= length(oldBuffer)
     newBuffer = newData(end-length(oldBuffer)+1:end);
+    lastBuffer = [oldBuffer; newData(1:(end-length(oldBuffer)))];
 else
     newBuffer = [oldBuffer(N+1:end); newData];
+    lastBuffer = oldBuffer(1:N);
 end
 
 
@@ -1079,6 +1082,21 @@ else
     storage1(p1:(p1+N-1)) = newData;
     p1 = p1+N;
     p2 = [];
+end
+
+
+function [newBuffer, lastBuffer] = HorizonAndCycle(oldBuffer, newData, N, h)
+h = min(N,h);
+% buffer the first h samples no matter what 
+hznData = newData(1:h); newData = newData((h+1):end);
+[oldBuffer, lastBuffer1] = cycleBuffer(oldBuffer, hznData);
+N = N-h;
+% combine the remaining samples 
+if N > 0
+    [newBuffer, lastBuffer2] = CombineAndCycle(oldBuffer, newData, N);
+    lastBuffer = [lastBuffer1; lastBuffer2];
+else
+    newBuffer = oldBuffer; lastBuffer = lastBuffer1;
 end
 
 
