@@ -566,7 +566,8 @@ try
 
             % find the time to next peak, trough and plot 
             bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate 
-            dataPk = false(handles.PDSwin1 - handles.IndShiftFIR,1); % +1? 
+            dataPk = handles.PDSwin1 - handles.IndShiftFIR;
+            dataPk = false(dataPk, 1); % +1? 
             dataTr = dataPk; % dataSt = dataPk;  
             [t2,i2,phi_inst,f_inst] = ...
                 blockPDS(dataPast,dataFutu2, handles.fSample, [0,pi], ...
@@ -584,10 +585,10 @@ try
             if i2trou > 0
                 dataTr(i2trou) = true;
             end
-            [handles.peakDataBuffer, oldPeak] = HorizonAndCycle(...
-                handles.peakDataBuffer, dataPk, N, StimulatorLagInd); 
-            [handles.trouDataBuffer, oldTrou] = HorizonAndCycle(...
-                handles.trouDataBuffer, dataTr, N, StimulatorLagInd);
+            [handles.peakDataBuffer, oldPeak] = OverwriteAndCycle(...
+                handles.peakDataBuffer, dataPk, N); 
+            [handles.trouDataBuffer, oldTrou] = OverwriteAndCycle(...
+                handles.trouDataBuffer, dataTr, N);
             set(handles.h_peakTrace,'YData',0*plotLogical(handles.peakDataBuffer));
             set(handles.h_trouTrace,'YData',0*plotLogical(handles.trouDataBuffer));
 
@@ -1112,21 +1113,23 @@ end
 newBuffer((end-M+1):end) = newData;
 
 
-function newBuffer = OverwriteAndCycle(oldBuffer, newData, N)
+function [newBuffer, lastBuffer] = OverwriteAndCycle(oldBuffer, newData, N)
 % N = # of points of data that is actually new 
 if N <= length(newData)
     if N >= length(oldBuffer)
         newBuffer = newData(end-length(oldBuffer)+1:end);
+        lastBuffer = [oldBuffer; newData(1:(end-length(oldBuffer)))];
     else
         % buffer AND overwrite 
         L = length(newData)-N; % length to overwrite
         newBuffer = [oldBuffer((N+1):(end-L)); newData];
+        lastBuffer = oldBuffer(1:N);
     end
 else
     % there is no data to overwrite; in fact, there is not enough new data
     % nan-pad newData to length N and cycle buffer 
     newData = [newData; nan(N-length(newData),1)];
-    newBuffer = cycleBuffer(oldBuffer, newData);
+    [newBuffer, lastBuffer] = cycleBuffer(oldBuffer, newData);
 end
 
 
