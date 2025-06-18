@@ -107,6 +107,8 @@ handles.srlLastMsg  = ud.ReceivedData;
 handles.stimLastTime = -inf;
 handles.stimNewTime = -inf;
 handles.artReplaceRemaining = [];
+handles.ArtifactDuration = .04; % set artifact duration (seconds) 
+handles.ArtifactStartBefore = .01; % artifact start uncertainty (seconds)
 
 emptyStorage = nan(100000,1);
 handles.pkStorage1 = emptyStorage; handles.pkP1 = 1;
@@ -552,7 +554,9 @@ try
                 if handles.check_artifact.Value
                     try
                     artInd = stimind - N; 
-                    artInd = (-5:24) + artInd ... % set artifact duration 
+                    artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);  
+                    artEnd = ceil(handles.fSample*handles.ArtifactDuration) - artStart -1;
+                    artInd = (artStart:artEnd) + artInd ...  
                         + round(handles.StimulatorLagTime*handles.fSample);
                     artInd = artInd(artInd > 0); % can't change the past
                     artLen = length(artInd);
