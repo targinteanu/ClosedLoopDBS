@@ -1118,17 +1118,6 @@ function [newFiltBuffer, filterFinalCond] = FilterAndCycle(...
 newFiltBuffer = cycleBuffer(oldFiltBuffer, newFilt);
 
 
-function dataForecast = MdlForecast(MdlObj, dataPast, k, fs)
-% This needs to be made faster. Since fs is same as model fit, can do
-% by direct multiplication instead of built-in? 
-% Forecast the next <k> datapoints <dataForecast> using the model
-% system <MdlObj> and the previous data <dataPast> sampled at constant rate
-% <fs>. All data is in columns. 
-dataPast = iddata(dataPast,[],1/fs); 
-dataForecast = forecast(MdlObj,dataPast,k);
-dataForecast = dataForecast.OutputData;
-
-
 function setTgl(hObject, eventdata, handles, hTgl, newValue)
 % set a toggle button to a desired Value and activate its callback if it is
 % not currently at that value. 
