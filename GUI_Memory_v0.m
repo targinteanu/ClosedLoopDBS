@@ -554,6 +554,7 @@ try
             try
 
             % use AR model to get some future data 
+            StimulatorLagInd = round(handles.fSample*handles.StimulatorLagTime);
             dataPast = handles.filtDataBuffer; 
             dataPast = dataPast((end-handles.PDSwin1+1):end);
             dataFutu = myFastForecastAR(handles.Mdl, dataPast, handles.PDSwin1);
@@ -566,14 +567,15 @@ try
 
             % find the time to next peak, trough and plot 
             bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate 
-            dataPk = false(handles.PDSwin1 - handles.IndShiftFIR,1); % +1? 
+            M = handles.PDSwin1 - handles.IndShiftFIR;
+            dataPk = false(M,1); % +1? 
             dataTr = dataPk; % dataSt = dataPk;  
             [t2,i2,phi_inst,f_inst] = ...
                 blockPDS(dataPast,dataFutu2, handles.fSample, [0,pi], ...
                 handles.TimeShiftFIR + handles.StimulatorLagTime, ...
                 handles.locutoff, handles.hicutoff);
             t2 = t2 - handles.TimeShiftFIR - handles.StimulatorLagTime; 
-            i2 = i2 - handles.IndShiftFIR; % - round(handles.fSample*handles.StimulatorLagTime); 
+            i2 = i2 - handles.IndShiftFIR;% - StimulatorLagInd;
             %t2 = max(t2,0); i2 = max(i2,1);
             t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
@@ -584,9 +586,9 @@ try
                 dataTr(i2trou) = true;
             end
             [handles.peakDataBuffer, oldPeak] = CombineAndCycle(...
-                handles.peakDataBuffer, dataPk, N); 
+                handles.peakDataBuffer, dataPk, N, M-StimulatorLagInd); 
             [handles.trouDataBuffer, oldTrou] = CombineAndCycle(...
-                handles.trouDataBuffer, dataTr, N);
+                handles.trouDataBuffer, dataTr, N, M-StimulatorLagInd);
             set(handles.h_peakTrace,'YData',0*plotLogical(handles.peakDataBuffer));
             set(handles.h_trouTrace,'YData',0*plotLogical(handles.trouDataBuffer));
 
@@ -607,7 +609,7 @@ try
             end
 
             [handles.stimDataBuffer, oldStim] = CombineAndCycle(...
-                handles.stimDataBuffer, [], N);
+                handles.stimDataBuffer, [], N, 0);
             set(handles.h_stimTrace,'YData',0*plotLogical(handles.stimDataBuffer));
 
             % queue stimulus pulse, if applicable 
@@ -1082,16 +1084,16 @@ else
 end
 
 
-function [newBuffer, lastBuffer] = CombineAndCycle(oldBuffer, newData, N)
+function [newBuffer, lastBuffer] = CombineAndCycle(oldBuffer, newData, N, M)
 % ?? does this still work when N is longer than length oldBuffer ??
-M = length(newData); 
+% M = length(newData); 
 newBuffer = false(size(oldBuffer)); 
 newBuffer(1:(end-N)) = oldBuffer((N+1):end);
 lastBuffer = oldBuffer; 
 if N < length(lastBuffer)
     lastBuffer = lastBuffer(1:N);
 end
-newBuffer((end-M+1):end) = newData;
+newBuffer((end-M+1):end) = newData((end-M+1):end);
 
 
 function newBuffer = OverwriteAndCycle(oldBuffer, newData, N)
