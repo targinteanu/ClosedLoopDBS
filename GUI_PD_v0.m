@@ -192,7 +192,7 @@ nrow = 21;
 img = nan(nrow, ncol);
 [X,Y] = meshgrid(1:ncol, 1:nrow);
 handles.elecGridImg = imagesc(img); colormap('parula'); colorbar; hold on;
-for ch = 1:63
+for ch = 1:min(length(handles.channelList),63)
     chname = handles.channelList(ch); chname = num2str(chname);
     text(X(ch),Y(ch), chname, ...
         'HorizontalAlignment','center', ...
