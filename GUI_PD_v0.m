@@ -832,9 +832,9 @@ try
 
             bedge = (-1:2:35)*pi/18; 
             axes(handles.ax_polar); hold off;
-            handles.h_peakPhase = polarhistogram(0, bedge);
+            handles.h_peakPhase = polarhistogram(nan, bedge);
             hold on; 
-            handles.h_trouPhase = polarhistogram(pi, bedge);
+            handles.h_trouPhase = polarhistogram(nan, bedge);
             title('Actual Phase')
         end
 
