@@ -133,6 +133,13 @@ handles.QueuedStim = timer(...
     'StartFcn',   {@schedulePULSE, hObject}, ...
     'UserData',   Inf);
 
+% turn off graphs' interactivity 
+disableDefaultInteractivity(handles.ax_polar);
+disableDefaultInteractivity(handles.ax_raw);
+disableDefaultInteractivity(handles.ax_filt);
+disableDefaultInteractivity(handles.ax_timing);
+disableDefaultInteractivity(handles.ax_elecgrid);
+
 % Update handles structure
 guidata(hObject, handles);
 
