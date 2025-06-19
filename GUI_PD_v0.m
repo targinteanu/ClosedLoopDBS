@@ -102,6 +102,10 @@ handles.showElecGrid = false;
 handles.srlLastMsg  = ud.ReceivedData;
 handles.stimLastTime = -inf;
 handles.stimNewTime = -inf;
+handles.artReplaceRemaining = [];
+handles.ArtifactDuration = .025; % set artifact duration (seconds) 
+handles.ArtifactStartBefore = .005; % artifact start uncertainty (seconds)
+handles.stimind = -1;
 
 emptyStorage = nan(100000,1);
 handles.pkStorage1 = emptyStorage; handles.pkP1 = 1;
@@ -120,6 +124,14 @@ pause(1)
 mkdir(svloc); 
 handles.SaveFileLoc = svloc;
 handles.SaveFileN = 1;
+
+handles.StimulatorLagTime = 0.03; 
+handles.QueuedStim = timer(...
+    'StartDelay', 10, ...
+    'TimerFcn',   {@myPULSE, hObject}, ...
+    'StopFcn',    {@finishPULSE, hObject}, ...
+    'StartFcn',   {@schedulePULSE, hObject}, ...
+    'UserData',   Inf);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -198,7 +210,7 @@ for ch = 1:min(length(handles.channelList),63)
         'HorizontalAlignment','center', ...
         'VerticalAlignment','middle', ...
         'FontWeight', 'bold', ...
-        'Color',[.8 0 0]);
+        'Color',[1 0 0]);
 end
 
 % Set the Start/Stop toggle button to stopped state (String is 'Start' and
@@ -392,6 +404,30 @@ try
         % as specified in UI *****
         
     newContinuousData = continuousData{handles.channelIndex,3}; 
+
+    % artifact removal (1)
+    if handles.FilterSetUp
+    if handles.MdlSetUp
+    if handles.check_artifact.Value
+        if numel(handles.artReplaceRemaining)
+            try
+            % continue replacing from last loop iter
+            artLen = min(length(handles.artReplaceRemaining), length(newContinuousData));
+            artReplaceRemaining = handles.artReplaceRemaining(1:artLen); 
+            handles.artReplaceRemaining = handles.artReplaceRemaining((artLen+1):end);
+            newContinuousData(1:artLen) = artReplaceRemaining;
+            catch ME3
+                getReport(ME3)
+                % keyboard
+                errordlg(ME3.message, 'Artifact Removal Issue');
+                handles.check_artifact.Value = false;
+                pause(.01);
+            end
+        end
+    end
+    end
+    end
+
     handles.rawDataBuffer = cycleBuffer(handles.rawDataBuffer, newContinuousData);
     N = length(newContinuousData);
     t0 = handles.lastSampleProcTime; 
@@ -403,6 +439,48 @@ try
     end
     diffSampleProcTime = nan(size(newContinuousData)); diffSampleProcTime(end) = T;
     handles.diffSampleProcTime = cycleBuffer(handles.diffSampleProcTime, diffSampleProcTime);
+
+    % artifact removal (2) 
+    if handles.FilterSetUp
+    if handles.MdlSetUp
+    if handles.check_artifact.Value
+        stimind = handles.stimind - N; % N samples have passed
+        if stimind > 0
+            try
+            artInd = stimind;
+            artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
+            artEnd = ceil(handles.fSample*handles.ArtifactDuration) - artStart -1;
+            artInd = (artStart:artEnd) + artInd ...
+                + round(handles.StimulatorLagTime*handles.fSample);
+            artInd = artInd(artInd > 0); % can't change the past
+            artLen = length(artInd);
+            artInd = artInd(artInd <= handles.bufferSize);
+            artPastData = zeros(handles.PDSwin1,1);
+            if ~isempty(artInd)
+                artPastStart = artInd(1) - handles.PDSwin1;
+                artPastStart = max(1, artPastStart);
+                rawOffset = mean(handles.rawDataBuffer);
+                artPastData1 = handles.rawDataBuffer(artPastStart:(artInd(1)-1),:);
+                artPastData1 = artPastData1 - rawOffset;
+                artPastN = size(artPastData1,1);
+                artPastData((end-artPastN+1):end,:) = artPastData1;
+                artReplace = myFastForecastAR(handles.Mdl, artPastData, artLen);
+                artReplace = artReplace + rawOffset;
+                handles.artReplaceRemaining = artReplace((length(artInd)+1):end); % continue replacing on next loop iter
+                artReplace = artReplace(1:length(artInd));
+                handles.rawDataBuffer(artInd) = artReplace;
+            end
+            catch ME3
+                getReport(ME3)
+                % keyboard
+                errordlg(ME3.message, 'Artifact Removal Issue');
+                handles.check_artifact.Value = false;
+                pause(.01);
+            end
+        end
+    end
+    end
+    end
 
     guidata(hObject,handles)
 
@@ -434,7 +512,7 @@ try
     if handles.showElecGrid
         try
             elecimg = handles.elecGridImg.CData;
-            for ch = 1:63
+            for ch = 1:min(size(continuousData,1),63)
                 newContinuousData_ch = continuousData{ch,3};
                 fSample_ch = continuousData{ch,2};
                 elecimg(ch) = handles.elecGridFunc(newContinuousData_ch, fSample_ch);
@@ -473,6 +551,7 @@ try
             try
 
             % use AR model to get some future data 
+            StimulatorLagInd = round(handles.fSample*handles.StimulatorLagTime);
             dataPast = handles.filtDataBuffer; 
             dataPast = dataPast((end-handles.PDSwin1+1):end);
             dataFutu = myFastForecastAR(handles.Mdl, dataPast, handles.PDSwin1);
@@ -485,20 +564,28 @@ try
 
             % find the time to next peak, trough and plot 
             bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate 
-            dataPk = false(handles.PDSwin1 - handles.IndShiftFIR,1); % +1? 
+            M = handles.PDSwin1 - handles.IndShiftFIR;
+            dataPk = false(M,1); 
             dataTr = dataPk; % dataSt = dataPk;  
             [t2,i2,phi_inst,f_inst] = ...
                 blockPDS(dataPast,dataFutu2, handles.fSample, [0,pi], ...
-                handles.TimeShiftFIR, handles.locutoff, handles.hicutoff);
-            t2 = t2 - handles.TimeShiftFIR; i2 = i2 - handles.IndShiftFIR; 
-            t2 = max(t2,0); i2 = max(i2,1);
+                handles.TimeShiftFIR + handles.StimulatorLagTime, ...
+                handles.locutoff, handles.hicutoff);
+            t2 = t2 - handles.TimeShiftFIR - handles.StimulatorLagTime; 
+            i2 = i2 - handles.IndShiftFIR; 
+            %t2 = max(t2,0); i2 = max(i2,1);
             t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
-            dataPk(i2peak) = true; dataTr(i2trou) = true;
+            if i2peak > 0
+                dataPk(i2peak) = true; 
+            end
+            if i2trou > 0
+                dataTr(i2trou) = true;
+            end
             [handles.peakDataBuffer, oldPeak] = CombineAndCycle(...
-                handles.peakDataBuffer, dataPk, N); 
+                handles.peakDataBuffer, dataPk, N, M-StimulatorLagInd); 
             [handles.trouDataBuffer, oldTrou] = CombineAndCycle(...
-                handles.trouDataBuffer, dataTr, N);
+                handles.trouDataBuffer, dataTr, N, M-StimulatorLagInd);
             set(handles.h_peakTrace,'YData',0*plotLogical(handles.peakDataBuffer));
             set(handles.h_trouTrace,'YData',0*plotLogical(handles.trouDataBuffer));
 
@@ -509,46 +596,23 @@ try
                 % lastSampleProcTime should be time 0 on the screen
             stimind = round(stimtimerel*handles.fSample); % ind rel to END of buffer
             stimind = stimind + handles.bufferSize; % ind rel to START of buffer 
+            handles.stimind = stimind - N;
             handles.stimNewTime = -inf;
             if stimind > 0
                 handles.stimDataBuffer(stimind) = true;
-
-                % artifact removal 
-                if handles.check_artifact.Value
-                    try
-                    artInd = stimind - N;  
-                    artInd = (-5:104) + artInd; % set artifact duration
-                    artInd = artInd(artInd > 0);
-                    artInd = artInd(artInd <= handles.bufferSize); % ***** insufficient/temporary fix !!!!!
-                    artPastData = zeros(handles.PDSwin1,1);
-                    if ~isempty(artInd)
-                    artPastStart = artInd(1) - handles.PDSwin1; 
-                    artPastStart = max(1, artPastStart);
-                    artPastData1 = handles.rawDataBuffer(artPastStart:(artInd(1)-1),:);
-                    artPastN = size(artPastData1,1);
-                    artPastData((end-artPastN+1):end,:) = artPastData1;
-                    artReplace = myFastForecastAR(handles.Mdl, artPastData, length(artInd));
-                    handles.rawDataBuffer(artInd) = artReplace;
-                    end
-                    catch ME3
-                        getReport(ME3)
-                        % keyboard
-                        errordlg(ME3.message, 'Artifact Removal Issue');
-                        handles.check_artifact.Value = false;
-                        pause(.01);
-                    end
-                end
             end
+            else
+                handles.stimind = -1;
             end
 
             [handles.stimDataBuffer, oldStim] = CombineAndCycle(...
-                handles.stimDataBuffer, [], N);
+                handles.stimDataBuffer, [], N, 0);
             set(handles.h_stimTrace,'YData',0*plotLogical(handles.stimDataBuffer));
 
             % queue stimulus pulse, if applicable 
             % ***** TO DO: can this be moved elsewhere to avoid delays?  
             Stim2Q = false;
-            if bp > 10 % min band power cutoff; orig at 1000
+            if bp > 1000 % min band power cutoff; orig at 1000
             if handles.StimActive
                 ParadigmPhase = handles.srl.UserData.ParadigmPhase;
                 if ~strcmpi(ParadigmPhase,'WAIT')
@@ -571,27 +635,43 @@ try
                         Stim2Q = true;
                     end
                 end
-            if strcmp(handles.QueuedStim.Running, 'on')
-                stop(handles.QueuedStim);
             end
             end
-            end
-            if Stim2Q
-                if strcmp(handles.QueuedStim.Running, 'on')
-                    % should not get here, because it should have been
-                    % turned off above 
-                    keyboard
-                end
-                % overwrite existing timer with new one
+            if Stim2Q && (t2Q >= 0)
+                % possibly overwrite existing timer with new one
                 t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
                 if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
                     t2Qabs = t2Q + handles.lastSampleProcTime; % in NSP time "absolute"
                     Dt2Q = t2Qabs - handles.stimLastTime; 
                     if 1/Dt2Q <= handles.stimMaxFreq
-                        handles.QueuedStim.StartDelay = t2Q;
-                        handles.QueuedStim.UserData = t2Qabs;
-                        start(handles.QueuedStim);
+                        stim2Q_proceed = true;
+                        if strcmp(handles.QueuedStim.Running, 'on')
+                            % last queued stim has not yet fired 
+                            if t2Qabs > handles.QueuedStim.UserData
+                                % new requested point is later than current timer
+                                stim2Q_proceed = t2Q > handles.StimulatorLagTime; 
+                                    % is there enough time to make a change
+                                stim2Q_proceed = stim2Q_proceed && ...
+                                    (t2Qabs - handles.QueuedStim.UserData) > handles.StimulatorLagTime; 
+                                    % is the change outside margin of error
+                                stim2Q_proceed = stim2Q_proceed && ...
+                                    (t2Qabs - handles.QueuedStim.UserData) < 1/handles.hicutoff; 
+                                    % is it trying to target the next cycle
+                            end
+                        end
+                        if stim2Q_proceed
+                            if strcmp(handles.QueuedStim.Running, 'on')
+                                stop(handles.QueuedStim);
+                            end
+                            handles.QueuedStim.StartDelay = t2Q;
+                            handles.QueuedStim.UserData = t2Qabs;
+                            start(handles.QueuedStim);
+                        end
                     end
+                end
+            else
+                if strcmp(handles.QueuedStim.Running, 'on')
+                    stop(handles.QueuedStim);
                 end
             end
 
@@ -1010,16 +1090,16 @@ else
 end
 
 
-function [newBuffer, lastBuffer] = CombineAndCycle(oldBuffer, newData, N)
+function [newBuffer, lastBuffer] = CombineAndCycle(oldBuffer, newData, N, M)
 % ?? does this still work when N is longer than length oldBuffer ??
-M = length(newData); 
+% M = length(newData); 
 newBuffer = false(size(oldBuffer)); 
 newBuffer(1:(end-N)) = oldBuffer((N+1):end);
 lastBuffer = oldBuffer; 
 if N < length(lastBuffer)
     lastBuffer = lastBuffer(1:N);
 end
-newBuffer((end-M+1):end) = newData;
+newBuffer((end-M+1):end) = newData((end-M+1):end);
 
 
 function newBuffer = OverwriteAndCycle(oldBuffer, newData, N)
@@ -1046,17 +1126,6 @@ function [newFiltBuffer, filterFinalCond] = FilterAndCycle(...
 newFiltBuffer = cycleBuffer(oldFiltBuffer, newFilt);
 
 
-function dataForecast = MdlForecast(MdlObj, dataPast, k, fs)
-% This needs to be made faster. Since fs is same as model fit, can do
-% by direct multiplication instead of built-in? 
-% Forecast the next <k> datapoints <dataForecast> using the model
-% system <MdlObj> and the previous data <dataPast> sampled at constant rate
-% <fs>. All data is in columns. 
-dataPast = iddata(dataPast,[],1/fs); 
-dataForecast = forecast(MdlObj,dataPast,k);
-dataForecast = dataForecast.OutputData;
-
-
 function setTgl(hObject, eventdata, handles, hTgl, newValue)
 % set a toggle button to a desired Value and activate its callback if it is
 % not currently at that value. 
@@ -1067,45 +1136,6 @@ if ~(curValue == newValue)
     guidata(hObject, handles);
 end
 
-
-function [t2phi, i2phi, phi_inst, f_inst] = ...
-    blockPDS(pastData, futureData, fs, phi, tmin, fmin, fmax)
-% Determine the time (s) and # samples to next desired phase phi from a
-% block of data sampled at a constant rate fs (Hz). Also return the current
-% inst. phase phi_inst (rad) and frequency f_inst (Hz).
-% Block data should include some length of pastData and
-% (forecasted/predicted) futureData to minimize edge effects at the present
-% timepoint, which is the last element of pastData. Data should be input as
-% columns. 
-% phi [desired] is in radians, i.e. phi=0 for peak, phi=pi for trough
-% frequency will be clipped within range [fmin, fmax] (Hz) 
-
-N = size(pastData,1); M = size(futureData,1);
-blockData = [pastData; futureData];
-
-[phi_block, f_block] = instPhaseFreq(blockData, fs);
-phi_inst = phi_block(N,:);
-f_block = max(f_block, fmin); 
-f_block = min(f_block, fmax);
-fwinlen = floor(.03*N); fwinlen = min(fwinlen, M);
-fwin = N + ((-fwinlen):fwinlen);
-f_inst = mean(f_block(fwin,:));
-T=1/f_inst;
-
-% time to next [desired] phi 
-t2phi = zeros(size(phi)); i2phi = t2phi;
-for p = 1:length(phi)
-    phi_ = phi(p);
-    t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
-
-    % account for minimum delay time tmin 
-    nT = (tmin-t)/T; % how many periods needed to add 
-    t = t + ceil(nT)*T; 
-
-    t2phi(p) = t;
-    i2phi(p) = floor(fs*t2phi(p));
-end
- 
 
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
@@ -1283,7 +1313,7 @@ srate = handles.fSample;
 nyq            = srate*0.5;  % Nyquist frequency
 
 % filtering bound rules 
-minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % access desired parameters
@@ -1394,7 +1424,7 @@ function push_AR_Callback(hObject, eventdata, handles)
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
-handles.PDSwin2 = ceil(.02*PDSwin); 
+handles.PDSwin2 = ceil(.1*PDSwin); 
 
 try
 
@@ -1684,13 +1714,6 @@ if get(hObject, 'Value') == 1
 
     handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
         width1, width2, interphase, frequency, pulses);
-
-    handles.QueuedStim = timer(...
-        'StartDelay', 10, ...
-        'TimerFcn',   {@myPULSE, hObject}, ...
-        'StopFcn',    {@finishPULSE, hObject}, ...
-        'StartFcn',   {@schedulePULSE, hObject}, ...
-        'UserData',   -1);
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 

@@ -118,6 +118,7 @@ handles.trStorage1 = emptyStorage; handles.trP1 = 1;
 handles.trStorage2 = emptyStorage; 
 handles.stStorage1 = emptyStorage; handles.stP1 = 1;
 ud.TimeStamp = nan;
+handles.udBlank = ud;
 handles.srlStorage1 = repmat(ud,[1000,1]);
 handles.srlP1 = 1; 
 
@@ -125,7 +126,6 @@ svloc = ['Saved Data Memory',filesep,'Saved Data ',...
     datestr(datetime, 'yyyy-mm-dd HH.MM.SS')];
 pause(1)
 mkdir(svloc); 
-%handles.SaveFileName = [svloc,filesep,'SaveFile'];
 handles.SaveFileLoc = svloc;
 handles.SaveFileN = 1;
 
@@ -207,7 +207,8 @@ for ch = 1:min(length(handles.channelList),63)
     text(X(ch),Y(ch), chname, ...
         'HorizontalAlignment','center', ...
         'VerticalAlignment','middle', ...
-        'Color','#A2142F');
+        'FontWeight', 'bold', ...
+        'Color',[1 0 0]);
 end
 
 % Set the Start/Stop toggle button to stopped state (String is 'Start' and
@@ -493,12 +494,7 @@ try
             handles.srlStorage1(handles.srlP1) = ud;
             handles.srlP1 = handles.srlP1+1;
         else
-            ud = struct('ReceivedData', '', ...
-                'TrialNumber', -1, ...
-                'StimOn', false, ...
-                'ParadigmPhase', 'WAIT', ...
-                'ImageVisible', false, ...
-                'TimeStamp', nan);
+            ud = handles.udBlank;
             % storage full; save
             SerialLog = handles.srlStorage1;
             svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
@@ -568,7 +564,7 @@ try
             % find the time to next peak, trough and plot 
             bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate 
             M = handles.PDSwin1 - handles.IndShiftFIR;
-            dataPk = false(M,1); % +1? 
+            dataPk = false(M,1); 
             dataTr = dataPk; % dataSt = dataPk;  
             [t2,i2,phi_inst,f_inst] = ...
                 blockPDS(dataPast,dataFutu2, handles.fSample, [0,pi], ...
