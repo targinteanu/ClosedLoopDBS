@@ -17,7 +17,8 @@
 % 
 % An overview of the phase detection algorithm is as follows: ...
 
-function offline_PhaseDetect(dataOneChannel, StimTrainRec, SamplingFreq, t, channelName, ...
+function [phAll, phEst, frAll, frEst, toStim, phStim] = ...
+    offline_PhaseDetect(dataOneChannel, StimTrainRec, SamplingFreq, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength)
 
 % signal to use default values if any arguments are not passed in 
@@ -289,5 +290,10 @@ subplot(2,2,2); polarhistogram(phEst(toStim), 18);
 title('Est. Phase of Stim');
 subplot(2,2,3); polarhistogram(phAll(StimTrainRec), 18);
 title('Actual Phase of Recorded Stim');
+
+% process function outputs 
+phStim = phAll(toStim);
+phAll = phAll(~isnan(phEst)); phEst = phEst(~isnan(phEst));
+frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
 
 end
