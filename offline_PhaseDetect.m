@@ -18,7 +18,7 @@
 % An overview of the phase detection algorithm is as follows: ...
 
 function [phAll, phEst, frAll, frEst, toStim, phStim] = ...
-    offline_PhaseDetect(dataOneChannel, StimTrainRec, SamplingFreq, t, channelName, ...
+    offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength)
 
 % signal to use default values if any arguments are not passed in 
@@ -36,6 +36,15 @@ if nargin < 12
                         FreqRange = [];
                         if nargin < 6
                             PhaseOfInterest = [];
+                            if nargin < 5
+                                channelName = '';
+                                if nargin < 4
+                                    t = [];
+                                    if nargin < 3
+                                        StimTrainRec = [];
+                                    end
+                                end
+                            end
                         end
                     end
                 end
