@@ -4,7 +4,7 @@ function elecGridCData = helperGUIv1_ElectrodeGridUpdate(...
 % to be called at each iteration of main loop, whenever there is new data
 
             elecGridCData = elecGridImageObj.CData; 
-            for ch = 1:numel(elecGridCData)
+            for ch = 1:min(numel(elecGridCData), length(channelIDlist))
                 chID = channelIDlist(ch); 
                 xInd = find(rawIDs == chID); 
                 if numel(xInd)
