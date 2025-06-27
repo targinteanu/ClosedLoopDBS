@@ -23,7 +23,11 @@ function elecGridCData = helperGUIv1_ElectrodeGridUpdate(...
                             ' Electrode Grid buffer is not full length!'])
                     end
                     fSample_ch = fSamples(xInd);
-                    elecGridCData(ch) = elecGridFunc(x, fSample_ch);
+                    if isempty(x)
+                        elecGridCData(ch) = nan; % or just don't update (do nothing)?
+                    else
+                        elecGridCData(ch) = elecGridFunc(x, fSample_ch);
+                    end
                 else
                     elecGridCData(ch) = nan;
                 end
