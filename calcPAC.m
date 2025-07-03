@@ -1,9 +1,10 @@
-function [MI, P, bcent, fig1] = calcPAC(xPhi, xAmp, hax_PhaseAmpPlot)
+function [MI, P, bcent, fig1] = calcPAC(xPhi, xAmp, nbin, hax_PhaseAmpPlot)
 %
 % Get the Phase-Amplitude Coupling (PAC) of a signal x. The signal should
 % already be filtered in the phase (xPhi) and amplitude (xAmp) ranges, and
-% these should be aligned in time. 
-% Optional third input enables output of the Phase-Amplitude plot. If an
+% these should be aligned in time. Input nbin = number of phase bins;
+% default 18 if empty or omitted.
+% Optional fourth input enables output of the Phase-Amplitude plot. If an
 % axis handle is passed, the plot will be put on that axis. If true is
 % passed, a new figure will be created. Plot will be polar unless a
 % cartesian axis handle is input. No plotting if input is empty, false, or
@@ -18,13 +19,22 @@ function [MI, P, bcent, fig1] = calcPAC(xPhi, xAmp, hax_PhaseAmpPlot)
 % based on https://doi.org/10.1152/jn.00106.2010
 % 
 
-if nargin < 3
+if nargin < 4
     hax_PhaseAmpPlot = [];
+    if nargin < 3
+        nbin = [];
+    end
+end
+if isempty(nbin)
+    nbin = 18;
 end
 fig1 = [];
 L = length(xPhi);
 if L ~= length(xAmp)
     error('Signals need to be same length and aligned in time.')
+end
+if nbin < 1
+    error('Wrong number of bins requested.')
 end
 
 % hilbert 
@@ -36,7 +46,6 @@ t1 = floor(.1*L); t2 = ceil(.9*L);
 phi = phi(t1:t2); amp = amp(t1:t2);
 
 % bin based on phase 
-nbin = 18;
 bedge = linspace(-pi, pi, nbin+1);
 bcent = bedge(2:end) + bedge(1:end-1); bcent = .5*bcent;
 bind = discretize(phi, bedge); % could also use histcounts
