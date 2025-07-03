@@ -28,8 +28,9 @@ for ch = 1:length(rawData)
         emptyData{ch} = [t, ...
             zeros(bufferSize, width(rawData_ch)-1)];
     else
-        error(['Data buffer is not long enough to be filtered. ',...
+        warning(['Data buffer is not long enough to be filtered. ',...
                'Try increasing display window or altering filter.'])
+        emptyData{ch} = zeros(0,2);
     end
 end
 
