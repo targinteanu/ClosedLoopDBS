@@ -24,6 +24,7 @@ if isempty(gridmaxval)
     gridmaxval = 1e9;
 end
 
+hold(ax_elecgrid,"off");
 img = nan(nrow, ncol);
 [X,Y] = meshgrid(1:ncol, 1:nrow);
 elecGridImageObj = imagesc(ax_elecgrid, img, [gridminval, gridmaxval]);

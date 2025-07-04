@@ -944,7 +944,6 @@ stop(handles.timer); % to avoid dataQueue overflow
 
 % details from data 
 srate = handles.fSample;
-nyq            = srate*0.5;  % Nyquist frequency
 
 % filtering bound rules 
 minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
@@ -954,44 +953,14 @@ min_filtorder  = 15;   % minimum filter length
 hicutoff = str2double(handles.txt_hico.String); 
 locutoff = str2double(handles.txt_loco.String); 
 
-% check that specs are proper
-if locutoff>0 & hicutoff > 0 & locutoff > hicutoff
-    errordlg('locutoff > hicutoff ???', 'filter spec');
-    return
-end
-if locutoff < 0 | hicutoff < 0
-    errordlg('locutoff | hicutoff < 0 ???', 'filter spec');
-    return
-end
-if locutoff>nyq
-    errordlg('Low cutoff frequency cannot be > srate/2', 'filter spec');
-    return
-end
-if hicutoff>nyq
-    errordlg('High cutoff frequency cannot be > srate/2', 'filter spec');
-    return
-end
-handles.hicutoff = hicutoff; handles.locutoff = locutoff; 
+% build filter
+[filtwts, filtorder] = buildFIRBPF(srate, locutoff, hicutoff, minfac, min_filtorder);
 
-% filter order 
-if locutoff>0
-    filtorder = minfac*fix(srate/locutoff);
-elseif hicutoff>0
-    filtorder = minfac*fix(srate/hicutoff);
-end
-if filtorder < min_filtorder
-    filtorder = min_filtorder;
-end
+handles.hicutoff = hicutoff; handles.locutoff = locutoff; 
 handles.FilterOrder = filtorder;
 handles.TimeShiftFIR = filtorder/(2*srate); % seconds 
 handles.IndShiftFIR = ceil(filtorder/2); % samples ???
 
-% build filter 
-% usage i.e.: 
-% >> filteredSignal = filter(filtwts, 1, unfilteredSignal) 
-% -- OR --
-% >> filteredSignal = filtfilt(filtwts, 1, unfilteredSignal)
-filtwts = fir1(filtorder, [locutoff, hicutoff]./(srate/2));
 handles.BPF = filtwts; 
 
 % restart timer and plots

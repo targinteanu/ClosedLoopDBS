@@ -60,8 +60,10 @@ for ch = 1:length(chsel)
         % Create raw data buffer of zeros of the correct length
         L = length(continuousData{chInd,3}); 
         emptyData{ch} = [nan(bufferSize(ch),1), zeros(bufferSize(ch),1)];
-        %emptyData{ch}(1,1) = time - (bufferSize)/fs(chInd);
-        emptyData{ch}(end,1) = time - 1/fs(chInd); % ??
+        if ~isempty(emptyData{ch})
+            %emptyData{ch}(1,1) = time - (bufferSize)/fs(chInd);
+            emptyData{ch}(end,1) = time - 1/fs(chInd); % ??
+        end
         contData{ch} = [nan(L,1), continuousData{chInd,3}];
         contData{ch}(1,1) = time;
 
