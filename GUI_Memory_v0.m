@@ -22,7 +22,7 @@ function varargout = GUI_Memory_v0(varargin)
 
 % Edit the above text to modify the response to help GUI_Memory_v0
 
-% Last Modified by GUIDE v2.5 19-Jun-2025 07:37:29
+% Last Modified by GUIDE v2.5 08-Jul-2025 16:55:07
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -584,90 +584,6 @@ end
 % ----------------------------------------------------------------------- %
 
 
-% --- Executes on selection change in pop_EncodeStim.
-function pop_EncodeStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_EncodeStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_EncodeStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_EncodeStim
-contents = cellstr(get(hObject,'String'));
-EncodeStim = contents{get(hObject,'Value')};
-handles.StimMode.ENCODE = EncodeStim; 
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_EncodeStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_EncodeStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-pop_EncodeStim_Callback(hObject, eventdata, handles)
-
-
-% --- Executes on selection change in pop_DecodeStim.
-function pop_DecodeStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_DecodeStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_DecodeStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_DecodeStim
-contents = cellstr(get(hObject,'String'));
-DecodeStim = contents{get(hObject,'Value')};
-handles.StimMode.DECODE = DecodeStim; 
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_DecodeStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_DecodeStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-pop_DecodeStim_Callback(hObject, eventdata, handles)
-
-
-% --- Executes on selection change in pop_HoldStim.
-function pop_HoldStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_HoldStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_HoldStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_HoldStim
-contents = cellstr(get(hObject,'String'));
-HoldStim = contents{get(hObject,'Value')};
-handles.StimMode.HOLD = HoldStim; 
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_HoldStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_HoldStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-pop_HoldStim_Callback(hObject, eventdata, handles)
-
-
 
 function txt_loco_Callback(hObject, eventdata, handles)
 % hObject    handle to txt_loco (see GCBO)
@@ -1209,6 +1125,117 @@ guidata(hObject, handles);
 % --- Executes during object creation, after setting all properties.
 function txt_ArtDur_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to txt_ArtDur (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_EncodeStim_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_EncodeStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_EncodeStim as text
+%        str2double(get(hObject,'String')) returns contents of txt_EncodeStim as a double
+handles.PhaseOfInterest(3) = nan;
+phi = str2double(get(hObject,'String'));
+if isnan(phi)
+    stimmode = 0;
+else
+    phi = phi * pi / 180; % deg -> rad
+    stimmode = find(handles.PhaseOfInterest == phi);
+    if isempty(stimmode)
+        handles.PhaseOfInterest(3) = phi;
+        stimmode = 3;
+    else
+        stimmode = stimmode(1);
+    end
+end
+handles.StimMode.ENCODE = stimmode; 
+
+% --- Executes during object creation, after setting all properties.
+function txt_EncodeStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_EncodeStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_DecodeStim_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_DecodeStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_DecodeStim as text
+%        str2double(get(hObject,'String')) returns contents of txt_DecodeStim as a double
+handles.PhaseOfInterest(4) = nan;
+phi = str2double(get(hObject,'String'));
+if isnan(phi)
+    stimmode = 0;
+else
+    phi = phi * pi / 180; % deg -> rad
+    stimmode = find(handles.PhaseOfInterest == phi);
+    if isempty(stimmode)
+        handles.PhaseOfInterest(4) = phi;
+        stimmode = 4;
+    else
+        stimmode = stimmode(1);
+    end
+end
+handles.StimMode.DECODE = stimmode;
+
+% --- Executes during object creation, after setting all properties.
+function txt_DecodeStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_DecodeStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_HoldStim_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_HoldStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_HoldStim as text
+%        str2double(get(hObject,'String')) returns contents of txt_HoldStim as a double
+handles.PhaseOfInterest(5) = nan;
+phi = str2double(get(hObject,'String'));
+if isnan(phi)
+    stimmode = 0;
+else
+    phi = phi * pi / 180; % deg -> rad
+    stimmode = find(handles.PhaseOfInterest == phi);
+    if isempty(stimmode)
+        handles.PhaseOfInterest(5) = phi;
+        stimmode = 5;
+    else
+        stimmode = stimmode(1);
+    end
+end
+handles.StimMode.HOLD = stimmode; 
+
+% --- Executes during object creation, after setting all properties.
+function txt_HoldStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_HoldStim (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 

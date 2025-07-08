@@ -30,6 +30,9 @@ T=1/f_inst;
 t2phi = zeros(size(phi)); i2phi = t2phi;
 for p = 1:length(phi)
     phi_ = phi(p);
+    if isnan(phi_)
+        t2phi(p) = inf;
+    else
     t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
 
     % account for minimum delay time tmin 
@@ -39,5 +42,6 @@ for p = 1:length(phi)
     end
 
     t2phi(p) = t;
+    end
     i2phi(p) = floor(fs*t2phi(p));
 end
