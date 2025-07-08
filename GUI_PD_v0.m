@@ -106,6 +106,7 @@ handles.artReplaceRemaining = [];
 handles.ArtifactDuration = .025; % set artifact duration (seconds) 
 handles.ArtifactStartBefore = .005; % artifact start uncertainty (seconds)
 handles.stimind = -1;
+handles.bpthresh = 1000; % min band power cutoff; orig at 1000
 
 emptyStorage = nan(100000,1);
 handles.pkStorage1 = emptyStorage; handles.pkP1 = 1;
@@ -411,109 +412,15 @@ try
         % as specified in UI *****
         
     newContinuousData = continuousData{handles.channelIndex,3}; 
-
-    % artifact removal (1)
-    if handles.FilterSetUp
-    if handles.MdlSetUp
-    if handles.check_artifact.Value
-        if numel(handles.artReplaceRemaining)
-            try
-            % continue replacing from last loop iter
-            artLen = min(length(handles.artReplaceRemaining), length(newContinuousData));
-            artReplaceRemaining = handles.artReplaceRemaining(1:artLen); 
-            handles.artReplaceRemaining = handles.artReplaceRemaining((artLen+1):end);
-            newContinuousData(1:artLen) = artReplaceRemaining;
-            catch ME3
-                getReport(ME3)
-                % keyboard
-                errordlg(ME3.message, 'Artifact Removal Issue');
-                handles.check_artifact.Value = false;
-                pause(.01);
-            end
-        end
-    end
-    end
-    end
-
-    handles.rawDataBuffer = cycleBuffer(handles.rawDataBuffer, newContinuousData);
     N = length(newContinuousData);
-    t0 = handles.lastSampleProcTime; 
-    handles.lastSampleProcTime = ...
-        time + (length(newContinuousData)-1)/handles.fSample;
-    T = handles.lastSampleProcTime - t0;
-    if T < 0
-        %warning('Reported sample time is negative.')
-    end
-    diffSampleProcTime = nan(size(newContinuousData)); diffSampleProcTime(end) = T;
-    handles.diffSampleProcTime = cycleBuffer(handles.diffSampleProcTime, diffSampleProcTime);
 
-    % artifact removal (2) 
-    if handles.FilterSetUp
-    if handles.MdlSetUp
-    if handles.check_artifact.Value
-        stimind = handles.stimind - N; % N samples have passed
-        if stimind > 0
-            try
-            artInd = stimind;
-            artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
-            artEnd = ceil(handles.fSample*handles.ArtifactDuration) - artStart -1;
-            artInd = (artStart:artEnd) + artInd ...
-                + round(handles.StimulatorLagTime*handles.fSample);
-            artInd = artInd(artInd > 0); % can't change the past
-            artLen = length(artInd);
-            artInd = artInd(artInd <= handles.bufferSize);
-            artPastData = zeros(handles.PDSwin1,1);
-            if ~isempty(artInd)
-                artPastStart = artInd(1) - handles.PDSwin1;
-                artPastStart = max(1, artPastStart);
-                rawOffset = mean(handles.rawDataBuffer);
-                artPastData1 = handles.rawDataBuffer(artPastStart:(artInd(1)-1),:);
-                artPastData1 = artPastData1 - rawOffset;
-                artPastN = size(artPastData1,1);
-                artPastData((end-artPastN+1):end,:) = artPastData1;
-                artReplace = myFastForecastAR(handles.Mdl, artPastData, artLen);
-                artReplace = artReplace + rawOffset;
-                handles.artReplaceRemaining = artReplace((length(artInd)+1):end); % continue replacing on next loop iter
-                artReplace = artReplace(1:length(artInd));
-                handles.rawDataBuffer(artInd) = artReplace;
-            end
-            catch ME3
-                getReport(ME3)
-                % keyboard
-                errordlg(ME3.message, 'Artifact Removal Issue');
-                handles.check_artifact.Value = false;
-                pause(.01);
-            end
-        end
-    end
-    end
-    end
+    [handles, newContinuousData] = ...
+        helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData);
 
     guidata(hObject,handles)
 
     % update serial log 
-    % TO DO: there should be a better way to do this; serial callback
-    % should trigger an event or listener that logs the info 
-    ReceivedData = handles.srl.UserData.ReceivedData; 
-    if ~strcmp(ReceivedData, handles.srlLastMsg)
-        ud = handles.srl.UserData; 
-        ud.TimeStamp = handles.lastSampleProcTime;
-        if handles.srlP1 <= length(handles.srlStorage1)
-            handles.srlStorage1(handles.srlP1) = ud;
-            handles.srlP1 = handles.srlP1+1;
-        else
-            ud = handles.udBlank; 
-            % storage full; save
-            SerialLog = handles.srlStorage1;
-            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
-            disp(['Saving Serial to ',svfn])
-            save(svfn,'SerialLog');
-            handles.SaveFileN = handles.SaveFileN + 1;
-            handles.srlP1 = 1;
-            handles.srlStorage1 = repmat(ud, size(handles.srlStorage1));
-        end
-    end
-    handles.srlLastMsg = ReceivedData;
+    handles = helperGUIv0_UpdateSerialLog(handles);
 
     % update electrode grid 
     if handles.showElecGrid
@@ -540,18 +447,6 @@ try
             handles.filtDataBuffer, newContinuousData, ...
             handles.BPF, handles.filtCond);
         set(handles.h_filtDataTrace,'YData',handles.filtDataBuffer)
-
-        %{
-        % ===== FILTER DEBUGGING =====
-        % (This imposes unnecessary computational burden and should be
-        % removed or commented-out when debugging is complete.)
-        x1 =   filter(handles.BPF,1, handles.rawDataBuffer);
-        x2 = filtfilt(handles.BPF,1, handles.rawDataBuffer);
-        x1 = x1((handles.IndShiftFIR + 1):end);
-        set(handles.h_fullfiltTrace, 'YData', x1);
-        set(handles.h_filtfiltTrace, 'YData', x2);
-        % ============================
-        %}
 
         % update model-forecasted data 
         if handles.MdlSetUp
@@ -581,7 +476,7 @@ try
             t2 = t2 - handles.TimeShiftFIR - handles.StimulatorLagTime; 
             i2 = i2 - handles.IndShiftFIR; 
             %t2 = max(t2,0); i2 = max(i2,1);
-            t2peak = t2(1); t2trou = t2(2);
+            %t2peak = t2(1); t2trou = t2(2);
             i2peak = i2(1); i2trou = i2(2);
             if i2peak > 0
                 dataPk(i2peak) = true; 
@@ -619,30 +514,10 @@ try
             % queue stimulus pulse, if applicable 
             % ***** TO DO: can this be moved elsewhere to avoid delays?  
             Stim2Q = false;
-            if bp > 1000 % min band power cutoff; orig at 1000
-            if handles.StimActive
-                ParadigmPhase = handles.srl.UserData.ParadigmPhase;
-                if ~strcmpi(ParadigmPhase,'WAIT')
-                    if strcmpi(ParadigmPhase, 'Started') || strcmp(ParadigmPhase, 'gray')
-                        % Started, gray, and red should all be the same.
-                        ParadigmPhase = 'red';
-                    end
-                    try
-                        StimMode = getfield(handles.StimMode, ParadigmPhase);
-                    catch
-                        warning(['ParadigmPhase ',ParadigmPhase,' unrecognized.'])
-                        StimMode = 'None';
-                    end
-                    if strcmpi(StimMode,'Peak')
-                        t2Q = t2peak;
-                        Stim2Q = true;
-                    end
-                    if strcmpi(StimMode,'Trough')
-                        t2Q = t2trou;
-                        Stim2Q = true;
-                    end
-                end
-            end
+            i2Q = Controller_PDS_PD(handles.srl, handles, bp, handles.bpThresh);
+            if i2Q
+                Stim2Q = true;
+                t2Q = t2(i2Q);
             end
             if Stim2Q && (t2Q >= 0)
                 % possibly overwrite existing timer with new one
@@ -795,143 +670,7 @@ function  StartMainLoop(hObject, eventdata, handles)
 
 try
 
-    % Check which channel is selected and get some data to plot
-    handles.channelIndex = get(handles.pop_channels,'Value');
-
-    % get data from Central
-    [events, time, continuousData] = cbmex('trialdata',1);
-    
-    % Check to make sure continuous sampling is enabled on at least one
-    % channel
-    if isempty(continuousData)
-        % wait some time and try again before throwing error
-        pause(.5)
-        [events, time, continuousData] = cbmex('trialdata',1);
-            if isempty(continuousData)
-            errordlg(['Continuous acquisition not enabled.', ...
-                'Select a sampling rate in Hardware Configuration'], ...
-                'No Continuous Data')
-            return
-        end
-    end
-    newContinuousData = continuousData{handles.channelIndex,3};
-    handles.fSample = continuousData{handles.channelIndex,2};
-
-    % check units 
-    config = cbmex('config', handles.channelIndex);
-    unitname_is = lower(config{11,1});
-    if contains(unitname_is, 'unit')
-        unitname = config{11,2};
-    else
-        unitname_is = contains(lower(config(:,1)), 'unit');
-        unitname_is = find(unitname_is);
-        unitname_is = unitname_is(1); 
-        unitname = config{unitname_is,2};
-    end
-    
-    % Now that we know the sampling rate of the selected channel,
-    % Create raw data buffer of zeros of the correct length
-    handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
-    handles.rawDataBuffer = zeros(handles.bufferSize,1);
-
-    if handles.FilterSetUp
-        if handles.bufferSize > handles.IndShiftFIR
-            handles.filtDataBuffer = ...
-                zeros(handles.bufferSize - handles.IndShiftFIR, 1);
-        else
-            errordlg({'Data buffer is not long enough to be filtered.',...
-                      'Try increasing display window or altering filter.'},...
-                     'Filtering Issue');
-            handles.FilterSetUp = false;
-        end
-
-        if handles.MdlSetUp
-            sz = size(handles.filtDataBuffer); 
-            sz(1) = sz(1) + handles.PDSwin1;
-            handles.predDataBuffer = nan(sz);
-            handles.peakDataBuffer = false(sz);
-            handles.trouDataBuffer = false(sz);
-            handles.sineDataBuffer = nan(sz);
-            handles.stimDataBuffer = false(sz);
-        end
-    end
-
-    % keep track of the proc time of the most recent data point.  This will
-    % help if you want to match spike times with points in the buffer.
-    % 'time' is the time at the first data point of the new chunk of
-    % continuous data in seconds.
-    handles.lastSampleProcTime = ...
-        time + (length(newContinuousData)-1)/handles.fSample;
-    handles.diffSampleProcTime = nan(handles.bufferSize,1);
-
-    handles.rawDataBuffer = cycleBuffer(handles.rawDataBuffer, newContinuousData);
-    xValues = linspace(-handles.bufferSize/handles.fSample,0,handles.bufferSize);
-    axes(handles.ax_raw);
-    handles.h_rawDataTrace = plot(xValues,handles.rawDataBuffer);
-    grid on; title('Raw Channel Data'); xlabel('time (s)'); ylabel(unitname);
-    common_xlim = xlim;
-
-    axes(handles.ax_timing); 
-    handles.h_timingTrace = stem(xValues,handles.diffSampleProcTime);
-    grid on; title('Update Duration'); xlabel('time (s)'); ylabel('s');
-
-    if handles.FilterSetUp
-        try
-        filtInitCond = zeros(handles.FilterOrder,1);
-        [handles.filtDataBuffer, handles.filtCond] = FilterAndCycle(...
-            handles.filtDataBuffer, newContinuousData, ...
-            handles.BPF, filtInitCond);
-        xValues2 = xValues(1:(end-handles.IndShiftFIR));
-        common_xdiff = diff(common_xlim); 
-        ext_xdiff = common_xdiff * handles.ax_filt.InnerPosition(3) / ...
-            handles.ax_raw.InnerPosition(3); 
-        ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left 
-        axes(handles.ax_filt); hold off; 
-        handles.h_filtDataTrace = plot(xValues2, handles.filtDataBuffer); 
-        grid on; hold on; 
-        title('Filtered & Predicted Data'); xlabel('time (s)'); ylabel(unitname);
-        xlim(ext_xlim);
-
-        %{
-        % ===== FILTER DEBUGGING =====
-        % (This imposes unnecessary computational burden and should be
-        % removed or commented-out when debugging is complete.)
-        x1 =   filter(handles.BPF,1, handles.rawDataBuffer);
-        x2 = filtfilt(handles.BPF,1, handles.rawDataBuffer);
-        x1 = x1((handles.IndShiftFIR + 1):end);
-        handles.h_fullfiltTrace = plot(xValues2, x1, ':', 'LineWidth',1);
-        handles.h_filtfiltTrace = plot(xValues,  x2, ':', 'LineWidth',1);
-        % ============================
-        %}
-
-        if handles.MdlSetUp
-            xValues3 = (-handles.bufferSize) : ...
-                       (handles.PDSwin1 - handles.IndShiftFIR - 1);
-            xValues3 = xValues3/handles.fSample;
-            handles.h_peakTrace = plot(xValues3,0*plotLogical(handles.peakDataBuffer), ...
-                '^', 'Color',"#EDB120"); 
-            handles.h_trouTrace = plot(xValues3,0*plotLogical(handles.trouDataBuffer), ...
-                'v', 'Color',"#EDB120"); 
-            handles.h_stimTrace = plot(xValues3,0*plotLogical(handles.stimDataBuffer), ...
-                '*', 'Color','r'); 
-            handles.h_predTrace = plot(xValues3,handles.predDataBuffer, ':');
-            handles.h_sineTrace = plot(xValues3,handles.sineDataBuffer,'--');
-
-            bedge = (-1:2:35)*pi/18; 
-            axes(handles.ax_polar); hold off;
-            handles.h_peakPhase = polarhistogram(nan, bedge);
-            hold on; 
-            handles.h_trouPhase = polarhistogram(nan, bedge);
-            title('Actual Phase')
-        end
-
-        catch ME1
-            getReport(ME1)
-            errordlg(ME1.message, 'Filtering Issue');
-            handles.FilterSetUp = false;
-            pause(.01);
-        end
-    end
+    handles = helperGUIv0_StartMainLoop(handles);
 
     handles.RunMainLoop = true; 
     guidata(hObject,handles)

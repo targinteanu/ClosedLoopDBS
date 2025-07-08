@@ -1,21 +1,23 @@
-function ind2Q = Controller_PDS_Memory(srl, handles, dataPast)
-
-% TO DO!!
-
+function ind2Q = Controller_PDS_Memory(srl, handles, bpData, bpThresh)
 % Based on latest serial comm, GUI-set preferences, and a chunk of recent
 % data, decide which index of the forecast buffer times is the time to next
 % stim, or return 0 if no stim. For now, this only supports peak (1) or
 % trough (2), but in the future it should be ammended to point to any index
 % in PhasesOfInterest field. 
 
-% change this - should output index of [PeakTroughTimes] to select, or zero
-% if no stim2q 
+if nargin < 4
+    bpThresh = 1000; % min band power cutoff; orig at 1000
+end
 
-bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate
+if numel(bpData) == 1
+    bp = bpData;
+else
+    bp = norm(bpData,2)^2/numel(bpData); % band power surrogate
+end
 
 ind2Q = 0; 
 
-if bp > 10 % min band power cutoff; orig at 1000
+if bp > bpThresh
     if handles.StimActive
 
         ParadigmPhase = srl.UserData.ParadigmPhase;
