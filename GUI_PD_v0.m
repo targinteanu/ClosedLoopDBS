@@ -73,60 +73,18 @@ handles.timer = timer(...
     'StopFcn',  {@stopTimer,hObject});     % callback to execute when timer starts
 %}
 
-
-handles.cbmexStatus = false;
-
-% start receiver serial communication from paradigm computer
-handles.textSrl.String = 'attempting to start serial com here ...';
-thisportname = FindMySerialPort();
-noSerialSetup = isempty(thisportname);
-if ~noSerialSetup
-    receiverSerial = serialport(thisportname, 9600);
-end
+% serial user data
 ud = struct('ReceivedData', '', ...
             'ParadigmPhase', 'Stopped');
-receiverSerial.UserData = ud;
-if ~noSerialSetup
-configureCallback(receiverSerial,"terminator",...
-    @(hsrl,evt)CharSerialCallbackReceiver_PD_v0(hsrl,evt, ...
-                    handles.textSrl, handles.txt_Status)); 
-end
-handles.srl = receiverSerial; 
 
-% initiate other vars ...
-handles.StimActive = false;
-handles.RunMainLoop = false;
-handles.FilterSetUp = false;
-handles.MdlSetUp    = false;
-handles.showElecGrid = false;
-handles.srlLastMsg  = ud.ReceivedData;
-handles.stimLastTime = -inf;
-handles.stimNewTime = -inf;
-handles.artReplaceRemaining = [];
-handles.ArtifactDuration = .025; % set artifact duration (seconds) 
-handles.ArtifactStartBefore = .005; % artifact start uncertainty (seconds)
-handles.stimind = -1;
-handles.bpthresh = 1000; % min band power cutoff; orig at 1000
-
-emptyStorage = nan(100000,1);
-handles.pkStorage1 = emptyStorage; handles.pkP1 = 1;
-handles.pkStorage2 = emptyStorage; 
-handles.trStorage1 = emptyStorage; handles.trP1 = 1;
-handles.trStorage2 = emptyStorage; 
-handles.stStorage1 = emptyStorage; handles.stP1 = 1;
-ud.TimeStamp = nan;
-handles.udBlank = ud;
-handles.srlStorage1 = repmat(ud,[1000,1]);
-handles.srlP1 = 1; 
-
+% save location
 svloc = ['Saved Data PD',filesep,'Saved Data ',...
     datestr(datetime, 'yyyy-mm-dd HH.MM.SS')];
 pause(1)
 mkdir(svloc); 
-handles.SaveFileLoc = svloc;
-handles.SaveFileN = 1;
 
-handles.StimulatorLagTime = 0.03; 
+handles = helperGUIv0_OpeningInitialize(handles, ud, svloc);
+
 handles.QueuedStim = timer(...
     'StartDelay', 10, ...
     'TimerFcn',   {@myPULSE, hObject}, ...
