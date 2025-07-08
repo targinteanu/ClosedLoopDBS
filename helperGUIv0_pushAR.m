@@ -1,4 +1,4 @@
-function handles = helperGUIv0_pushAR(handles, PDSwin)
+function handles = helperGUIv0_pushAR(handles, PDSwin, n)
 
     handles.PDSwin2 = ceil(.1*PDSwin); % set model forecast duration
 

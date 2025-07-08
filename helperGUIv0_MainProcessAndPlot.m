@@ -76,7 +76,7 @@ function handles = helperGUIv0_MainProcessAndPlot(handles, newContinuousData, co
             % queue stimulus pulse, if applicable 
             % ***** TO DO: can this be moved elsewhere to avoid delays?  
             Stim2Q = false;
-            i2Q = controllerFun(handles.srl, handles, bp, handles.bpThresh);
+            i2Q = controllerFun(handles.srl, handles, bp, handles.bpthresh);
             if i2Q
                 Stim2Q = true;
                 t2Q = t2(i2Q);

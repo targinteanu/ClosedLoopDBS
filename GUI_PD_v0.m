@@ -373,7 +373,7 @@ try
     N = length(newContinuousData);
 
     [handles, newContinuousData] = ...
-        helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData);
+        helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time);
 
     guidata(hObject,handles)
 
@@ -913,7 +913,7 @@ PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
 
 try
 
-    handles = helperGUIv0_pushAR(handles, PDSwin);
+    handles = helperGUIv0_pushAR(handles, PDSwin, n);
     
     %stop(handles.timer)
     StopMainLoop(hObject,eventdata,handles)

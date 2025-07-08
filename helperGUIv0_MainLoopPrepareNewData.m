@@ -1,4 +1,4 @@
-function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData)
+function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time)
 
     N = length(newContinuousData);
 
