@@ -6,7 +6,8 @@ if nargin < 1
     filepath = uigetdir;
 end
 
-varnames = {'SerialLog','PeakTime','TroughTime','StimTime'};
+varnames = {'SerialLog','PeakTime','TroughTime','StimTime',...
+    'Phase3Time','Phase4Time','Phase5Time'};
 % init temp vars 
 for V = varnames
     v = V{:};

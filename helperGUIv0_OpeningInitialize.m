@@ -36,6 +36,7 @@ handles.ArtifactStartBefore = .01; % artifact start uncertainty (seconds)
 handles.bpthresh = 1000; % min band power cutoff; orig at 1000
 handles.StimulatorLagTime = 0.03; % stimulate this many seconds early
 handles.PhaseOfInterest = [0, pi, nan, nan, nan];
+handles.PhaseOfInterestName = ["Peak", "Trough", "Phase3", "Phase4", "Phase5"];
 
 % serial log storage
 emptyStorage = nan(100000,1);
@@ -48,6 +49,12 @@ ud.TimeStamp = nan;
 handles.udBlank = ud;
 handles.srlStorage1 = repmat(ud,[1000,1]);
 handles.srlP1 = 1; 
+
+% empty objects that will be filled in later 
+handles.peakDataBuffer = [];
+handles.trouDataBuffer = [];
+handles.h_peakTrace = [];
+handles.h_trouTrace = [];
 
 % data saving
 handles.SaveFileLoc = svloc;

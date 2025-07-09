@@ -1,4 +1,6 @@
-function handles = helperGUIv0_MainProcessAndPlot(handles, newContinuousData, controllerFun)
+function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
+    helperGUIv0_MainProcessAndPlot(handles, newContinuousData, ...
+    controllerFun, phaseTraceHandles, phaseBuffers, phaseStorage)
 
     N = length(newContinuousData);
 
@@ -29,8 +31,7 @@ function handles = helperGUIv0_MainProcessAndPlot(handles, newContinuousData, co
             % find the time to next peak, trough and plot 
             bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate 
             M = handles.PDSwin1 - handles.IndShiftFIR;
-            dataPk = false(M,1); 
-            dataTr = dataPk; % dataSt = dataPk;  
+            dataPh = false(M,1); oldPh = cell(size(phaseBuffers));
             [t2,i2,phi_inst,f_inst] = ...
                 blockPDS(dataPast,dataFutu2, handles.fSample, handles.PhaseOfInterest, ...
                 handles.TimeShiftFIR + handles.StimulatorLagTime, ...
@@ -39,19 +40,16 @@ function handles = helperGUIv0_MainProcessAndPlot(handles, newContinuousData, co
             i2 = i2 - handles.IndShiftFIR;% - StimulatorLagInd;
             %t2 = max(t2,0); i2 = max(i2,1);
             %t2peak = t2(1); t2trou = t2(2);
-            i2peak = i2(1); i2trou = i2(2);
-            if i2peak > 0
-                dataPk(i2peak) = true;
+            %i2peak = i2(1); i2trou = i2(2);
+            for iph = 1:length(i2)
+                dataPh_ = dataPh; i2_ = i2(iph);
+                if (~isnan(i2_)) && ( (i2_ > 0) && (i2_ <= M) )
+                    dataPh_(i2_) = true;
+                end
+                [phaseBuffers{iph}, oldPh{iph}] = CombineAndCycle(...
+                    phaseBuffers{iph}, dataPh_, N, M-StimulatorLagInd);
+                set(phaseTraceHandles{iph},'YData',0*plotLogical(phaseBuffers{iph}));
             end
-            if i2trou > 0
-                dataTr(i2trou) = true;
-            end
-            [handles.peakDataBuffer, oldPeak] = CombineAndCycle(...
-                handles.peakDataBuffer, dataPk, N, M-StimulatorLagInd); 
-            [handles.trouDataBuffer, oldTrou] = CombineAndCycle(...
-                handles.trouDataBuffer, dataTr, N, M-StimulatorLagInd);
-            set(handles.h_peakTrace,'YData',0*plotLogical(handles.peakDataBuffer));
-            set(handles.h_trouTrace,'YData',0*plotLogical(handles.trouDataBuffer));
 
             % time of stimulus 
             if handles.stimNewTime > 0
@@ -146,34 +144,27 @@ function handles = helperGUIv0_MainProcessAndPlot(handles, newContinuousData, co
                 % most recent time stamp is lastSampleProcTime 
             tOldBuffer = ((1-N):0)/handles.fSample + handles.lastSampleProcTime - ...
                 handles.bufferSize/handles.fSample;
-            tOldPeak = tOldBuffer(oldPeak); tOldTrou = tOldBuffer(oldTrou);
-            [handles.pkStorage1, handles.pkP1,  handles.pkStorage2, p2] = ...
-                cycleStorage(handles.pkStorage1, handles.pkP1, ...
-                             handles.pkStorage2, tOldPeak);
-            if ~handles.pkP1
-                % storage full; save 
-                PeakTime = handles.pkStorage1;
-                svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
-                disp(['Saving Peaks to ',svfn])
-                save(svfn,'PeakTime');
-                handles.SaveFileN = handles.SaveFileN + 1;
-                handles.pkStorage1 = handles.pkStorage2; 
-                handles.pkP1 = p2; 
-                handles.pkStorage2 = nan(size(handles.pkStorage2));
-            end
-            [handles.trStorage1, handles.trP1,  handles.trStorage2, p2] = ...
-                cycleStorage(handles.trStorage1, handles.trP1, ...
-                             handles.trStorage2, tOldTrou);
-            if ~handles.trP1
-                % storage full; save 
-                TroughTime = handles.trStorage1;
-                svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
-                disp(['Saving Troughs to ',svfn])
-                save(svfn,'TroughTime');
-                handles.SaveFileN = handles.SaveFileN + 1;
-                handles.trStorage1 = handles.trStorage2; 
-                handles.trP1 = p2; 
-                handles.trStorage2 = nan(size(handles.trStorage2));
+            for iph = 1:length(oldPh)
+                tOld = tOldBuffer(oldPh{iph});
+                if numel(tOld)
+                [phaseStorage{1,iph},phaseStorage{2,iph},phaseStorage{3,iph},p2] = ...
+                    cycleStorage(phaseStorage{1,iph},phaseStorage{2,iph},phaseStorage{3,iph},...
+                    tOld);
+                if ~phaseStorage{2,iph}
+                    % storage full; save
+                    phname = handles.PhaseOfInterestName(iph);
+                    phname = phname+"Time";
+                    assignin("caller",phname,phaseStorage{1,iph});
+                    %eval([phname,' = phaseStorage{1,iph};']);
+                    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+                    disp("Saving "+phname+" to "+svfn)
+                    save(svfn,phname);
+                    handles.SaveFileN = handles.SaveFileN + 1;
+                    phaseStorage{1,iph} = phaseStorage{3,iph};
+                    phaseStorage{2,iph} = p2;
+                    phaseStorage{3,iph} = nan(size(phaseStorage{3,iph}));
+                end
+                end
             end
 
             catch ME2
@@ -196,11 +187,11 @@ function handles = helperGUIv0_MainProcessAndPlot(handles, newContinuousData, co
 
 
 function newBuffer = cycleBuffer(oldBuffer, newData)
-N = length(newData);
-if N >= length(oldBuffer)
+L = length(newData);
+if L >= length(oldBuffer)
     newBuffer = newData(end-length(oldBuffer)+1:end);
 else
-    newBuffer = [oldBuffer(N+1:end); newData];
+    newBuffer = [oldBuffer(L+1:end); newData];
 end
 end
 
@@ -215,20 +206,20 @@ end
 
 function [storage1, p1, storage2, p2] = ...
     cycleStorage(storage1, p1, storage2, newData)
-N = length(newData); 
-if p1+N-1 > length(storage1)
+L = length(newData); 
+if p1+L-1 > length(storage1)
     % storage 1 is now full 
-    if N > length(storage2)
+    if L > length(storage2)
         warning('Data overloaded save buffer; some data may not be saved.')
-        N = length(storage2);
-        newData = newData(1:N);
+        L = length(storage2);
+        newData = newData(1:L);
     end
     p1 = 0; 
-    storage2(1:N) = newData; 
-    p2 = N+1;
+    storage2(1:L) = newData; 
+    p2 = L+1;
 else
-    storage1(p1:(p1+N-1)) = newData;
-    p1 = p1+N;
+    storage1(p1:(p1+L-1)) = newData;
+    p1 = p1+L;
     p2 = [];
 end
 end

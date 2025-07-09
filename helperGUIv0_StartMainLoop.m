@@ -1,5 +1,5 @@
-function handles = helperGUIv0_StartMainLoop(handles)
-
+function [handles, xValues3] = helperGUIv0_StartMainLoop(handles)
+    
     % Check which channel is selected and get some data to plot
     handles.channelIndex = get(handles.pop_channels,'Value');
 
@@ -80,6 +80,7 @@ function handles = helperGUIv0_StartMainLoop(handles)
     handles.h_timingTrace = stem(xValues,handles.diffSampleProcTime);
     grid on; title('Update Duration'); xlabel('time (s)'); ylabel('s');
 
+    xValues3 = [];
     if handles.FilterSetUp
         try
         filtInitCond = zeros(handles.FilterOrder,1);

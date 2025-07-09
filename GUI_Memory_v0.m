@@ -89,6 +89,18 @@ mkdir(svloc);
 
 handles = helperGUIv0_OpeningInitialize(handles, ud, svloc);
 
+% additional phase tracking buffers & objects
+emptyStorage = nan(100000,1);
+handles.encStorage1 = emptyStorage; handles.encP1 = 1;
+handles.encStorage2 = emptyStorage; 
+handles.decStorage1 = emptyStorage; handles.decP1 = 1;
+handles.decStorage2 = emptyStorage; 
+handles.holdStorage1 = emptyStorage; handles.holdP1 = 1;
+handles.holdStorage2 = emptyStorage; 
+handles.encodeDataBuffer = []; handles.h_encodeTrace = [];
+handles.decodeDataBuffer = []; handles.h_decodeTrace = [];
+handles.holdDataBuffer = [];   handles.h_holdTrace = [];
+
 handles.QueuedStim = timer(...
     'StartDelay', 10, ...
     'TimerFcn',   {@myPULSE, hObject}, ...
@@ -296,21 +308,31 @@ end
 
 try
 % save stored data 
-PeakTime = handles.pkStorage1;
-svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
-disp(['Saving Peaks to ',svfn])
-save(svfn,'PeakTime');
-handles.SaveFileN = handles.SaveFileN + 1;
-TroughTime = handles.trStorage1;
-svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
-disp(['Saving Troughs to ',svfn])
-save(svfn,'TroughTime');
-handles.SaveFileN = handles.SaveFileN + 1;
+phStorage = {handles.pkStorake1, handles.trStorage1, ...
+    handles.encStorage1, handles.decStorage1, handles.holdStorage1};
+for iph = 1:length(handles.PhaseOfInterest)
+    phname = handles.PhaseOfInterestName(iph);
+    phname = phname+"Time";
+    phStorage1 = phStorage{iph};
+    if numel(phStorage1)
+        if sum(~isnan(phStorage1))
+            assignin("caller",phname,phStorage1);
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+            disp("Saving "+phname+" to "+svfn)
+            save(svfn,phname);
+            handles.SaveFileN = handles.SaveFileN + 1;
+        end
+    end
+end
 StimTime = handles.stStorage1;
-svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
-disp(['Saving Stimulus to ',svfn])
-save(svfn,'StimTime');
-handles.SaveFileN = handles.SaveFileN + 1;
+if numel(StimTime)
+    if sum(~isnan(StimTime))
+        svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+        disp(['Saving Stimulus to ',svfn])
+        save(svfn,'StimTime');
+        handles.SaveFileN = handles.SaveFileN + 1;
+    end
+end
 SerialLog = handles.srlStorage1;
 svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
 disp(['Saving Serial to ',svfn])
@@ -397,8 +419,33 @@ try
         end
     end
 
-    handles = helperGUIv0_MainProcessAndPlot(handles, ...
-        newContinuousData, @Controller_PDS_Memory);
+    [handles, ~, phBuffers, phStorage] = ...
+        helperGUIv0_MainProcessAndPlot(handles, ...
+        newContinuousData, @Controller_PDS_Memory, ...
+        {handles.h_peakTrace, handles.h_trouTrace, ...
+         handles.h_encodeTrace, handles.h_decodeTrace, handles.h_holdTrace}, ...
+        {handles.peakDataBuffer, handles.trouDataBuffer, ...
+         handles.encodeDataBuffer, handles.decodeDataBuffer, handles.holdDataBuffer}, ...
+        {handles.pkStorage1, handles.trStorage1, handles.encStorage1, handles.decStorage1, handles.holdStorage1; ...
+         handles.pkP1,       handles.trP1,       handles.encP1,       handles.decP1,       handles.holdP1; ...
+         handles.pkStorage2, handles.trStorage2, handles.encStorage2, handles.decStorage2, handles.holdStorage2});
+
+    % additional phase tracking buffers & plots
+
+    handles.peakDataBuffer = phBuffers{1}; handles.trouDataBuffer = phBuffers{2}; 
+    handles.encodeDataBuffer = phBuffers{3}; handles.decodeDataBuffer = phBuffers{4}; 
+    handles.holdDataBuffer = phBuffers{5};
+    
+    handles.pkStorage1   = phStorage{1,1}; handles.pkP1   = phStorage{2,1}; 
+    handles.pkStorage2   = phStorage{3,1}; 
+    handles.trStorage1   = phStorage{1,2}; handles.trP1   = phStorage{2,2}; 
+    handles.trStorage2   = phStorage{3,2}; 
+    handles.encStorage1  = phStorage{1,3}; handles.encP1  = phStorage{2,3}; 
+    handles.encStorage2  = phStorage{3,3}; 
+    handles.decStorage1  = phStorage{1,4}; handles.decP1  = phStorage{2,4}; 
+    handles.decStorage2  = phStorage{3,4}; 
+    handles.holdStorage1 = phStorage{1,5}; handles.holdP1 = phStorage{2,5}; 
+    handles.holdStorage2 = phStorage{3,5}; 
 
     % update YData of ax_rawData
     if ~(length(handles.rawDataBuffer) == handles.bufferSize)
@@ -440,7 +487,25 @@ function  StartMainLoop(hObject, eventdata, handles)
 
 try
 
-    handles = helperGUIv0_StartMainLoop(handles);
+    [handles, xValues3] = helperGUIv0_StartMainLoop(handles);
+
+    % setup additional phase-tracking buffers & plots
+    if handles.FilterSetUp
+        if handles.MdlSetUp
+            sz = size(handles.peakDataBuffer);
+            handles.encodeDataBuffer = false(sz);
+            handles.decodeDataBuffer = false(sz);
+            handles.holdDataBuffer = false(sz);
+
+            axes(handles.ax_filt)
+            handles.h_encodeTrace = plot(xValues3,nan(sz), ...
+                '>', 'Color',"#EDB120"); 
+            handles.h_decodeTrace = plot(xValues3,nan(sz), ...
+                '<', 'Color',"#EDB120"); 
+            handles.h_holdTrace = plot(xValues3,nan(sz), ...
+                's', 'Color',"#EDB120"); 
+        end
+    end
 
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
@@ -1158,6 +1223,7 @@ else
     end
 end
 handles.StimMode.ENCODE = stimmode; 
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function txt_EncodeStim_CreateFcn(hObject, eventdata, handles)
@@ -1195,6 +1261,7 @@ else
     end
 end
 handles.StimMode.DECODE = stimmode;
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function txt_DecodeStim_CreateFcn(hObject, eventdata, handles)
@@ -1232,6 +1299,7 @@ else
     end
 end
 handles.StimMode.HOLD = stimmode; 
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function txt_HoldStim_CreateFcn(hObject, eventdata, handles)
