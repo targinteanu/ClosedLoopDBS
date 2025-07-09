@@ -22,7 +22,7 @@ function varargout = GUI_Memory_v0(varargin)
 
 % Edit the above text to modify the response to help GUI_Memory_v0
 
-% Last Modified by GUIDE v2.5 08-Jul-2025 16:55:07
+% Last Modified by GUIDE v2.5 09-Jul-2025 01:36:04
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1305,6 +1305,77 @@ guidata(hObject, handles)
 % --- Executes during object creation, after setting all properties.
 function txt_HoldStim_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to txt_HoldStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_StimulatorLagTime_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_StimulatorLagTime (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_StimulatorLagTime as text
+%        str2double(get(hObject,'String')) returns contents of txt_StimulatorLagTime as a double
+handles.StimulatorLagTime = str2double(get(hObject,'String'));
+guidata(hObject, handles)
+
+% --- Executes during object creation, after setting all properties.
+function txt_StimulatorLagTime_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_StimulatorLagTime (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_PowerThresh_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_PowerThresh (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_PowerThresh as text
+%        str2double(get(hObject,'String')) returns contents of txt_PowerThresh as a double
+handles.bpthresh = str2double(get(hObject,'String'));
+guidata(hObject, handles)
+
+% --- Executes during object creation, after setting all properties.
+function txt_PowerThresh_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_PowerThresh (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_ARlearnrate_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_ARlearnrate (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_ARlearnrate as text
+%        str2double(get(hObject,'String')) returns contents of txt_ARlearnrate as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function txt_ARlearnrate_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_ARlearnrate (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
