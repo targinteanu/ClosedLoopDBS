@@ -24,7 +24,7 @@ if bp > bpThresh
                 StimMode = getfield(handles.StimMode, ParadigmPhase);
             catch
                 warning(['ParadigmPhase ',ParadigmPhase,' unrecognized.'])
-                StimMode = 'None';
+                StimMode = 0;
             end
             ind2Q = StimMode;
         end

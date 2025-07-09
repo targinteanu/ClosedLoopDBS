@@ -308,7 +308,7 @@ end
 
 try
 % save stored data 
-phStorage = {handles.pkStorake1, handles.trStorage1, ...
+phStorage = {handles.pkStorage1, handles.trStorage1, ...
     handles.encStorage1, handles.decStorage1, handles.holdStorage1};
 for iph = 1:length(handles.PhaseOfInterest)
     phname = handles.PhaseOfInterestName(iph);
@@ -1215,7 +1215,7 @@ if isnan(phi)
     stimmode = 0;
 else
     phi = phi * pi / 180; % deg -> rad
-    stimmode = find(handles.PhaseOfInterest == phi);
+    stimmode = find(handles.PhaseOfInterest(1:2) == phi);
     if isempty(stimmode)
         handles.PhaseOfInterest(3) = phi;
         stimmode = 3;
@@ -1253,7 +1253,7 @@ if isnan(phi)
     stimmode = 0;
 else
     phi = phi * pi / 180; % deg -> rad
-    stimmode = find(handles.PhaseOfInterest == phi);
+    stimmode = find(handles.PhaseOfInterest(1:2) == phi);
     if isempty(stimmode)
         handles.PhaseOfInterest(4) = phi;
         stimmode = 4;
@@ -1291,7 +1291,7 @@ if isnan(phi)
     stimmode = 0;
 else
     phi = phi * pi / 180; % deg -> rad
-    stimmode = find(handles.PhaseOfInterest == phi);
+    stimmode = find(handles.PhaseOfInterest(1:2) == phi);
     if isempty(stimmode)
         handles.PhaseOfInterest(5) = phi;
         stimmode = 5;
