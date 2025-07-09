@@ -1,6 +1,6 @@
 function handles = helperGUIv0_pushAR(handles, PDSwin, n)
 
-    handles.PDSwin2 = ceil(.1*PDSwin); % set model forecast duration
+    handles.PDSwin2 = ceil(.8*PDSwin); % set model forecast duration
 
     % catch mistakes 
     if PDSwin > handles.bufferSize

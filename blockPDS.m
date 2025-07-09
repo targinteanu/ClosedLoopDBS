@@ -26,22 +26,38 @@ f_inst = f_block(N);
 %[~,f_inst] = zerocrossrate(blockData); f_inst = f_inst*fs/(2*length(blockData));
 T=1/f_inst;
 
+% examine the next full phase cycle
+imin = ceil(tmin*fs); phi_future = phi_block((N+imin):end,:);
+phi_fut_1 = phi_future(1); phi_fut_ = unwrap(phi_future);
+[~,phi_fut_end] = min(abs(phi_fut_-(2*pi + phi_fut_1)));
+phi_fut_end = min(length(phi_future), phi_fut_end+1);
+phi_future = phi_future(1:phi_fut_end);
+
 % time to next [desired] phi 
 t2phi = zeros(size(phi)); i2phi = t2phi;
 for p = 1:length(phi)
     phi_ = phi(p);
     if isnan(phi_)
         t2phi(p) = inf;
+        i2phi(p) = inf;
     else
-    t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
 
+    % accurate & full-cycle AR model assumption 
+    [~,i] = min(abs(radfix(phi_future-phi_)));
+    i = i + imin;
+    i2phi(p) = i; 
+    t2phi(p) = i/fs;
+
+    %{
+    % const freq assumption
+    t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
     % account for minimum delay time tmin 
     if t < tmin
         nT = (tmin-t)/T; % how many periods needed to add 
         t = t + ceil(nT)*T; 
     end
-
     t2phi(p) = t;
-    end
     i2phi(p) = floor(fs*t2phi(p));
+    %}
+    end
 end
