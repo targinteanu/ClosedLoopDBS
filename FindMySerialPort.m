@@ -10,8 +10,7 @@ else
     
 if strcmp(thiscomputer, 'WSA_DELL_LAPTOP')
     % Anderson Lab - Dell Latitude Laptop 
-    %thisport = "COM4";
-    thisport = '';
+    thisport = "COM4";
 elseif strcmp(thiscomputer, 'LAPTOP-Q2F2EVC4')
     % Anderson Lab - Lenovo Thinkpad paradigm laptop 
     thisport = "COM6";

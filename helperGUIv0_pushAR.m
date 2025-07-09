@@ -16,7 +16,7 @@ function handles = helperGUIv0_pushAR(handles, PDSwin, n)
     y = iddata(y,[],1/handles.fSample);
     ARmdl = ar(y,n,'yw');
     
-    handles.Mdl = ARmdl; 
+    handles.Mdl = ARmdl.A; 
     handles.MdlSetUp = true;
 
 end

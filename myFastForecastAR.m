@@ -4,7 +4,12 @@ function yf = myFastForecastAR(arMdl, yPast, k)
 
 y = [yPast; nan(k,1)]; % [yPast; yf]
 
-A = arMdl.A;
+if isnumeric(arMdl)
+    A = arMdl;
+else
+    A = arMdl.A;
+end
+
 A1 = A(1); A = A(2:end);
 N = length(A);
 

@@ -15,12 +15,41 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
         % update model-forecasted data 
         if handles.MdlSetUp
             try
+            Mdl = handles.Mdl;
+
+            % update AR coeffs using gradient descent 
+            ARupdated = false;
+            if handles.stimLastTime + handles.ArtifactDuration - handles.ArtifactStartBefore ...
+                    < handles.lastSampleProcTime
+            if handles.ARlearnrate > 0
+                w = -Mdl(2:end)/Mdl(1);
+                w = fliplr(w); 
+                x = handles.filtDataBuffer((end-length(w)):(end-1));
+                ypred = w*x; 
+                E = handles.filtDataBuffer(end) - ypred; del = x*E;
+                del = del./(x'*x + eps); % normalize 
+                w = w + handles.ARlearnrate * del';
+                r = roots([1, -fliplr(w)]);
+                if max(abs(r)) < 1 % ensure stability
+                    Mdl = [1, -fliplr(w)];
+                    ARupdated = true;
+                end
+            end
+            end
 
             % use AR model to get some future data 
             StimulatorLagInd = round(handles.fSample*handles.StimulatorLagTime);
             dataPast = handles.filtDataBuffer; 
             dataPast = dataPast((end-handles.PDSwin1+1):end);
-            dataFutu = myFastForecastAR(handles.Mdl, dataPast, handles.PDSwin1);
+            dataFutu = myFastForecastAR(Mdl, dataPast, handles.PDSwin1);
+            if ARupdated
+            if norm(dataFutu) > 10*norm(dataPast)
+                % revert to prevent blowing up
+                dataFutu = myFastForecastAR(handles.Mdl, dataPast, handles.PDSwin1);
+            else
+                handles.Mdl = Mdl;
+            end
+            end
             dataFutu2 = dataFutu(1:handles.PDSwin2);
             if handles.check_polar.Value
             handles.predDataBuffer = OverwriteAndCycle(...

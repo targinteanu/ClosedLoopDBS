@@ -1371,7 +1371,8 @@ function txt_ARlearnrate_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of txt_ARlearnrate as text
 %        str2double(get(hObject,'String')) returns contents of txt_ARlearnrate as a double
-
+handles.ARlearnrate = str2double(get(hObject,'String'));
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function txt_ARlearnrate_CreateFcn(hObject, eventdata, handles)

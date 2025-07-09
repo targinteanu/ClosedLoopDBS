@@ -37,6 +37,7 @@ handles.bpthresh = 1000; % min band power cutoff; orig at 1000
 handles.StimulatorLagTime = 0.03; % stimulate this many seconds early
 handles.PhaseOfInterest = [0, pi, nan, nan, nan];
 handles.PhaseOfInterestName = ["Peak", "Trough", "Phase3", "Phase4", "Phase5"];
+handles.ARlearnrate = 0;
 
 % serial log storage
 emptyStorage = nan(100000,1);
