@@ -154,11 +154,12 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
                     % storage full; save
                     phname = handles.PhaseOfInterestName(iph);
                     phname = phname+"Time";
-                    assignin("caller",phname,phaseStorage{1,iph});
-                    %eval([phname,' = phaseStorage{1,iph};']);
+                    %assignin("base",phname,phaseStorage{1,iph});
+                    %eval(phname+" = phaseStorage{1,iph};");
+                    dataNeedsName = phaseStorage{1,iph}; dataName = phname;
                     svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
                     disp("Saving "+phname+" to "+svfn)
-                    save(svfn,phname);
+                    save(svfn,'dataNeedsName','dataName');
                     handles.SaveFileN = handles.SaveFileN + 1;
                     phaseStorage{1,iph} = phaseStorage{3,iph};
                     phaseStorage{2,iph} = p2;

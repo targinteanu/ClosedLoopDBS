@@ -316,7 +316,8 @@ for iph = 1:length(handles.PhaseOfInterest)
     phStorage1 = phStorage{iph};
     if numel(phStorage1)
         if sum(~isnan(phStorage1))
-            assignin("caller",phname,phStorage1);
+            %assignin("caller",phname,phStorage1);
+            eval(phname+" = phStorage1;");
             svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
             disp("Saving "+phname+" to "+svfn)
             save(svfn,phname);

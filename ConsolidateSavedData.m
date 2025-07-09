@@ -25,6 +25,10 @@ for myfile = myfiles'
         clearvars(v)
     end
     load(myfile.name)
+    if (exist('dataNeedsName')==1) && (exist('dataName')==1)
+        eval(dataName+" = dataNeedsName;");
+        clearvars dataNeedsName dataName
+    end
     for V = 1:length(varnames)
         v = varnames{V};
         if exist(v) == 1
