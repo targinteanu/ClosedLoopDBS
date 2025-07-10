@@ -70,7 +70,7 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
             %t2 = max(t2,0); i2 = max(i2,1);
             %t2peak = t2(1); t2trou = t2(2);
             %i2peak = i2(1); i2trou = i2(2);
-            for iph = 1:length(i2)
+            for iph = 1:min(length(i2), length(phaseBuffers))
                 dataPh_ = dataPh; i2_ = i2(iph);
                 if (~isnan(i2_)) && ( (i2_ > 0) && (i2_ <= M) )
                     dataPh_(i2_) = true;

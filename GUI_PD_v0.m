@@ -398,8 +398,23 @@ try
         end
     end
 
-    handles = helperGUIv0_MainProcessAndPlot(handles, ...
-        newContinuousData, @Controller_PDS_PD);
+    [handles, ~, phBuffers, phStorage] = ...
+        helperGUIv0_MainProcessAndPlot(handles, ...
+        newContinuousData, @Controller_PDS_PD, ...
+        {handles.h_peakTrace, handles.h_trouTrace}, ...
+        {handles.peakDataBuffer, handles.trouDataBuffer}, ...
+        {handles.pkStorage1, handles.trStorage1; ...
+         handles.pkP1,       handles.trP1; ...
+         handles.pkStorage2, handles.trStorage2});
+
+    % additional phase tracking buffers & plots
+
+    handles.peakDataBuffer = phBuffers{1}; handles.trouDataBuffer = phBuffers{2}; 
+
+    handles.pkStorage1   = phStorage{1,1}; handles.pkP1   = phStorage{2,1}; 
+    handles.pkStorage2   = phStorage{3,1}; 
+    handles.trStorage1   = phStorage{1,2}; handles.trP1   = phStorage{2,2}; 
+    handles.trStorage2   = phStorage{3,2}; 
 
     % update YData of ax_rawData
     if ~(length(handles.rawDataBuffer) == handles.bufferSize)
@@ -671,6 +686,13 @@ function pop_RedStim_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from pop_RedStim
 contents = cellstr(get(hObject,'String'));
 RedStim = contents{get(hObject,'Value')};
+if strcmpi(RedStim, 'Peak')
+    RedStim = 1;
+elseif strcmpi(RedStim, 'Trough')
+    RedStim = 2;
+else
+    RedStim = 0;
+end
 handles.StimMode.red = RedStim; 
 guidata(hObject, handles);
 
@@ -699,6 +721,13 @@ function pop_YellowStim_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from pop_YellowStim
 contents = cellstr(get(hObject,'String'));
 YellowStim = contents{get(hObject,'Value')};
+if strcmpi(YellowStim, 'Peak')
+    YellowStim = 1;
+elseif strcmpi(YellowStim, 'Trough')
+    YellowStim = 2;
+else
+    YellowStim = 0;
+end
 handles.StimMode.yellow = YellowStim; 
 guidata(hObject, handles);
 
@@ -727,6 +756,13 @@ function pop_GreenStim_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from pop_GreenStim
 contents = cellstr(get(hObject,'String'));
 GreenStim = contents{get(hObject,'Value')};
+if strcmpi(GreenStim, 'Peak')
+    GreenStim = 1;
+elseif strcmpi(GreenStim, 'Trough')
+    GreenStim = 2;
+else
+    GreenStim = 0;
+end
 handles.StimMode.green = GreenStim; 
 guidata(hObject, handles);
 
@@ -754,6 +790,13 @@ function pop_StopStim_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from pop_StopStim
 contents = cellstr(get(hObject,'String'));
 StopStim = contents{get(hObject,'Value')};
+if strcmpi(StopStim, 'Peak')
+    StopStim = 1;
+elseif strcmpi(StopStim, 'Trough')
+    StopStim = 2;
+else
+    StopStim = 0;
+end
 handles.StimMode.Stopped = StopStim; 
 guidata(hObject, handles);
 

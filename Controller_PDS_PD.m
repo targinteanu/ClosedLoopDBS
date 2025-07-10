@@ -30,14 +30,9 @@ if bp > bpThresh
                 StimMode = getfield(handles.StimMode, ParadigmPhase);
             catch
                 warning(['ParadigmPhase ',ParadigmPhase,' unrecognized.'])
-                StimMode = 'None';
+                StimMode = 0;
             end
-            if strcmpi(StimMode,'Peak')
-                ind2Q = 1;
-            end
-            if strcmpi(StimMode,'Trough')
-                ind2Q = 2;
-            end
+            ind2Q = StimMode;
         end
     end
 end
