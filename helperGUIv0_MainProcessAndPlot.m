@@ -76,7 +76,7 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
                     dataPh_(i2_) = true;
                 end
                 [phaseBuffers{iph}, oldPh{iph}] = CombineAndCycle(...
-                    phaseBuffers{iph}, dataPh_, N, M);
+                    phaseBuffers{iph}, dataPh_, N, M-StimulatorLagInd);
                 set(phaseTraceHandles{iph},'YData',0*plotLogical(phaseBuffers{iph}));
             end
 
