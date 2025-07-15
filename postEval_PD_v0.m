@@ -75,7 +75,8 @@ grid on; linkaxes(ax, 'x');
 end
 
 %% filter 
-dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,13,30, 0, 1024);
+myFilt = buildFIRBPF(SamplingFreq,13,30, 8);
+dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
 
 %% determine red/yellow/green phases of experiment 
 if ~isempty(SerialLog)

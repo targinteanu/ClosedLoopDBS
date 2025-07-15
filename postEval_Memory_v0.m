@@ -146,7 +146,8 @@ grid on; linkaxes(ax, 'x');
 end
 
 %% filter 
-dataOneChannel = Myeegfilt(dataOneChannel,SamplingFreq,4,9, 0, 1024);
+myFilt = buildFIRBPF(SamplingFreq,4,9, 8);
+dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
 
 %% select time of interest (manually)
 % TO DO: make this automatic, pulled from notes.txt ?
