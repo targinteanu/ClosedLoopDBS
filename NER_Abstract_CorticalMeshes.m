@@ -1,8 +1,9 @@
-
 %PD23N003 - 'pds002.ns2'
 %PD22N009 - 'datafile001.ns2'
 %PD22N008 - 'PD22N008.ns2'
 %PD23N009 - 'PDS001.ns2'
+
+%dataPath = 'C:\Users\cours\OneDrive\Desktop\Functional Neurosurg\Patient Data\';
 
 PD22N008_data = 'PD22N008.ns2';
 
