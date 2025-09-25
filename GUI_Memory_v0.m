@@ -87,6 +87,8 @@ svloc = ['Saved Data Memory',filesep,'Saved Data ',...
 pause(1)
 mkdir(svloc); 
 
+% ***** REPLACE BELOW: function should take in CharSerialCallback := 
+% @(hsrl, hevt) CharSerialCallbackReceiver_Memory_v0(hsrl, hevt, handles.textSrl, handles.ParadigmInfoTable)
 handles = helperGUIv0_OpeningInitialize(handles, ud, svloc);
 
 % additional phase tracking buffers & objects
