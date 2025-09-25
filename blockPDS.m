@@ -1,4 +1,4 @@
-function [t2phi, i2phi, phi_inst, f_inst] = ...
+function [t2phi, i2phi, phi_inst, f_inst, A_avg] = ...
     blockPDS(pastData, futureData, fs, phi, tmin, fmin, fmax)
 % Determine the time (s) and # samples to next desired phase phi from a
 % block of data sampled at a constant rate fs (Hz). Also return the current
@@ -13,7 +13,8 @@ function [t2phi, i2phi, phi_inst, f_inst] = ...
 N = size(pastData,1); M = size(futureData,1);
 blockData = [pastData; futureData];
 
-[phi_block, f_block] = instPhaseFreq(blockData, fs);
+[phi_block, f_block, A_block] = instPhaseFreq(blockData, fs);
+A_avg = mean(A_block);
 phi_inst = phi_block(N,:);
 f_block = max(f_block, fmin); 
 f_block = min(f_block, fmax);
