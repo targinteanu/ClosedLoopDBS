@@ -1,6 +1,7 @@
 function handles = helperGUIv0_pushAR(handles, PDSwin, n)
 
-    handles.PDSwin2 = ceil(.8*PDSwin); % set model forecast duration
+    %handles.PDSwin2 = ceil(.8*PDSwin); % set model forecast duration
+    handles.PDSwin2 = PDWsin; % minimize edge effects by putting point in middle
 
     % catch mistakes 
     if PDSwin > handles.bufferSize
@@ -8,6 +9,9 @@ function handles = helperGUIv0_pushAR(handles, PDSwin, n)
     end
     if handles.PDSwin1 <= handles.IndShiftFIR
         error('Forecast length does not overcome filter delay.')
+    end
+    if handles.PDSwin2 < 2*handles.fSample/handles.locutoff
+        error('Phase estimation window must allow at least two full cycles.')
     end
 
     y = handles.filtDataBuffer; 
