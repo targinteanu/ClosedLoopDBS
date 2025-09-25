@@ -27,7 +27,7 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
                 x = handles.filtDataBuffer((end-length(w)):(end-1));
                 ypred = w*x; 
                 E = handles.filtDataBuffer(end) - ypred; del = x*E;
-                del = del./(x'*x + eps); % normalize 
+                %del = del./(x'*x + eps); % normalize 
                 w = w + handles.ARlearnrate * del';
                 r = roots([1, -fliplr(w)]);
                 if max(abs(r)) < 1 % ensure stability
