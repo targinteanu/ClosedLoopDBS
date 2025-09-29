@@ -1,7 +1,7 @@
 function handles = helperGUIv0_pushAR(handles, PDSwin, n)
 
-    %handles.PDSwin2 = ceil(.8*PDSwin); % set model forecast duration
-    handles.PDSwin2 = PDSwin; % minimize edge effects by putting point in middle
+    handles.PDSwin2 = ceil(.8*PDSwin); % set model forecast duration
+    %handles.PDSwin2 = PDSwin; % minimize edge effects by putting point in middle
 
     % catch mistakes 
     if PDSwin > handles.bufferSize
