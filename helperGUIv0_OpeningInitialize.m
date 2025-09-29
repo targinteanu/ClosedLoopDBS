@@ -35,8 +35,8 @@ handles.ArtifactDuration = .04; % set artifact duration (seconds)
 handles.ArtifactStartBefore = .01; % artifact start uncertainty (seconds)
 handles.bpthresh = 1000; % min band power cutoff; orig at 1000
 handles.StimulatorLagTime = 0.03; % stimulate this many seconds early
-handles.PhaseOfInterest = [0, pi, nan, nan, nan];
-handles.PhaseOfInterestName = ["Peak", "Trough", "Phase3", "Phase4", "Phase5"];
+handles.PhaseOfInterest = [0, pi, nan, nan, nan, nan];
+handles.PhaseOfInterestName = ["Peak", "Trough", "Phase3", "Phase4", "Phase5", "Phase6"];
 handles.ARlearnrate = 0;
 
 % serial log storage

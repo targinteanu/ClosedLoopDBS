@@ -1,9 +1,7 @@
 function ind2Q = Controller_PDS_PD(srl, handles, bpData, bpThresh)
 % Based on latest serial comm, GUI-set preferences, and a chunk of recent
 % data, decide which index of the forecast buffer times is the time to next
-% stim, or return 0 if no stim. For now, this only supports peak (1) or
-% trough (2), but in the future it should be ammended to point to any index
-% in PhasesOfInterest field. 
+% stim, or return 0 if no stim. 
 
 if nargin < 4
     bpThresh = 1000; % min band power cutoff; orig at 1000
