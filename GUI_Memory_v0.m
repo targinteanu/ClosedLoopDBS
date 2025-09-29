@@ -534,10 +534,14 @@ function  StopMainLoop(hObject, eventdata, handles)
 % Command Window
 
 try
-    if handles.StimActive
-        stop(handles.QueuedStim)
+    if isfield(handles, 'StimActive')
+        if handles.StimActive
+            stop(handles.QueuedStim)
+        end
     end
-    handles.RunMainLoop = false;
+    if isfield(handles, 'RunMainLoop')
+        handles.RunMainLoop = false;
+    end
     guidata(hObject, handles)
 catch ME
     getReport(ME)
