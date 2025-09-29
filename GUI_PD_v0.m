@@ -85,8 +85,6 @@ svloc = ['Saved Data PD',filesep,'Saved Data ',...
 pause(1)
 mkdir(svloc); 
 
-% ***** REPLACE BELOW: function should take in CharSerialCallback, a
-% generic func of (hsrl, hevt) *****
 handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % additional phase tracking buffers & objects
