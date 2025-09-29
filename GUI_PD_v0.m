@@ -236,10 +236,10 @@ end
 
 
 function tgl_StartStop_ButtonDownFcn(hObject, eventdata, handles)
-keyboard
-tgl_StartStop_Callback(hObject, eventdata, handles)
-% This has been added for debugging. Does the code ever get here?
-
+%keyboard
+%tgl_StartStop_Callback(hObject, eventdata, handles)
+% This has been added for debugging. Most likely occurs when right click
+% instead of left. 
 
 % --- Executes on button press in tgl_StartStop.
 function tgl_StartStop_Callback(hObject, eventdata, handles)

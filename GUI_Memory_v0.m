@@ -231,8 +231,9 @@ end
 
 
 function tgl_StartStop_ButtonDownFcn(hObject, eventdata, handles)
-keyboard
-% This has been added for debugging. Does the code ever get here?
+%keyboard
+% This has been added for debugging. Most likely occurs when right click
+% instead of left. 
 
 
 % --- Executes on button press in tgl_StartStop.
@@ -313,7 +314,7 @@ end
 try
 % save stored data 
 phStorage = {handles.pkStorage1, handles.trStorage1, ...
-    handles.encStorage1, handles.decStorage1, handles.holdStorage1};
+    handles.encStorage1, handles.decStorage1, handles.holdStorage1, nan};
 for iph = 1:length(handles.PhaseOfInterest)
     phname = handles.PhaseOfInterestName(iph);
     phname = phname+"Time";
