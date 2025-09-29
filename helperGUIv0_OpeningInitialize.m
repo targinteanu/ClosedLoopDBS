@@ -1,4 +1,14 @@
-function handles = helperGUIv0_OpeningInitialize(handles, ud, svloc)
+function handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, srlfunc)
+% 
+% Automate & standardize the common opening steps in GUIv0 to be run in the
+% GUIDE opening function. 
+% 
+% handles: GUIDE hadles
+% ud: default UserData field for serialport object 
+% svloc: save location filepath 
+% srlfunc: serial receiver callback function that takes in
+%          (serialport_handle, event)
+% 
 
 % start receiver serial communication from paradigm computer
 handles.textSrl.String = 'attempting to start serial com here ...';
@@ -9,9 +19,7 @@ if ~noSerialSetup
 end
 receiverSerial.UserData = ud;
 if ~noSerialSetup
-configureCallback(receiverSerial,"terminator",...
-    @(hsrl,evt)CharSerialCallbackReceiver_Memory_v0(hsrl,evt, ...
-                    handles.textSrl, handles.ParadigmInfoTable));
+configureCallback(receiverSerial,"terminator",srlfunc);
 end
 handles.srl = receiverSerial; 
 handles.srlLastMsg  = ud.ReceivedData;

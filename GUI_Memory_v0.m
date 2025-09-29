@@ -80,6 +80,8 @@ ud = struct('ReceivedData', '', ...
             ...'ParadigmPhase', 'WAIT', ...
             'ParadigmPhase', 'HOLD', ...
             'ImageVisible', false);
+RecSrlCallback = @(hsrl,evt) CharSerialCallbackReceiver_Memory_v0(hsrl,evt, ...
+                    handles.textSrl, handles.ParadigmInfoTable);
 
 % save location
 svloc = ['Saved Data Memory',filesep,'Saved Data ',...
@@ -89,7 +91,7 @@ mkdir(svloc);
 
 % ***** REPLACE BELOW: function should take in CharSerialCallback := 
 % @(hsrl, hevt) CharSerialCallbackReceiver_Memory_v0(hsrl, hevt, handles.textSrl, handles.ParadigmInfoTable)
-handles = helperGUIv0_OpeningInitialize(handles, ud, svloc);
+handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % additional phase tracking buffers & objects
 emptyStorage = nan(100000,1);
