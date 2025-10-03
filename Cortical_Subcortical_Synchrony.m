@@ -3,42 +3,367 @@
 %PD22N008 - 'PD22N008.ns2'
 %PD23N009 - 'PDS001.ns2'
 
-Patient_Folder_Path = 'C:\Users\cours\OneDrive\Desktop\Functional Neurosurg\Patient Data\';
 
-Patient_ID = 'PD22N009'; 
+Patient_ID = 'PD25N009';
+Patient_Folder_Path = 'C:\Users\cours\Downloads\AndersonLabDataAndPackages\Patient Data';
 
-Data_File = 'datafile001.ns2';
-dataPath = fullfile(Patient_Folder_Path, Patient_ID, Data_File);
+NO_timetable_name = 'SavedTable_Distances_1375Hz1.mat';  
+NO_to_BR_ch = 'CMacro_LFP_AP_T';
+BR_to_NO_ch = 'AINP2';
 
-disp(dataPath);
-%PD22N009%%%%%%%%%%%%%%%%%%%%%%
+ns_files = { ...
+    'baseline001.ns2', ...
+    'DBS004.ns2', ...
+    'memory003.ns2' ...
+    }; 
 
-Phase_Data = obtainPhase(dataPath, 'beta', 1, 100000); % (Baseline data 1-10,000) Get the phase data from every channel (
-Channel_Names = getChannelNames(dataPath);
+target_window = [-1 4];  
+target_channel = 'CMacro_LFP_AP_T';
+minDurSec = 20;    
 
-disp('worked')
+% ----------- Load NO Data -----------
+NO_timetable_path = fullfile(Patient_Folder_Path, Patient_ID, NO_timetable_name);
+NO_timetable_OG = load(NO_timetable_path);
+
+NO_timetable_unmodified = sortrows(NO_timetable_OG.Tbl, 'Time');
+NO_SamplingFreq = 1375; 
+NO_timetable = myRetime(NO_timetable, NO_SamplingFreq, 0, 2);
+
+NO_targetDist_unmodified = NO_timetable.("targetDistance");
+NO_signal_unmodified = NO_timetable.(NO_to_BR_ch); % or other channel
+
+% ----------- Load BR Data -----------
+ns_timetables = cell(size(ns_files));
+for k = 1:numel(ns_files)
+    ns_path = fullfile(Patient_Folder_Path, Patient_ID, ns_files{k});
+    disp(['Loading: ', ns_path])
+    ns = openNSx(ns_path);
+    if k == 1
+        BR_SamplingFreq = ns.MetaTags.SamplingFreq; % only need once
+        disp(['BR Sampling Freq = ', num2str(BR_SamplingFreq)])
+    end
+    ns_timetables{k} = ns2timetable(ns_path);
+end
+
+combined_tt = vertcat(ns_timetables{:});
+combined_tt = sortrows(combined_tt, 'Time');
+BR_timetable = myRetime(combined_tt, BR_SamplingFreq, 0, 2);
+
+% ----------- Resample NO data to BR sampling rate -----------
+NO_targetDist = resample(NO_targetDist_unmodified, BR_SamplingFreq, NO_SamplingFreq);
+NO_signal     = resample(NO_signal_unmodified, BR_SamplingFreq, NO_SamplingFreq);
+
+% Extract BR signal
+BR_signal   = BR_timetable.(BR_to_NO_ch);
 
 
+%%
+
+% --- Step 1: Ensure column vectors ---
+BR_signal = double(BR_signal(:));
+NO_signal = double(NO_signal(:));
+
+% --- Step 2: Clip signals to [-1000, 2000] ---
+BR_signal(BR_signal > 2000)  = 2000;
+BR_signal(BR_signal < -1000) = -1000;
+NO_signal(NO_signal > 2000)  = 2000;
+NO_signal(NO_signal < -1000) = -1000;
+
+% % --- Step 3: Demean (after clipping) ---
+BR_signal = BR_signal - mean(BR_signal);
+NO_signal = NO_signal - mean(NO_signal);
+
+% --- Step 4: Time vectors ---
+t_BR = (0:length(BR_signal)-1)' / BR_SamplingFreq;
+t_NO = (0:length(NO_signal)-1)' / BR_SamplingFreq;
+t_NO_dist = (0:length(NO_targetDist)-1)' / BR_SamplingFreq;
+
+% --- Step 5: Plot pre-alignment signals ---
+figure;
+subplot(3,1,1);
+plot(t_BR, BR_signal, 'b');
+xlabel('Time (s)'); ylabel('Amplitude');
+title('BR\_signal (clipped + demeaned, pre-alignment)');
+ylim([-1000 2000]);
+
+subplot(3,1,2);
+plot(t_NO, NO_signal, 'r');
+xlabel('Time (s)'); ylabel('Amplitude');
+title('NO\_signal (clipped + demeaned, pre-alignment)');
+ylim([-1000 2000]);
+
+subplot(3,1,3);
+plot(t_NO_dist, NO_targetDist, 'r');
+xlabel('Time (s)'); ylabel('Amplitude');
+title('NO\_targetDist (clipped + demeaned, pre-alignment)');
+ylim([-5 25]);
+
+
+%%
+
+threshold   = 1;       % cutoff (±threshold)
+gapTolSec   = 10;     % merge gaps shorter than this (seconds)
+fs          = BR_SamplingFreq; 
+t           = t_NO_dist(:);
+x           = NO_targetDist(:);
+
+% Step 1: Mask valid samples (within ±threshold, nonzero, not NaN)
+validWithin = (abs(x) < threshold) & (x ~= 0) & isfinite(x);
+
+% Step 2: Find contiguous runs
+d = diff([false; validWithin; false]);
+starts = find(d == 1);
+ends   = find(d == -1) - 1;
+
+% Step 3: Merge runs with small gaps
+if ~isempty(starts)
+    mergedS = starts(1);
+    mergedE = ends(1);
+    S = []; E = [];
+    for k = 2:numel(starts)
+        gapDur = (starts(k) - mergedE - 1) / fs;
+        if gapDur <= gapTolSec
+            mergedE = ends(k);       % extend current run
+        else
+            S(end+1,1) = mergedS; %#ok<AGROW>
+            E(end+1,1) = mergedE; %#ok<AGROW>
+            mergedS = starts(k);
+            mergedE = ends(k);
+        end
+    end
+    S(end+1,1) = mergedS;
+    E(end+1,1) = mergedE;
+else
+    S = []; E = [];
+end
+
+% Step 4: Compute durations
+dur = (E - S + 1) / fs;
+
+% Step 5: Report all regions
+SegTable = table(t(S), t(E), dur, ...
+    'VariableNames', {'StartTime_s','EndTime_s','Duration_s'});
+disp(SegTable);
+
+% Step 6: Plot with highlights
+figure; 
+plot(t, x, 'k'); hold on; grid on;
+yline(threshold, '--r', '+Threshold');
+yline(-threshold, '--r', '-Threshold');
+xlabel('Time (s)'); ylabel('targetDist');
+title('|targetDist| < threshold regions (ignoring 0, merged gaps)');
+
+yl = ylim;
+for i = 1:numel(S)
+    patch([t(S(i)) t(E(i)) t(E(i)) t(S(i))], ...
+          [yl(1) yl(1) yl(2) yl(2)], ...
+          [0.85 0.3 0.3], 'FaceAlpha', 0.2, 'EdgeColor','none');
+end
+uistack(findobj(gca,'Type','line'),'top'); % keep trace visible
+%%
+%% Apply lag correction to full signals
+fs = 1000;                % assumed common rate (NO already resampled to fs)
+duration = 500;          % seconds used for xcorr window
+N = fs*duration;
+
+% --- segments for lag ---
+BR_seg = BR_signal(end-N+1:end);
+NO_seg = NO_signal(end-N+1:end);
+
+[c,l] = xcorr(NO_seg-mean(NO_seg), BR_seg-mean(BR_seg), 'coeff');
+[~,i] = max(c); lag = l(i); lag_s = lag/fs;
+
+% --- quick aligned-overlap view (no sample alteration, just slicing) ---
+if lag >= 0, i0_BR = 1;          i0_NO = lag+1;
+else         i0_BR = -lag + 1;   i0_NO = 1;     end
+L = min(numel(BR_seg)-i0_BR+1, numel(NO_seg)-i0_NO+1);
+t_ov = (0:L-1)/fs;
+
+figure;
+subplot(2,1,1); plot(l/fs, c), grid on; xlabel('Lag (s)'); ylabel('r'); title('XCorr');
+subplot(2,1,2); plot(t_ov, BR_seg(i0_BR:i0_BR+L-1)), hold on
+plot(t_ov, NO_seg(i0_NO:i0_NO+L-1)), grid on
+title(sprintf('Aligned overlap (lag = %.3f s)', lag_s)); legend('BR','NO')
+
+% --- anchor full NO timeline onto BR clock (end-anchor) ---
+t_BR_full = BR_timetable.Time;
+
+t_BR_anchor = BR_timetable.Time(iBR_start);
+t_NO_anchor = NO_timetable.Time(iNO_start);
+
+offset = (t_BR_anchor - seconds(lag_s)) - t_NO_anchor;
+t_NO_on_BR = NO_timetable.Time + offset;
+
+
+NO_resampled_tt = array2timetable(NO_resampled_matrix, ...
+    'RowTimes', t_NO_on_BR, ...
+    'VariableNames', sigVars);
+
+% Add targetDistance
+NO_on_BR = [NO_resampled_tt, timetable(NO_targetDist, ...
+    'RowTimes', t_NO_on_BR, ...
+    'VariableNames', {'targetDistance'})];
+
+
+% NO_on_BR = timetable(t_NO_on_BR, NO_signal, NO_targetDist, ...
+%     'VariableNames', {NO_to_BR_ch, 'targetDistance'});
+
+%%
+% MATLAB version
+
+fs = 1000;            % sampling rate
+duration = 1500;      % seconds
+N = fs * duration;    % number of samples
+
+% Take last 1500s
+BR_seg = BR_signal(end-N+1:end);
+NO_seg = NO_signal(end-N+1:end);
+
+% Cross correlation
+[corr_vals, lags] = xcorr(NO_seg - mean(NO_seg), BR_seg - mean(BR_seg), 'coeff');
+[~, idx] = max(corr_vals);
+lag = lags(idx);
+
+% Align
+if lag > 0
+    NO_aligned = NO_seg(lag+1:end);
+    BR_aligned = BR_seg(1:end-lag);
+elseif lag < 0
+    BR_aligned = BR_seg(-lag+1:end);
+    NO_aligned = NO_seg(1:end+lag);
+else
+    BR_aligned = BR_seg;
+    NO_aligned = NO_seg;
+end
+
+% Plot pre and post syncing
+t = (0:length(BR_seg)-1)/fs;
+
+subplot(2,1,1)
+plot(lags/fs, corr_vals)
+xlabel('Lag (s)')
+ylabel('Correlation coeff')
+title('Cross-correlation between NO and BR')
+grid on
+
+subplot(2,1,2)
+plot(t(1:length(BR_aligned)), BR_aligned), hold on
+plot(t(1:length(NO_aligned)), NO_aligned)
+title(['After syncing, lag = ' num2str(lag/fs) ' sec'])
+legend('BR','NO')
+
+
+%% Apply lag correction to full signals
+% MATLAB version
+
+fs = 1000;            % sampling rate
+duration = 1500;      % seconds
+N = fs * duration;    % number of samples
+
+% Take last 1500s
+BR_seg = BR_signal(end-N+1:end);
+NO_seg = NO_signal(end-N+1:end);
+
+% Cross correlation
+[corr_vals, lags] = xcorr(NO_seg - mean(NO_seg), BR_seg - mean(BR_seg), 'coeff');
+[~, idx] = max(corr_vals);
+lag = lags(idx);
+
+% Align
+if lag > 0
+    NO_aligned = NO_seg(lag+1:end);
+    BR_aligned = BR_seg(1:end-lag);
+elseif lag < 0
+    BR_aligned = BR_seg(-lag+1:end);
+    NO_aligned = NO_seg(1:end+lag);
+else
+    BR_aligned = BR_seg;
+    NO_aligned = NO_seg;
+end
+
+% Plot pre and post syncing
+t = (0:length(BR_seg)-1)/fs;
+
+subplot(2,1,1)
+plot(lags/fs, corr_vals)
+xlabel('Lag (s)')
+ylabel('Correlation coeff')
+title('Cross-correlation between NO and BR')
+grid on
+
+subplot(2,1,2)
+plot(t(1:length(BR_aligned)), BR_aligned), hold on
+plot(t(1:length(NO_aligned)), NO_aligned)
+title(['After syncing, lag = ' num2str(lag/fs) ' sec'])
+legend('BR','NO')
+
+
+
+
+%% --- Build syncTime vector for NO timetable ---
+
+% Suppose BR_timetable.Time is datetime, and NO_timetable.Time is in seconds (duration)
+% We'll anchor the *first aligned NO sample* to the *first aligned BR sample*
+
+% Find the indices of the aligned segments inside the full signals
+if lag > 0
+    % NO was lagging, so alignment started later in NO
+    anchor_BR_idx = 1;
+    anchor_NO_idx = 1 + lag;
+elseif lag < 0
+    % BR was lagging, so alignment started later in BR
+    anchor_BR_idx = 1 - lag;
+    anchor_NO_idx = 1;
+else
+    % Perfect alignment from the start
+    anchor_BR_idx = 1;
+    anchor_NO_idx = 1;
+end
+
+% Anchor times
+anchor_BR_time = BR_timetable.Time(anchor_BR_idx);
+anchor_NO_time = NO_timetable.Time(anchor_NO_idx);
+
+% Now map every NO sample index to BR time
+NO_idx = (0:height(NO_timetable)-1)';  % zero-based indices for NO
+NO_timetable.syncTime = anchor_BR_time + seconds((NO_idx - (anchor_NO_idx-1)) / fs);
+
+
+
+head(NO_timetable(:, 'syncTime'))
+
+
+
+
+%%
+
+Phase_Data = obtainPhase(ns_path, 'beta', 1, 100000); % (Baseline data 1-10,000) Get the phase data from every channel (
+Channel_Names = getChannelNames(ns_path);
+
+disp('Obtained Phase Data')
 PLV_VectorMatrix = compute_PLV_VectorMatrix(Phase_Data); %Get the PLV vector matrix for every channel (64x64)
 PLV_Average = getAveragePLV(PLV_VectorMatrix); %Get the Average PLV for every channel (64x1)
+disp('Calculated PLV Vector Matrix')
+
 ref_channel = 34;
 PLV_Relative_ref = getPLV_wrt_Ref(PLV_VectorMatrix, ref_channel); %Get PLV relative to ref channel (64x1)
+disp('Calculated PLV wrt Reference')
+
+
+
 
 plot_PLV_Relative(Phase_Data,PLV_Relative_ref, ref_channel, Channel_Names);  %Plot a 21x3 grid - color corresponds to PLV wrt ref channel, # corresponds to avg. phase difference wrt ref channel
 
+%%
 
 lh_pial_path = [Patient_Folder_Path Patient_ID '\freesurfer\surf\lh.pial'];
-
 ACPC_Path = [Patient_Folder_Path Patient_ID '\Subject' Patient_ID '_elec_acpc_fr.mat'];
 FSAVG_Path = [Patient_Folder_Path Patient_ID '\Subject' Patient_ID '_elec_fsavg_frs.mat'];
-
-
 
 disp(lh_pial_path)
 disp(ACPC_Path)
 
 load_ACPC_FR_mesh(ACPC_Path, lh_pial_path, PLV_Relative_ref);
-
 load_FSAVG_FRS_mesh(FSAVG_Path, lh_pial_path, PLV_Relative_ref);
 
 
@@ -90,6 +415,7 @@ function load_ACPC_FR_mesh(acpc_path, pial_lh_path, data)
     elec_acpc_fr = load(acpc_path).elec_acpc_fr;
     pial_lh = ft_read_headshape(pial_lh_path);
     pial_lh.coordsys = 'acpc';
+    
 
     pial_lh = ft_convert_units(pial_lh, 'mm');
     elec_acpc_fr = ft_convert_units(elec_acpc_fr, 'mm');
@@ -154,7 +480,7 @@ function load_FSAVG_FRS_mesh(fsavg_path, pial_lh_path, data)
 
     % === Step 1: Load Electrode Positions and Mesh ===
     elec_fsavg = load(fsavg_path).elec_fsavg_frs;
-    pial_lh = ft_read_headshape('lh.pial');
+    pial_lh = ft_read_headshape(pial_lh_path);
     pial_lh.coordsys = 'fsaverage';
 
     pial_lh = ft_convert_units(pial_lh, 'mm');
@@ -210,7 +536,6 @@ function load_FSAVG_FRS_mesh(fsavg_path, pial_lh_path, data)
     cmap_with_red = [base_cmap; red_color];
     colormap(gca, cmap_with_red);
 
-    % === Step 8: Also plot electrodes ===
     elec_plot_colors = data;
     elec_plot_colors(ref_idx) = 1.001;  % manually set reference channels to red
     ft_plot_sens(elec_fsavg, 'elecsize', 35, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
