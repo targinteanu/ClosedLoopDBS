@@ -34,7 +34,11 @@ Tblsel = Tbl(selind,:);
 
 x = Tblsel.CLFP_01; 
 
-phif = 10:1:35; ampf = 30:5:200;
+PACwin = 10; % s 
+PACwin = ceil(PACwin/Ts); % samples
+numwin = floor(length(x)/PACwin);
+
+phif = 5:2:50; ampf = 20:5:200;
 phibw = 2; ampbw = 5;
 phiflt = arrayfun(@(f) buildFIRBPF(1/Ts, f-phibw, f+phibw), ...
     phif, 'UniformOutput',false);
@@ -43,18 +47,22 @@ ampflt = arrayfun(@(f) buildFIRBPF(1/Ts, f-ampbw, f+ampbw), ...
 
 Xa = repmat(x,1,length(ampf)); Xp = repmat(x,1,length(phif));
 for a = 1:width(Xa)
-    Xa(:,a) = filtfilt(ampflt{a},1,x);
+    Xa(:,a) = abs(hilbert(filtfilt(ampflt{a},1,x)));
 end
 for p = 1:width(Xp)
-    Xp(:,p) = filtfilt(phiflt{p},1,x);
+    Xp(:,p) = angle(hilbert(filtfilt(phiflt{p},1,x)));
 end
 
-PAC = nan(length(ampf), length(phif));
-for p = 1:width(PAC)
-    for a = 1:height(PAC)
-        PAC(a,p) = calcPAC(Xp(:,p),Xa(:,a));
+PAC3 = nan(length(ampf), length(phif), numwin);
+for p = 1:width(PAC3)
+    for a = 1:height(PAC3)
+        for w = 1:numwin
+            W = (1:PACwin)+w-1;
+            PAC3(a,p,w) = calcPAChelper(Xp(W,p),Xa(W,a));
+        end
     end
 end
+PAC = mean(PAC3,3);
 
 figure; imagesc(PAC); colorbar;
 xticks(1:length(phif)); xticklabels(string(phif)); xlabel('Phase center freq.');
