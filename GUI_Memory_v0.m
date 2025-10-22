@@ -80,6 +80,8 @@ ud = struct('ReceivedData', '', ...
             ...'ParadigmPhase', 'WAIT', ...
             'ParadigmPhase', 'HOLD', ...
             'ImageVisible', false);
+RecSrlCallback = @(hsrl,evt) CharSerialCallbackReceiver_Memory_v0(hsrl,evt, ...
+                    handles.textSrl, handles.ParadigmInfoTable);
 
 % save location
 svloc = ['Saved Data Memory',filesep,'Saved Data ',...
@@ -87,9 +89,7 @@ svloc = ['Saved Data Memory',filesep,'Saved Data ',...
 pause(1)
 mkdir(svloc); 
 
-% ***** REPLACE BELOW: function should take in CharSerialCallback := 
-% @(hsrl, hevt) CharSerialCallbackReceiver_Memory_v0(hsrl, hevt, handles.textSrl, handles.ParadigmInfoTable)
-handles = helperGUIv0_OpeningInitialize(handles, ud, svloc);
+handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % additional phase tracking buffers & objects
 emptyStorage = nan(100000,1);
@@ -229,8 +229,9 @@ end
 
 
 function tgl_StartStop_ButtonDownFcn(hObject, eventdata, handles)
-keyboard
-% This has been added for debugging. Does the code ever get here?
+%keyboard
+% This has been added for debugging. Most likely occurs when right click
+% instead of left. 
 
 
 % --- Executes on button press in tgl_StartStop.
@@ -311,7 +312,7 @@ end
 try
 % save stored data 
 phStorage = {handles.pkStorage1, handles.trStorage1, ...
-    handles.encStorage1, handles.decStorage1, handles.holdStorage1};
+    handles.encStorage1, handles.decStorage1, handles.holdStorage1, nan};
 for iph = 1:length(handles.PhaseOfInterest)
     phname = handles.PhaseOfInterestName(iph);
     phname = phname+"Time";
@@ -532,10 +533,14 @@ function  StopMainLoop(hObject, eventdata, handles)
 % Command Window
 
 try
-    if handles.StimActive
-        stop(handles.QueuedStim)
+    if isfield(handles, 'StimActive')
+        if handles.StimActive
+            stop(handles.QueuedStim)
+        end
     end
-    handles.RunMainLoop = false;
+    if isfield(handles, 'RunMainLoop')
+        handles.RunMainLoop = false;
+    end
     guidata(hObject, handles)
 catch ME
     getReport(ME)

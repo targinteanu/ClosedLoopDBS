@@ -40,6 +40,9 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
             % use AR model to get some future data 
             StimulatorLagInd = round(handles.fSample*handles.StimulatorLagTime);
             dataPast = handles.filtDataBuffer; 
+            if length(dataPast) < handles.PDSwin1
+                error('Display window is not long enough for phase prediction window.')
+            end
             dataPast = dataPast((end-handles.PDSwin1+1):end);
             dataFutu = myFastForecastAR(Mdl, dataPast, handles.PDSwin1);
             if ARupdated

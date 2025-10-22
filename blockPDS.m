@@ -30,7 +30,7 @@ T=1/f_inst;
 % examine the next full phase cycle
 imin = ceil(tmin*fs); phi_future = phi_block((N+imin):end,:);
 phi_fut_1 = phi_future(1); phi_fut_ = unwrap(phi_future);
-[~,phi_fut_end] = min(abs(phi_fut_-(2*pi + phi_fut_1)));
+[~,phi_fut_end] = min(abs(phi_fut_-(2*pi + phi_fut_1))); % !!!!! CHANGE THIS to something like findpeaks to avoid getting more than one cycle
 phi_fut_end = min(length(phi_future), phi_fut_end+1);
 phi_future = phi_future(1:phi_fut_end);
 
