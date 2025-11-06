@@ -45,40 +45,6 @@ amp = abs(hilbert(xAmp));
 t1 = floor(.1*L); t2 = ceil(.9*L);
 phi = phi(t1:t2); amp = amp(t1:t2);
 
-% bin based on phase 
-bedge = linspace(-pi, pi, nbin+1);
-bcent = bedge(2:end) + bedge(1:end-1); bcent = .5*bcent;
-bind = discretize(phi, bedge); % could also use histcounts
-
-% normalized mean amplitude
-binamp = arrayfun(@(b) mean(amp(bind==b)), 1:nbin);
-P = binamp/sum(binamp); % Normalized amplitude distribution
-% Phase-Amplitude Plot (fig. 1e)
-if ~isempty(hax_PhaseAmpPlot)
-    cl = class(hax_PhaseAmpPlot);
-    cl = lower(cl);
-    if contains(cl, 'axis') || contains(cl, 'axes')
-        % put the plot on the provided axis handle
-        if contains(cl, 'polar')
-            polarplot(hax_PhaseAmpPlot, [bcent, bcent(1)], [P, P(1)], 'LineWidth',1);
-        else
-            bar(hax_PhaseAmpPlot, bcent, P); 
-            xlabel(hax_PhaseAmpPlot, 'Phase (radians)');
-            ylabel(hax_PhaseAmpPlot, 'Normalized amplitude distribution');
-        end
-    elseif islogical(hax_PhaseAmpPlot) || isnumeric(hax_PhaseAmpPlot)
-        if hax_PhaseAmpPlot
-        % if 'true' was passed in, put the plot in a new figure
-        fig1 = figure; polarplot([bcent, bcent(1)], [P, P(1)], 'LineWidth',1);
-        title('Phase-Amplitude Plot');
-        subtitle('Normalized amplitude distribution');
-        end
-    end
-end
-
-% modulation index 
-H = -sum(P.*log(P)); % Shannon entropy 
-DKL = log(nbin) - H; % KL distance compared to uniform distribution
-MI = DKL / log(nbin); 
+[MI, P, bcent, fig1] = calcPAChelper(phi, amp, nbin, hax_PhaseAmpPlot);
 
 end
