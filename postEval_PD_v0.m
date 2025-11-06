@@ -14,6 +14,10 @@ cd(cd00);
 dataOneChannelWithArtifact = dataOneChannel; 
 t0 = t(1);
 
+stimtgtphase = inputdlg('Stimulation target phase (degrees):');
+stimtgtphase = (str2double(stimtgtphase));
+stimtgtphase = stimtgtphase*pi/180; % rad
+
 %% Get indexes of peaks, troughs, and stimulus pulses 
 PeakInd = PeakTime*SamplingFreq; 
 TroughInd = TroughTime*SamplingFreq; 
@@ -78,6 +82,13 @@ end
 myFilt = buildFIRBPF(SamplingFreq,13,30, 8);
 dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
 
+%% find ideal stim pattern 
+% Get inst. freq. and phase 
+[dataPhase, dataFreq] = instPhaseFreq(dataOneChannel, SamplingFreq);
+
+dtgt = radfix(dataPhase-stimtgtphase);
+[~,~,tgtInd] = zerocrossrate(dtgt, "TransitionEdge","rising");
+
 %% determine red/yellow/green phases of experiment 
 if ~isempty(SerialLog)
 expStates = {SerialLog.ParadigmPhase}';
@@ -103,7 +114,7 @@ end
 
 %% Plot time series 
 
-lgd = {'Data'; 'Peaks'; 'Troughs'; 'Stim Sent'; 'Stim Recd'}; 
+lgd = {'Data'; 'Peaks'; 'Troughs'; 'Stim Sent'; 'Stim Recd'; 'Tgt Stim'}; 
 lgdsel = true(size(lgd));
 
 % select the data to plot 
@@ -126,12 +137,17 @@ end
 if isempty(StimInd)
     lgdsel(4) = false;
 else
-    plot(t(StimInd),   dataOneChannel(StimInd),   '*r');
+    plot(t(StimInd),   dataOneChannel(StimInd),   '.r');
 end
 if isempty(StimTrainRec)
     lgdsel(5) = false;
 else
     plot(t(StimTrainRec), dataOneChannel(StimTrainRec), 'or');
+end
+if isempty(tgtInd)
+    lgdsel(6) = false;
+else
+    plot(t(tgtInd), dataOneChannel(tgtInd), '+r');
 end
 lgd = lgd(lgdsel);
 
@@ -165,9 +181,6 @@ end
 % label the plot 
 legend([lgd; expStatesU])
 
-%% Get inst. freq. and phase 
-[dataPhase, dataFreq] = instPhaseFreq(dataOneChannel, SamplingFreq);
-
 %% Plot polar histogram 
 figure; 
 subplot(121); polarhistogram(dataPhase(PeakInd),18); 
@@ -183,9 +196,13 @@ if isempty(expStateIT)
     % there is at most one stimulus cond 
     subplot(1,2,1);
     polarhistogram(dataPhase(StimInd),18);
+    %hold on; polarhistogram(dataPhase(tgtind), 18); 
+    %legend('Actual', 'Target');
     title('Stim Sent');
     subplot(1,2,2);
     polarhistogram(dataPhase(StimTrainRec),18);
+    %hold on; polarhistogram(dataPhase(tgtind), 18); 
+    %legend('Actual', 'Target');
     title('Stim Recd');
 else
 
@@ -195,14 +212,59 @@ for ESi = 1:length(expStatesU)
     %ESind = ESind(t(ESind) > datetime(2024,08,29,17,08,11));
     subplot(H*2,W,ESi);
     polarhistogram(dataPhase(ESind),18); 
+    %hold on; polarhistogram(dataPhase(tgtind), 18); 
+    %legend('Actual', 'Target');
     title(['Stim Sent during ',expState])
     ESind = expStateIT{ESi,5};
     subplot(H*2,W,ESi + H*W);
     polarhistogram(dataPhase(ESind),18); 
+    %hold on; polarhistogram(dataPhase(tgtind), 18); 
+    %legend('Actual', 'Target');
     title(['Stim Recd during ',expState])
 end
 
 end
+
+%% inter-stim interval
+
+tgtTimeAbs = t(tgtInd);
+StimIndRec = find(StimTrainRec); stimTimeAbs = t(StimIndRec);
+tgtISI = seconds(diff(tgtTimeAbs));
+stimISI = seconds(diff(stimTimeAbs));
+
+tgtTimeAbs = tgtTimeAbs(tgtTimeAbs >= stimTimeAbs(1)); % after stim began
+tgtTimeAbs = tgtTimeAbs(tgtTimeAbs <= stimTimeAbs(end)); % before stim ended
+
+if isempty(expStateIT)
+    numStimPeriods = 2; % assume 1 peak, 1 trough, or change this
+    stimISI = seconds(diff(stimTimeAbs));
+    stimprd = 1; 
+    while stimprd < numStimPeriods
+        [maxISI,maxISIind] = max(stimISI);
+        stimISI = stimISI([1:(maxISIind-1),(maxISIind+1):end]); 
+        indBefore = tgtTimeAbs <= stimTimeAbs(maxISIind);
+        if maxISIind < length(stimTimeAbs)
+            indAfter = tgtTimeAbs >= stimTimeAbs(maxISIind+1);
+        else
+            indAfter = false(size(indBefore));
+        end
+        tgtISI = tgtISI(indBefore | indAfter);
+        stimprd = stimprd+1;
+    end
+else
+    for ESi = 2:height(expStateIT)
+        t1 = expStateIT{ESi-1, 3}; t2 = expStateIT{ESI, 2};
+        tgtISI = tgtISI( (tgtTimeAbs >= t2) | (tgtTimeAbs <= t1) );
+        stimISI = stimISI( (stimTimeAbs >= t2) | (stimTimeAbs <= t1) );
+    end
+end
+
+figure; histogram(stimISI); hold on; grid on; histogram(tgtISI);
+xlabel('Seconds'); ylabel('Stim Count'); title('Inter-Stim Interval');
+legend('Actual', 'Ideal', 'Location','best');
+
+disp(['Actual: Mean ',num2str(mean(stimISI)),', SD ',num2str(std(stimISI)),' seconds'])
+disp(['Ideal: Mean ',num2str(mean(tgtISI)),', SD ',num2str(std(tgtISI)),' seconds'])
 
 %% polar hist blocks of time 
 % to do: this should pull in data from notes.txt
