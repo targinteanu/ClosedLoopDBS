@@ -34,7 +34,7 @@ if StimSel == 1
     HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
     HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
     HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
-    HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
+    HardwareFuncs.SetupStimTTL = @(~) error('TTL not enabled.'); 
     HardwareFuncs.PulseStimulator = @stimPulse_cerestim;
     HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;  
 elseif StimSel == 2
@@ -50,8 +50,13 @@ elseif StimSel == 2
 elseif StimSel == 3
     % AO AlphaRS; might also work with Neuro Omega (untested) 
     StimTriggerMode = false; 
-    HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
-    HardwareFuncs.SetStimTriggerMode = @(s) s; 
+    HardwareFuncs.SetupStimulator = @stimSetup_AO;
+    HardwareFuncs.ShutdownStimulator = @stimShutdown_AO;
+    HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_AO;
+    HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim; % should also work for AO
+    HardwareFuncs.SetupStimTTL = @(~) error('TTL not enabled.'); 
+    HardwareFuncs.PulseStimulator = @stimPulse_AO;
+    HardwareFuncs.SetStimTriggerMode = @(s) error('Trigger mode not implemented AO.'); 
 else
     % dummy mode / no stimulation 
     StimTriggerMode = false;
