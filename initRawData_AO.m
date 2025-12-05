@@ -55,10 +55,11 @@ for ch = 1:length(chnum)
     % are the same)
     % 
     if contains(chname_ch, 'LFP')
+        %{
         n = sscanf(chname_ch, 'LFP %f'); 
         chincl(ch) = (n < 97) && (n >= 33);
         Fs(ch) = 1875;
-        %{
+        %}
         %{
     elseif contains(chname_ch, 'SEG')
         % timestamp of threshold crossing (spike sorting)
@@ -66,16 +67,21 @@ for ch = 1:length(chnum)
         chincl(ch) = n < 97;
         Fs(ch) = 30000;
         %}
+        %{
     elseif contains(chname_ch, 'RAW')
         % unprocessed (no filering/downsampling) ver of other signals 
         n = sscanf(chname_ch, 'RAW %f'); 
         chincl(ch) = n < 11;
         Fs(ch) = 30000;
+        %}
+        %%{
     elseif contains(chname_ch, 'AI')
         % Analog In (?)
         n = sscanf(chname_ch, 'AI %f'); 
         chincl(ch) = n < 9;
-        % what is the sampling rate??
+        Fs(ch) = 3750; 
+        %{
+        %}
     elseif contains(chname_ch, 'SPK')
         n = sscanf(chname_ch, 'SPK %f');
         chincl(ch) = false;
@@ -102,11 +108,6 @@ if isempty(chsel)
     chsel = chnum;
 end
 chsel = double(chsel);
-
-emptyData = cell(1,length(chsel)); 
-contData = emptyData; 
-buffData = emptyData;
-chanInfo = emptyData;
 
 %% handle/check inputs 
 if length(bufferSize) < length(chsel)
@@ -145,16 +146,34 @@ AO_ClearChannelData();
 pause(1);
 
 % get initial data 
+doretry = true;
+while doretry
 [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel); 
 if Results == -3
     % no samples; give it more time 
-    pause(1); 
+    pause(.1); 
     [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);
 end
 if Results
+    [~,~,LastError] = AO_GetError();
+    [errchan, nerr] = sscanf(LastError, 'ERROR --> AO_GetAlignedData :: Channel %f has no samples');
+    if nerr > 0
+        warning(['Removing channel ',num2str(errchan),' due to error code ',num2str(Results)])
+        remchan = (chsel == errchan);
+        chsel = chsel(~remchan);
+        bufferSize = bufferSize(~remchan);
+        doretry = true;
+    else
     msg = ['Failed to acquire data with error code ',num2str(Results)];
     error(msg); % consider trying again until success 
+    end
+else
+    doretry = false;
 end
+end
+
+W = length(chsel);
+
 time = time/1510; % TO DO: make sure this is correct time in seconds!
 continuousData = continuousData(1:DataCapture); 
 L = DataCapture/W;
@@ -163,6 +182,11 @@ continuousData = reshape(continuousData, ...
 continuousData = double(continuousData);
 
 %% assign data to the structure 
+
+emptyData = cell(1,length(chsel)); 
+contData = emptyData; 
+buffData = emptyData;
+chanInfo = emptyData;
 
 for ch = 1:length(chsel)
     chInd = find(chnum == chsel(ch));

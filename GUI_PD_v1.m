@@ -574,7 +574,7 @@ catch ME
     getReport(ME)
     guidata(hObject, handles)
     stop(handles.timer)
-    keyboard
+    %keyboard
 end
 
     
