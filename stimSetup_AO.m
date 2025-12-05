@@ -17,6 +17,7 @@ end
 % StimSetupArgs was made for CereStim; convert these values to be more
 % useful for AO
 dur = StimSetupArgs.pulses/StimSetupArgs.frequency; % s
+dur = .9*dur;
 del = StimSetupArgs.interphase - StimSetupArgs.width1; % us
 StimArgs = struct(...
     'StimChannel', StimSetupArgs.channel2, ...
