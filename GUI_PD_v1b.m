@@ -186,7 +186,7 @@ function cmd_cbmexOpen_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 try
 
-handles = helperGUIv1_DAQopen(handles);
+handles = helperGUIv1b_DAQopen(handles);
 
 guidata(hObject,handles)
 
@@ -200,20 +200,8 @@ function cmd_cbmexClose_Callback(hObject, eventdata, handles)
 % hObject    handle to cmd_cbmexClose (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.HardwareFuncs.ShutdownRecording();
 handles.DAQstatus = false;
-[dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
-    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-        handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
-if ~dataRecd
-    warning('Polling data queue timed out.')
-    keyboard
-end
-cancel(handles.f_PhaseDetect); 
-cancelAll(handles.pool.FevalQueue);
-
-% handles = connectSerial(handles); % ?
 guidata(hObject,handles)
 
 function txt_display_Callback(hObject, eventdata, handles)
@@ -239,9 +227,8 @@ end
 
 
 function tgl_StartStop_ButtonDownFcn(hObject, eventdata, handles)
-keyboard
-tgl_StartStop_Callback(hObject, eventdata, handles)
-% Unclear why the code sometimes gets here instead of Callback below. 
+% This has been added for debugging. Most likely occurs when right click
+% instead of left. 
 
 
 % --- Executes on button press in tgl_StartStop.
@@ -267,12 +254,14 @@ if get(hObject,'Value') == 1
 
     % This starts the timer and also executes the StartFnc which grabs the
     % data, creates the buffer and plots the first bit of data
-    start(handles.timer)
+    % start(handles.timer)
+    StartMainLoop(hObject, eventdata, handles);
     
 % Stop
 else
     set(hObject,'String','Start')
-    stop(handles.timer)
+    % stop(handles.timer)
+    StopMainLoop(hObject, eventdata, handles);
 end
 
 % --- Executes on selection change in pop_channels.
@@ -309,6 +298,8 @@ drawnow
 try
 % stop stim
 if handles.StimActive
+    stop(handles.QueuedStim)
+    handles.HardwareFuncs.ShutdownStimulator(handles.stimulator);
     handles.StimActive = false;
     guidata(hObject, handles)
     setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 0);
@@ -318,45 +309,55 @@ catch ME1
 end
 
 try
-handles.HardwareFuncs.ShutdownRecording();
-handles.DAQstatus = false;
-[dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
-    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-        handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
-if ~dataRecd
-    warning('Polling data queue timed out.')
-    %keyboard
+% save stored data 
+phStorage = {handles.pkStorage1, handles.trStorage1, ...
+    handles.redStorage1, handles.yelStorage1, handles.grnStorage1, handles.stpStorage1};
+for iph = 1:length(handles.PhaseOfInterest)
+    phname = handles.PhaseOfInterestName(iph);
+    phname = phname+"Time";
+    phStorage1 = phStorage{iph};
+    if numel(phStorage1)
+        if sum(~isnan(phStorage1))
+            %assignin("caller",phname,phStorage1);
+            eval(phname+" = phStorage1;");
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+            disp("Saving "+phname+" to "+svfn)
+            save(svfn,phname);
+            handles.SaveFileN = handles.SaveFileN + 1;
+        end
+    end
+end
+StimTime = handles.stStorage1;
+if numel(StimTime)
+    if sum(~isnan(StimTime))
+        svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+        disp(['Saving Stimulus to ',svfn])
+        save(svfn,'StimTime');
+        handles.SaveFileN = handles.SaveFileN + 1;
+    end
+end
+SerialLog = handles.srlStorage1;
+svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+disp(['Saving Serial to ',svfn])
+save(svfn,'SerialLog');
+disp('Saving all data...')
+ConsolidateSavedData(handles.SaveFileLoc)
+catch ME2
+    getReport(ME2)
 end
 
-if ~isempty(handles.f_PhaseDetect)
-    cancel(handles.f_PhaseDetect); 
-end
-cancelAll(handles.pool.FevalQueue);
+try
+handles.HardwareFuncs.ShutdownRecording();
+handles.DAQstatus = false;
 guidata(hObject, handles)
-stop(handles.timer)
-delete(handles.timer)
+%stop(handles.timer)
+StopMainLoop(hObject,eventdata,handles)
+%delete(handles.timer)
 if ~handles.SerialArgs.NoSerial
     delete(handles.srl);
 end
 catch ME3
     getReport(ME3)
-end
-
-try
-% save stored data 
-% TO DO: if Stim/PeakTrough are all nan or SerialLog has only nan
-% timestamps, do not save that variable 
-Stim = handles.stStorage; PeakTrough = handles.phStorage;
-SerialLog = handles.srlStorage1;
-svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
-disp(['Saving Remaining Data to ',svfn])
-save(svfn, 'SerialLog', 'PeakTrough', 'Stim');
-disp('Saving all data...')
-ConsolidateSavedData_v1(handles.SaveFileLoc)
-catch ME2
-    getReport(ME2)
 end
 
 % Hint: delete(hObject) closes the figure
@@ -371,13 +372,15 @@ delete(hObject);
 function updateDisplay(obj, evt, hObject)
 
 handles = guidata(hObject);
+while handles.RunMainLoop
 
 try
 
     % ensure connection with hardware 
     handles = guidata(hObject);
     if ~handles.DAQstatus
-        stop(handles.timer)
+        %stop(handles.timer)
+        StopMainLoop(hObject,eventdata,handles)
     end
 
     % timing 
@@ -385,30 +388,36 @@ try
     timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
     handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
     guidata(hObject, handles);
+
+    % main iteration ================================================
+    selRaw2Flt = handles.selInds.selRaw2Flt;
+    selFlt2For = handles.selInds.selFlt2For;
+    selFor2Art = handles.selInds.selFor2Art;
+    selRaw2Art = handles.selInds.selRaw2Art;
+    selRaw2For = handles.selInds.selRaw2For;
+
+    rawData = handles.recDataStructs.rawD;
+    artRemData = handles.recDataStructs.artD;
+    fltData = handles.recDataStructs.fltD;
+    forData = handles.recDataStructs.forD;
+    timeBuffs = handles.recDataStructs.timeBuffs;
+    initTic = handles.recDataStructs.initTic;
+    forBuffs = handles.recDataStructs.forBuffs;
+
+    [...
+    timeBuffs, rawData, ...
+    artRemData, handles.artRemArgs, ...
+    fltData, handles.filtArgs, ...
+    forBuffs, forData, handles.foreArgs] = ...
+    iterReadBrain(...
+        timeBuffs, rawData, daqFun, ...
+        selRaw2Art, selFor2Art, selRaw2Flt, selRaw2For, selFlt2For, ...
+        artRemData, artRemFun, handles.artRemArgs, ...
+        fltData, fltFun, handles.filtArgs, ...
+        forBuffs, forData, forFun, handles.foreArgs);
+    % ===============================================================
     
-    % get data from Central
-    if handles.dataQueue.QueueLength > 1000 
-        % LIMIT DATA QUEUE LENGTH
-        cancel(handles.f_PhaseDetect);
-        cancelAll(handles.pool.FevalQueue);
-        %{
-        handles = connectSerial(handles);
-        guidata(hObject, handles);
-        %}
-        error('Data Queue Overflow');
-    end
-    [dataRecd, handles.SaveFileN, timeBuff, forBuff, tSt, ...
-    tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
-    rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
-    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-        handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
-    if ~dataRecd
-        error('Data aquisition timed out.')
-    end
-    lastSampleProcTime = timeBuff(end);
-    rawIDs = cellfun(@(s) s.IDnumber, rawD1);
+    lastSampleProcTime = timeBuffs{handles.channelIndex}(end);
 
     % x axes alignment 
     common_xlim = tPltRng - tNow;
@@ -461,7 +470,7 @@ try
         try
             handles.elecGridImg.CData = helperGUIv1_ElectrodeGridUpdate(...
                 handles.elecGridImg, handles.elecGridFunc, ...
-                handles.channelIDlist, rawIDs, rawD4, ...
+                handles.channelIDlist, handles.channelIDlist, rawData(4,:), ...
                 handles.bufferSizeGrid, handles.fSamples);
         catch ME4 
             getReport(ME4)
@@ -507,8 +516,10 @@ try
 catch ME 
     getReport(ME)
     guidata(hObject, handles)
-    stop(handles.timer)
+    %stop(handles.timer)
     %keyboard
+end
+
 end
 
     
@@ -533,13 +544,26 @@ try
 
     % setup data and initiate raw and timing plots
     [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
-        helperGUIv1_plotSetupRaw(handles, tNow);
+        helperGUIv1b_plotSetupRaw(handles, tNow);
 
     % initiate filtered data plot
     if handles.FilterSetUp
         try        
             handles = helperGUIv1_plotSetupFltMdl(handles, tNow, ...
                 fltPlt, forPlt, forBuff, tSt, common_xlim, unitname);
+            % setup additional phase-tracking buffers & plots
+            if handles.MdlSetUp
+                tR = forBuff(:,3); tY = forBuff(:,4); tG = forBuff(:,5); tS = forBuff(:,6);
+                axes(handles.ax_filt)
+                handles.h_redTrace = plot(handles.time0 + seconds(tR) - tNow, zeros(size(tR)), ...
+                    's', 'Color',"#A2142F");
+                handles.h_yelTrace = plot(handles.time0 + seconds(tY) - tNow, zeros(size(tY)), ...
+                    's', 'Color',"#EDB120");
+                handles.h_grnTrace = plot(handles.time0 + seconds(tG) - tNow, zeros(size(tG)), ...
+                    's', 'Color',"#77AC30");
+                handles.h_stpTrace = plot(handles.time0 + seconds(tS) - tNow, zeros(size(tS)), ...
+                    's', 'Color',"#7E2F8E");
+            end
         catch ME1
             getReport(ME1)
             errordlg(ME1.message, 'Filtering Issue');
@@ -552,18 +576,51 @@ try
         end
     end
 
+    % define input args for filtering/forecasting funcs 
+    selRaw2Flt = handles.selInds.selRaw2Flt;
+    selFlt2For = handles.selInds.selFlt2For;
+    selFor2Art = handles.selInds.selFor2Art;
+    selRaw2Art = handles.selInds.selRaw2Art;
+    selRaw2For = handles.selInds.selRaw2For;
+    Fs = handles.fSamples;
+    if FilterSetUp
+        fIC = arrayfun(@(ord) zeros(ord,1), handles.FilterOrder, 'UniformOutput',false);
+        filtArgs.fltInit = fIC; filtArgs.fltObj = {1; handles.BPF};
+        filtArgs.TimeShift = handles.FilterOrder(1)/(2*Fs(selRaw2Flt));
+        if MdlSetUp
+            foreArgs.K = handles.PDSwin1; foreArgs.k = handles.PDSwin2;
+            foreArgs.TimeStart = nan(size([selRaw2For, selFlt2For]));
+            foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
+            foreArgs.ARmdls = {handles.Mdl};
+            foreArgs.SampleRates = Fs(selRaw2Flt); % !!! needs improvement
+            foreArgs.FreqRange = [handles.locutoff, handles.hicutoff];
+            foreArgs.PhaseOfInterest = handles.PhaseOfInterest;
+            foreArgs.StimulatorLagTime = handles.StimulatorLagTime;
+            artRemArgs.SampleRates = Fs(selRaw2Art);
+            artRemArgs.StimDur = .11; % seconds !!! MAKE ADJUSTABLE
+            artRemArgs.StimTimes = cell(size(artRemArgs.SampleRates));
+            artRemArgs.nOverlap = zeros(size(artRemArgs.SampleRates));
+        else
+            foreArgs = [];
+            artRemArgs = [];
+        end
+    else
+        filtArgs = [];
+        foreArgs = [];
+        artRemArgs = [];
+    end
+    handles.filtArgs = filtArgs; handles.foreArgs = foreArgs; handles.artRemArgs = artRemArgs;
+
     % handles = disconnectSerial(handles);
-    handles.HardwareFuncs.ShutdownRecording();
     handles.RunMainLoop = true; 
     guidata(hObject,handles)
-    requeryPhaseDetect(hObject, 1);
+    updateDisplay(hObject,eventdata)
     
 catch ME
     getReport(ME)
     handles.RunMainLoop = false; 
     guidata(hObject, handles);
-    requeryPhaseDetect(hObject, 1);
-    stop(handles.timer);
+    %stop(handles.timer);
     %{
     handles = connectSerial(handles);
     guidata(hObject, handles);
@@ -613,9 +670,15 @@ handles = guidata(hObject);
 
 % if the timer is running, stop it and restart it (which will use the newly
 % selected channel.  If the timer isn't running, don't do anything.
+%{
 if strcmp(handles.timer.Running,'on')
     stop(handles.timer)
     start(handles.timer)
+end
+%}
+if handles.RunMainLoop
+    StopMainLoop(hObject,[],handles)
+    StartMainLoop(hObject,[],handles)
 end
 
 
@@ -627,49 +690,11 @@ end
 % can be called by settingchange and only called by startmainloop at the
 % beginning 
 
-
-function requeryPhaseDetect(hObject, timeoutdur)
-handles = guidata(hObject);
-if timeoutdur >= 0
-[dataRecd, handles.SaveFileN, ~,~,~,~,~,~,~,~,~,~,~,~,~,~,~,~, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
-    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-        handles.SaveFileName, handles.SaveFileN, handles.time0, timeoutdur, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
-if ~dataRecd
-    warning('Polling data queue timed out.')
-    %hObject
-    %eventdata
-    %keyboard
-end
-end
-try
-if ~isempty(handles.f_PhaseDetect)
-cancel(handles.f_PhaseDetect); 
-% For some reason, after push_filter, the above does not immediately cancel
-% all RunningFutures, but waiting at least 3 seconds will make them empty
-if handles.FilterSetUp
-    pause(4)
-end
-% cancellAll may be necessary in case anything is still running, but if the
-% FevalQueue is not empty, it causes annoying problems like extra GUI
-% windows trying to open or opening. 
-cancelAll(handles.pool.FevalQueue);
-end
-% handles = disconnectSerial(handles);
-handles.f_PhaseDetect = parfeval(handles.pool, @bg_PhaseDetect, 1, ...
-    rmfield(handles, handles.rmfieldList), ...
-    handles.dataQueue, handles.stimQueue, ...
-    handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
-    handles.HardwareFuncs.SetupStimulator, handles.HardwareFuncs.ShutdownStimulator, ...
-    handles.HardwareFuncs.PulseStimulator, handles.HardwareFuncs.SetupStimTTL, ...
-    handles.HardwareFuncs.GetNewRawData, handles.HardwareFuncs.GetTime);
-catch ME2
-    warning(ME2.message);
-    % if there is a problem here, consider stopping everything 
-    keyboard
-end
-guidata(hObject, handles);
+function [newBuffer, newTail, newAll] = bufferjuggle(...
+    oldBuffer, oldTail, newData, bufferFunc)
+    newBuffer = bufferFunc(oldBuffer, oldTail);
+    newTail = newData;
+    newAll = bufferFunc(newBuffer, newTail);
 
 function setTgl(hObject, eventdata, handles, hTgl, newValue)
 % set a toggle button to a desired Value and activate its callback if it is
@@ -852,7 +877,7 @@ function push_filter_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-stop(handles.timer); % to avoid dataQueue overflow 
+%stop(handles.timer); % to avoid dataQueue overflow 
 
 % details from data 
 srate = handles.fSample;
@@ -878,9 +903,11 @@ handles.BPF = filtwts;
 % restart timer and plots
 pause(.01);
 handles.FilterSetUp = true;
+StopMainLoop(hObject,eventdata,handles)
 guidata(hObject, handles)
 pause(.01);
-start(handles.timer);
+StartMainLoop(hObject,eventdata,handles)
+%start(handles.timer);
 
 
 
@@ -936,7 +963,7 @@ function push_AR_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-stop(handles.timer); % to avoid dataQueue overflow 
+%stop(handles.timer); % to avoid dataQueue overflow 
 
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
@@ -945,43 +972,16 @@ handles.PDSwin2 = ceil(.02*PDSwin);
 
 try
 
-    % catch mistakes 
-    if PDSwin > handles.bufferSize
-        error('Phase estimation window cannot be larger than display window.')
-    end
-    if handles.PDSwin1 <= handles.IndShiftFIR
-        error('Forecast length does not overcome filter delay.')
-    end
-
-    [dataRecd, handles.SaveFileN, timeBuff, forBuff, stimBuff, ...
-    tPltRng, rawPlt, fltPlt, forPlt, artPlt, ...
-    rawD1, rawD4, fltD1, fltD4, forD1, forD4, artD1, artD4, ...
-    handles.phStorage, handles.phP, handles.stStorage, handles.stP] = ...
-    pollDataQueue_PhaseDetect_v1(handles.dataQueue, handles.channelIndex, ...
-        handles.SaveFileName, handles.SaveFileN, handles.time0, 10, ...
-        handles.phStorage, handles.phP, handles.stStorage, handles.stP);
-    if ~dataRecd
-        error('Data aquisition timed out.')
-    end
-
-    pause(.01);
-    if isempty(fltD4{1})
-        pause(5);
-    end
-    y = fltD4{1}(:,2); % ISSUE HERE - sometimes does not index, always fixes itself when debugging - add delay?
-    L = min(length(y), 3*PDSwin) - 1;
-    y = y((end-L):end);
-    y = iddata(y,[],1/handles.fSample);
-    ARmdl = ar(y,n,'yw');
-    
-    handles.Mdl = ARmdl; 
-    handles.MdlSetUp = true;
+    y = handles.recDataStructs.fltD{4,1}{:,2};
+    handles = helperGUIv0_pushAR(handles, PDSwin, n, y);
     
 % restart timer and plots
 pause(.01);
+StopMainLoop(hObject,eventdata,handles)
 guidata(hObject, handles)
 pause(.01);
-start(handles.timer);
+StartMainLoop(hObject,eventdata,handles)
+%start(handles.timer);
 
 catch ME
     getReport(ME)
