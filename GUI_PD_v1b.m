@@ -132,7 +132,7 @@ handles.PDSwin2 = ceil(.02*PDSwin);
 handles.bufferSize = str2double(get(handles.txt_display,'String')) * 1000;
 handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
 handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
-handles.check_artifact_Value = false;
+%handles.check_artifact_Value = false;
 handles.ControllerResult = 0;
 
 handles.QueuedStim = timer(...
@@ -385,9 +385,9 @@ try
 
     % timing 
     tNow = datetime;
-    timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
-    handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
-    guidata(hObject, handles);
+    %timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
+    %handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
+    %guidata(hObject, handles);
 
     % main iteration ================================================
     selRaw2Flt = handles.selInds.selRaw2Flt;
@@ -404,17 +404,75 @@ try
     initTic = handles.recDataStructs.initTic;
     forBuffs = handles.recDataStructs.forBuffs;
 
+    % enable defined filtering/forecasting funcs only if ready
+    if handles.FilterSetUp
+        filtfun = @filtFun;
+    else
+        filtfun = [];
+    end
+    if handles.MdlSetUp
+        forefun = @foreFun;
+    else
+        forefun = [];
+    end
+    if handles.check_artifact.Value && handles.MdlSetUp
+        artremfun = @artRemFun;
+    else
+        artremfun = [];
+    end
+
     [...
     timeBuffs, rawData, ...
     artRemData, handles.artRemArgs, ...
     fltData, handles.filtArgs, ...
     forBuffs, forData, handles.foreArgs] = ...
     iterReadBrain(...
-        timeBuffs, rawData, daqFun, ...
+        timeBuffs, rawData, @() handles.HardwareFuncs.GetNewRawData(handles.allChannelIDs), ...
         selRaw2Art, selFor2Art, selRaw2Flt, selRaw2For, selFlt2For, ...
-        artRemData, artRemFun, handles.artRemArgs, ...
-        fltData, fltFun, handles.filtArgs, ...
-        forBuffs, forData, forFun, handles.foreArgs);
+        artRemData, artremfun, handles.artRemArgs, ...
+        fltData, filtfun, handles.filtArgs, ...
+        forBuffs, forData, forefun, handles.foreArgs);
+
+    handles.recDataStructs.rawD = rawData;
+    handles.recDataStructs.artD = artRemData;
+    handles.recDataStructs.fltD = fltData;
+    handles.recDataStructs.forD = forData;
+    handles.recDataStructs.timeBuffs = timeBuffs;
+    handles.recDataStructs.forBuffs = forBuffs;
+    % ===============================================================
+
+    % stimulation ===================================================
+    forBuff = forBuffs{1}; 
+    forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
+    forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
+    StimController = handles.ControllerResult;
+    doStim = ((~isempty(StimController)) && handles.StimActive) && (handles.FilterSetUp && handles.MdlSetUp);
+    if doStim && (StimController > 0)
+        t2stim = forBuffNew(:,StimController);
+        t2stim = t2stim - handles.StimulatorLagTime; % account for hardware delays
+        if (t2stim >= 0) % should always be true by construction
+            t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
+            if t2stim >= 0 % should the minimum be set any higher?
+            % ensure below max freq
+            if 1/(t2stim + timeBuffs{chInd}(end,:) - stimLastTime) <= handles.stimMaxFreq
+                % check if stimulator is ready here?
+                stop(stimScheduler); % if timer hasn't fired, overwrite it
+                stimScheduler.StartDelay = t2stim; 
+                start(stimScheduler);
+            end
+            end
+        end
+        stimtime = stimScheduler.UserData; stimScheduler.UserData = [];
+        if numel(stimtime)
+            stimBuff = bufferData(stimBuff, stimtime);
+            if doArtRem
+                artRemArgs.StimTimes = cellfun(...
+                    @(T) stimBuff - T(end,:), timeBuffs(selRaw2Art), ...
+                    'UniformOutput',false);
+            end
+            handles.stimLastTime = stimtime(end);
+        end
+    end
     % ===============================================================
     
     lastSampleProcTime = timeBuffs{handles.channelIndex}(end);
@@ -470,7 +528,7 @@ try
         try
             handles.elecGridImg.CData = helperGUIv1_ElectrodeGridUpdate(...
                 handles.elecGridImg, handles.elecGridFunc, ...
-                handles.channelIDlist, handles.channelIDlist, rawData(4,:), ...
+                handles.channelIDlist, handles.allChannelIDs, rawData(4,:), ...
                 handles.bufferSizeGrid, handles.fSamples);
         catch ME4 
             getReport(ME4)
@@ -643,11 +701,15 @@ function  StopMainLoop(obj, evt, hObject)
 handles = guidata(hObject); 
 
 try
-    handles.RunMainLoop = false;
+    if isfield(handles, 'StimActive')
+        if handles.StimActive
+            stop(handles.QueuedStim)
+        end
+    end
+    if isfield(handles, 'RunMainLoop')
+        handles.RunMainLoop = false;
+    end
     guidata(hObject, handles)
-    requeryPhaseDetect(hObject, 1);
-    % handles = connectSerial(handles);
-    guidata(hObject, handles);
 catch ME
     getReport(ME)
     keyboard
@@ -682,19 +744,12 @@ if handles.RunMainLoop
 end
 
 
-% --- New Helpers ---
-
+% --- GUI Helpers ---
 
 % function handles = initRec(handles)
 % TO DO: (re-)init RecDataStructs here only 
 % can be called by settingchange and only called by startmainloop at the
 % beginning 
-
-function [newBuffer, newTail, newAll] = bufferjuggle(...
-    oldBuffer, oldTail, newData, bufferFunc)
-    newBuffer = bufferFunc(oldBuffer, oldTail);
-    newTail = newData;
-    newAll = bufferFunc(newBuffer, newTail);
 
 function setTgl(hObject, eventdata, handles, hTgl, newValue)
 % set a toggle button to a desired Value and activate its callback if it is
@@ -705,6 +760,83 @@ if ~(curValue == newValue)
     hTgl.Callback(hTgl, eventdata);
     guidata(hObject, handles);
 end
+
+% --- PhaseDetect helpers ---
+
+function [artRemTails, artRemArgs] = ...
+        artRemFun(artRemArgs, rawTails, forTails)
+% forTails must be the forecast data starting at the same time as rawTails
+artRemTails = cell(size(rawTails));
+FsArt = artRemArgs.SampleRates;
+StimDur = artRemArgs.StimDur; % seconds to remove
+StimLen = ceil(StimDur.*FsArt); % #samples to remove 
+StimTimesTail = artRemArgs.StimTimes; 
+for ch_art = 1:size(rawTails,2)
+    tXfor = forTails{ch_art};
+    tX = rawTails{ch_art}; % [time, data]
+    stimtimes = StimTimesTail{ch_art}; % time to stim (sec)
+    stiminds = round(stimtimes * FsArt(ch_art));
+    stiminds = stiminds(stiminds > 0);
+    for i1 = stiminds'
+        i2 = i1 + StimLen(ch_art);
+        if i2 > height(tX)
+            % artifact will carry over into the next packet 
+            nO = i2 - height(tX);
+            artRemArgs.nOverlap(ch_art) = nO;
+            tX = [tX; nan(nO,2)]; 
+        else
+            % artifact limited to this packet 
+            artRemArgs.nOverlap(ch_art) = 0;
+        end
+        i2 = min(i2, height(tX)); % why is this necessary??
+        tX(i1:i2,2) = tXfor(i1:i2,2);
+    end
+    artRemTails{ch_art} = tX;
+end
+
+function [foreTails, foreBuffsAdd, foreArgs] = foreFun(foreArgs, inData)
+% inData should just be the (filtered) channel(s) of interest
+% foreTails will be the forecast tails starting at the current time minus
+% any filtering delay
+if isempty(foreArgs)
+    error('Attempted forecast function with empty arguments.')
+end
+K = foreArgs.K; k = foreArgs.k;
+ARmdls = foreArgs.ARmdls;
+fs = foreArgs.SampleRates;
+Ts = foreArgs.TimeShift;
+Fco = foreArgs.FreqRange;
+phis = foreArgs.PhaseOfInterest;
+TstimLag = foreArgs.StimulatorLagTime;
+foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
+for ch_fore = 1:size(inData,2)
+    armdl = ARmdls{ch_fore};
+    FT = myFastForecastAR(armdl, inData{ch_fore}(:,2), K);
+    foreTails{ch_fore} = [nan(height(FT),1), FT];
+    foreTails{ch_fore}(1,1) = foreArgs.TimeStart(ch_fore);
+
+    FT = FT(1:k,:); % use limited duration for hilbert padding
+    %[t2,i2,phi_inst,f_inst] = blockPDS(...
+    t2 = blockPDS(...
+        inData{ch_fore}(:,2), FT, fs(ch_fore), phis, ...
+        Ts(ch_fore)+TstimLag, Fco(1), Fco(2));
+    t2 = t2-Ts(ch_fore); % [t2peak, t2trough]
+    % t2 = max(t2,0); % Should this be necessary? Will this cause problems?
+    t2(t2 < 0) = nan;
+    foreBuffsAdd{ch_fore} = t2; 
+end
+
+function [fltTails, fltArgs] = filtFun(fltArgs, rawTails)
+filtObj = fltArgs.fltObj;
+filtInit = fltArgs.fltInit;
+filtFin = cell(size(filtInit));
+fltTails = cell(size(rawTails));
+for ch_flt = 1:size(rawTails,2)
+    a = filtObj{1,ch_flt}; b = filtObj{2,ch_flt};
+    [FT,filtFin{ch_flt}] = filter(b,a,rawTails{ch_flt}(:,2:end),filtInit{ch_flt});
+    fltTails{ch_flt} = [rawTails{ch_flt}(:,1) - fltArgs.TimeShift(ch_flt), FT];
+end
+fltArgs.fltInit = filtFin;
 
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
@@ -1269,7 +1401,7 @@ function check_artifact_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_artifact
-handles.check_artifact_Value = get(hObject, 'Value'); 
+%handles.check_artifact_Value = get(hObject, 'Value'); 
 guidata(hObject, handles);
 settingChange(hObject)
 
