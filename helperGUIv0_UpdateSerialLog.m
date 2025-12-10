@@ -1,9 +1,10 @@
-function handles = helperGUIv0_UpdateSerialLog(handles)
+function [handles, newsrl] = helperGUIv0_UpdateSerialLog(handles)
     % update serial log 
     % TO DO: there should be a better way to do this; serial callback
     % should trigger an event or listener that logs the info 
     ReceivedData = handles.srl.UserData.ReceivedData; 
-    if ~strcmp(ReceivedData, handles.srlLastMsg)
+    newsrl = ~strcmp(ReceivedData, handles.srlLastMsg);
+    if newsrl
         ud = handles.srl.UserData; 
         ud.TimeStamp = handles.lastSampleProcTime;
         if handles.srlP1 <= length(handles.srlStorage1)

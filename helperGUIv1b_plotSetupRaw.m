@@ -1,5 +1,5 @@
 function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
-    helperGUIv1_plotSetupRaw(handles, tNow)
+    helperGUIv1b_plotSetupRaw(handles, tNow)
 
     % Check which channel is selected and get some data to plot
     handles.channelIndex = get(handles.pop_channels,'Value'); 
@@ -113,9 +113,11 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     handles.h_timingTrace = ...
         stem(tStem, [nan; diff(timeBuff)], 's');
     hold on;
+    %{
     handles.h_timeDispTrace = ...
         stem(handles.time0 + seconds(handles.timeDispBuff) - tNow, ...
         [nan; diff(handles.timeDispBuff)], 'o');
+    %}
     grid on; title('Update Duration'); xlabel('time (s)'); ylabel('s');
     xlim(common_xlim);
 

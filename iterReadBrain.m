@@ -160,6 +160,14 @@ else
 end
 
 filter_time = toc; disp(['Filter time = ',num2str(filter_time)])
+
+%% Update mdl coeffs 
+tic 
+
+
+
+update_time = toc; disp(['Model update time = ',num2str(update_time)])
+
 %% Forecast 
 tic
 

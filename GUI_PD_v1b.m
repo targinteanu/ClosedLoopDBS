@@ -441,86 +441,89 @@ try
     handles.recDataStructs.forBuffs = forBuffs;
     % ===============================================================
 
+    lastSampleProcTime = handles.recDataStructs.timeBuffs{handles.channelIndex}(end);
+    selFlt = handles.selInds.selFlt2For;
+    if isempty(selFlt) || isnan(selFlt)
+        selFlt = 1;
+    end
+    fltPlt = handles.recDataStructs.fltData{4,selFlt}{:,2};
+
     % stimulation ===================================================
+    Stim2Q = false;
     forBuff = forBuffs{1}; 
     forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
     forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
     StimController = handles.ControllerResult;
     doStim = ((~isempty(StimController)) && handles.StimActive) && (handles.FilterSetUp && handles.MdlSetUp);
     if doStim && (StimController > 0)
-        t2stim = forBuffNew(:,StimController);
-        t2stim = t2stim - handles.StimulatorLagTime; % account for hardware delays
-        if (t2stim >= 0) % should always be true by construction
-            t2stim = .001*floor(1000*t2stim); % round to nearest 1ms 
-            if t2stim >= 0 % should the minimum be set any higher?
-            % ensure below max freq
-            if 1/(t2stim + timeBuffs{chInd}(end,:) - stimLastTime) <= handles.stimMaxFreq
-                % check if stimulator is ready here?
-                stop(stimScheduler); % if timer hasn't fired, overwrite it
-                stimScheduler.StartDelay = t2stim; 
-                start(stimScheduler);
-            end
+        Stim2Q = true;
+        t2Q = forBuffNew(:,StimController);
+    end
+    if Stim2Q && (t2Q >= 0)
+        t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
+        if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
+            t2Qabs = t2Q + lastSampleProcTime; % in NSP time "absolute"
+            Dt2Q = t2Qabs - handles.stimLastTime; 
+            if 1/Dt2Q <= handles.stimMaxFreq
+                stim2Q_proceed = true;
+                if strcmp(handles.QueuedStim.Running, 'on')
+                    % last queued stim has not yet fired 
+                    if t2Qabs > handles.QueuedStim.UserData
+                        % new requested point is later than current timer
+                        stim2Q_proceed = t2Q > handles.StimulatorLagTime; 
+                            % is there enough time to make a change
+                        stim2Q_proceed = stim2Q_proceed && ...
+                            (t2Qabs - handles.QueuedStim.UserData) > handles.StimulatorLagTime; 
+                            % is the change outside margin of error
+                        stim2Q_proceed = stim2Q_proceed && ...
+                            (t2Qabs - handles.QueuedStim.UserData) < 1/handles.hicutoff; 
+                            % is it trying to target the next cycle
+                    end
+                end
+                if stim2Q_proceed
+                    if strcmp(handles.QueuedStim.Running, 'on')
+                        stop(handles.QueuedStim);
+                    end
+                    handles.QueuedStim.StartDelay = t2Q;
+                    handles.QueuedStim.UserData = t2Qabs;
+                    start(handles.QueuedStim);
+                end
             end
         end
-        stimtime = stimScheduler.UserData; stimScheduler.UserData = [];
-        if numel(stimtime)
-            stimBuff = bufferData(stimBuff, stimtime);
-            if doArtRem
-                artRemArgs.StimTimes = cellfun(...
-                    @(T) stimBuff - T(end,:), timeBuffs(selRaw2Art), ...
-                    'UniformOutput',false);
-            end
-            handles.stimLastTime = stimtime(end);
+    else
+        if strcmp(handles.QueuedStim.Running, 'on')
+            stop(handles.QueuedStim);
         end
     end
     % ===============================================================
     
-    lastSampleProcTime = timeBuffs{handles.channelIndex}(end);
-
+    if handles.check_polar.Value
     % x axes alignment 
+    xTbl = data2timetable(rawPlt, [], []); % FIX THIS 
+    tPltRng = xTbl.Time;
     common_xlim = tPltRng - tNow;
     common_xdiff = diff(common_xlim); 
     ext_xdiff = common_xdiff * handles.ax_filt.InnerPosition(3) / ...
         handles.ax_raw.InnerPosition(3); 
     ext_xlim = [0, ext_xdiff] + common_xlim(1); % align left 
+    end
 
     % update serial log 
     % TO DO: there should be a better way to do this; serial callback
     % should trigger an event or listener that logs the info 
-    if handles.srlHere 
+    [handles, newsrl] = helperGUIv0_UpdateSerialLog(handles);
+    if newsrl
         if handles.FilterSetUp
             if numel(fltPlt) % should this be necessary when above is met?
                 ControllerLastResult = handles.ControllerResult;
-                ControllerResult = Controller_PDS_PD( handles.srl, ...
-                    rmfield(handles, handles.rmfieldList), ...
-                    fltPlt{(end-handles.PDSwin1+1):end, : } );
+                ControllerResult = Controller_PDS_PD( handles.srl, handles, ...
+                    fltPlt((end-handles.PDSwin1+1):end) );
                 if ControllerResult ~= ControllerLastResult
                     handles.ControllerResult = ControllerResult;
                     guidata(hObject, handles);
-                    requeryPhaseDetect(hObject, 1);
                 end
             end
         end
-    ReceivedData = handles.srl.UserData.ReceivedData; 
-    if ~strcmp(ReceivedData, handles.srlLastMsg)
-        ud = handles.srl.UserData; 
-        ud.TimeStamp = lastSampleProcTime;
-        if handles.srlP1 <= length(handles.srlStorage1)
-            handles.srlStorage1(handles.srlP1) = ud;
-            handles.srlP1 = handles.srlP1+1;
-        else
-            ud = handles.udBlank; 
-            % storage full; save
-            SerialLog = handles.srlStorage1;
-            svfn = [handles.SaveFileName,num2str(handles.SaveFileN),'.mat'];
-            disp(['Saving Serial to ',svfn])
-            save(svfn,'SerialLog');
-            handles.SaveFileN = handles.SaveFileN + 1;
-            handles.srlP1 = 1;
-            handles.srlStorage1 = repmat(ud, size(handles.srlStorage1));
-        end
-    end
-    handles.srlLastMsg = ReceivedData;
     end
 
     % update electrode grid 
@@ -567,8 +570,11 @@ try
     end
 
     % update raw data and timing plots
-    handles = helperGUIv1_plotRaw(handles, tNow, rawPlt, timeBuff, common_xlim);
-
+    set(handles.h_rawDataTrace,'YData',rawPlt);
+    set(handles.h_timingTrace,'YData',[nan; diff(handles.recDataStructs.timeBuffs{1})]);
+    if handles.check_polar.Value
+        % also update time (x) axis
+    end
     guidata(hObject,handles)
 
 catch ME 
