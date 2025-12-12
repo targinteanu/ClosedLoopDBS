@@ -462,7 +462,7 @@ try
 
     % stimulation ===================================================
     Stim2Q = false;
-    forBuff = forBuffs{1}; 
+    forBuff = handles.recDataStructs.forBuffs{1}; 
     forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
     forBuffNew = forBuffNew - timeBuffs{handles.channelIndex}(end,:); % [t2p, t2t]
     StimController = handles.ControllerResult;
@@ -566,7 +566,26 @@ try
 
         if handles.MdlSetUp
             try
-                handles = helperGUIv1_plotMdl(handles, tNow, fltPlt, forPlt, forBuff, tSt, artPlt);
+                forBuffSample = round(forBuff.*handles.fSample);
+                buffTraces = [...
+                    handles.h_peakTrace, ...
+                    handles.h_trouTrace, ...
+                    handles.h_redTrace, ...
+                    handles.h_yelTrace, ...
+                    handles.h_grnTrace, ...
+                    handles.h_stpTrace];
+                for iTr = 1:length(handles.PhaseOfInterest)
+                    bTr = buffTraces(iTr);
+                    xTr = forBuff(:,iTr);
+                    xTr = xTr(~isnan(xTr));
+                    if handles.check_polar.Value
+                        xTr = handles.time0 + seconds(xTr); % ?
+                    else
+                        xTr = xTr - lastSampleProcTime;
+                    end
+                    set(bTr, 'XData', xTr);
+                    set(bTr, 'YData', zeros(size(xTr)));
+                end
             catch ME2
                 getReport(ME2)
                 errordlg(ME2.message, 'Model Prediction Issue');
@@ -663,7 +682,6 @@ try
             handles.FilterSetUp = false;
             handles.MdlSetUp = false;
             guidata(hObject, handles);
-            requeryPhaseDetect(hObject, 1);
             handles = guidata(hObject);
             pause(.01);
         end
@@ -1140,7 +1158,10 @@ handles.PDSwin2 = ceil(.02*PDSwin);
 
 try
 
-    y = handles.recDataStructs.fltD{4,1}{:,2};
+    y = handles.recDataStructs.fltD{4,1};
+    if ~isempty(y)
+        y = y(:,2);
+    end
     handles = helperGUIv0_pushAR(handles, PDSwin, n, y);
     
 % restart timer and plots
