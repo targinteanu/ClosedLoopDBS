@@ -369,7 +369,7 @@ delete(hObject);
 % ----          Main Loop, Runs every time the timer fires            --- %
 % ----                                                                --- %
 % ----------------------------------------------------------------------- %
-function updateDisplay(obj, evt, hObject)
+function updateDisplay(hObject, eventdata)
 
 handles = guidata(hObject);
 while handles.RunMainLoop
@@ -388,6 +388,7 @@ try
     %timeDisp2 = handles.timeDisp0 + toc(handles.timeDisp1);
     %handles.timeDispBuff = bufferData(handles.timeDispBuff, timeDisp2);
     %guidata(hObject, handles);
+    dT = 0.001; % mandatory pause (twice) between loop iterations 
 
     % main iteration ================================================
     selRaw2Flt = handles.selInds.selRaw2Flt;
@@ -442,17 +443,28 @@ try
     % ===============================================================
 
     lastSampleProcTime = handles.recDataStructs.timeBuffs{handles.channelIndex}(end);
+    
+    rawPlt = handles.recDataStructs.rawD{4,handles.channelIndex};
+    if ~isempty(rawPlt)
+        rawPlt = rawPlt(:,2);
+    end
+    rawPlt = rawPlt(2:end);
+
     selFlt = handles.selInds.selFlt2For;
     if isempty(selFlt) || isnan(selFlt)
         selFlt = 1;
     end
-    fltPlt = handles.recDataStructs.fltData{4,selFlt}{:,2};
+    fltPlt = handles.recDataStructs.fltD{4,selFlt};
+    if ~isempty(fltPlt)
+        fltPlt = fltPlt(:,2);
+    end
+    fltPlt = fltPlt(2:end);
 
     % stimulation ===================================================
     Stim2Q = false;
     forBuff = forBuffs{1}; 
     forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
-    forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
+    forBuffNew = forBuffNew - timeBuffs{handles.channelIndex}(end,:); % [t2p, t2t]
     StimController = handles.ControllerResult;
     doStim = ((~isempty(StimController)) && handles.StimActive) && (handles.FilterSetUp && handles.MdlSetUp);
     if doStim && (StimController > 0)
@@ -531,7 +543,7 @@ try
         try
             handles.elecGridImg.CData = helperGUIv1_ElectrodeGridUpdate(...
                 handles.elecGridImg, handles.elecGridFunc, ...
-                handles.channelIDlist, handles.allChannelIDs, rawData(4,:), ...
+                handles.channelIDlist, handles.allChannelIDs, handles.recDataStructs.rawD(4,:), ...
                 handles.bufferSizeGrid, handles.fSamples);
         catch ME4 
             getReport(ME4)
@@ -545,7 +557,12 @@ try
     if handles.FilterSetUp
         try
         % update filtered data plot
-        handles = helperGUIv1_plotFlt(handles, tNow, fltPlt, ext_xlim);
+        set(handles.h_filtDataTrace,'YData',fltPlt);
+        if handles.check_polar.Value
+            if ~sum(isnan(ext_xlim))
+                set(handles.ax_filt, 'XLim', ext_xlim);
+            end
+        end
 
         if handles.MdlSetUp
             try
@@ -571,17 +588,29 @@ try
 
     % update raw data and timing plots
     set(handles.h_rawDataTrace,'YData',rawPlt);
-    set(handles.h_timingTrace,'YData',[nan; diff(handles.recDataStructs.timeBuffs{1})]);
+    %set(handles.h_timingTrace,'YData',[nan; diff(handles.recDataStructs.timeBuffs{1})]);
     if handles.check_polar.Value
         % also update time (x) axis
     end
     guidata(hObject,handles)
+    pause(dT)
+    drawnow
+    pause(dT)
 
-catch ME 
-    getReport(ME)
+catch ME_loop 
+    getReport(ME_loop)
+    if contains(ME_loop.message, 'No continuous data')
+            % do nothing; proceed to next loop iteration to allow more time
+            % for continuous data. 
+            % TO DO: should there be some limit; enough of these in a row
+            % and it stops cont_loop and sends the error? 
+    else
+    errordlg(ME_loop.message, 'Main Loop Issue');
+    handles.RunMainLoop = false;
     guidata(hObject, handles)
     %stop(handles.timer)
     %keyboard
+    end
 end
 
 end
@@ -595,12 +624,12 @@ end
 
 % Runs once when timer starts.  It initializes plot and buffer and
 % accommodates any new selection by user.
-function  StartMainLoop(obj, evt, hObject)
+function  StartMainLoop(hObject, eventdata, handles)
 % Put the whole function in a try-catch block.  This makes debugging much
 % easier because it captures the error and displays a report to the Matlab
 % Command Window
 
-handles = guidata(hObject);
+%handles = guidata(hObject);
 
 try
 
@@ -647,11 +676,11 @@ try
     selRaw2Art = handles.selInds.selRaw2Art;
     selRaw2For = handles.selInds.selRaw2For;
     Fs = handles.fSamples;
-    if FilterSetUp
+    if handles.FilterSetUp
         fIC = arrayfun(@(ord) zeros(ord,1), handles.FilterOrder, 'UniformOutput',false);
         filtArgs.fltInit = fIC; filtArgs.fltObj = {1; handles.BPF};
         filtArgs.TimeShift = handles.FilterOrder(1)/(2*Fs(selRaw2Flt));
-        if MdlSetUp
+        if handles.MdlSetUp
             foreArgs.K = handles.PDSwin1; foreArgs.k = handles.PDSwin2;
             foreArgs.TimeStart = nan(size([selRaw2For, selFlt2For]));
             foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
@@ -699,12 +728,12 @@ end
 % ----------------------------------------------------------------------- %
 
 % Runs once when timer stops.
-function  StopMainLoop(obj, evt, hObject)
+function  StopMainLoop(hObject, eventdata, handles)
 % Put the whole function in a try-catch block.  This makes debugging much
 % easier because it captures the error and displays a report to the Matlab
 % Command Window
 
-handles = guidata(hObject); 
+%handles = guidata(hObject); 
 
 try
     if isfield(handles, 'StimActive')
@@ -721,11 +750,12 @@ catch ME
     keyboard
 end
 
-
+%{
 function TimerError(obj, evt, hObject)
 % timer has encountered an error! Why was it not caught?
 handles = guidata(hObject);
 keyboard
+%}
 
 % ----------------------------------------------------------------------- %
 % ----                                                                --- %
