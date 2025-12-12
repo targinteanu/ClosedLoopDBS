@@ -13,6 +13,16 @@ function handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, srlfunc)
 % start receiver serial communication from paradigm computer
 handles.textSrl.String = 'attempting to start serial com here ...';
 thisportname = FindMySerialPort();
+thisportconnected = sum(strcmpi(serialportlist, thisportname));
+if ~thisportconnected
+    resp = questdlg('Proceed without serial connection?', ...
+        'Serial not connected.');
+    if strcmp(resp, 'Cancel')
+        error('Serial not connected; startup aborted.')
+    elseif strcmp(resp, 'Yes')
+        thisportname = '';
+    end
+end
 noSerialSetup = isempty(thisportname);
 if ~noSerialSetup
     receiverSerial = serialport(thisportname, 9600);
