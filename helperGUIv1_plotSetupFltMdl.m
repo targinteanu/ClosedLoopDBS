@@ -13,7 +13,7 @@ function handles = helperGUIv1_plotSetupFltMdl(handles, tNow, ...
         tFlt = fltPlt.Time - tNow; 
         if ~handles.check_polar.Value
             % do not track time exactly
-            tFlt = seconds(((-length(tFlt)+1):0)/handles.fSample);
+            tFlt = seconds((((-length(tFlt)+1):0)/handles.fSample) - handles.TimeShiftFIR);
         end
         handles.h_filtDataTrace = plot(tFlt, fltPlt.Variables); 
         grid on; hold on; 
