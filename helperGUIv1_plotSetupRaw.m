@@ -46,7 +46,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     timeBuff = timeBuffs{chInd};
     buffSize2 = (handles.bufferSize / rawD1{chInd}.SampleRate) * .5 * handles.stimMaxFreq;
     buffSize2 = ceil(buffSize2);
-    forBuff = nan(buffSize2,2);
+    forBuff = nan(buffSize2, length(handles.PhaseOfInterest));
     tSt = nan(buffSize2,1);
     handles.allChannelInfo = rawD1;
     rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),handles.time0); rawPlt = rawPlt{1};
