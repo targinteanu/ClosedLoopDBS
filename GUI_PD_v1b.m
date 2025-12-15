@@ -121,6 +121,10 @@ handles.h_predTrace = [];
 handles.h_peakTrace = [];
 handles.h_trouTrace = [];
 handles.h_stimTrace = [];
+handles.h_redTrace = [];
+handles.h_yelTrace = [];
+handles.h_grnTrace = [];
+handles.h_stpTrace = [];
 handles.h_peakPhase = [];
 handles.h_trouPhase = [];
 handles.elecGridImg = [];
@@ -460,6 +464,12 @@ try
     end
     fltPlt = fltPlt(2:end);
 
+    forPlt = handles.recDataStructs.forD{4,1};
+    if ~isempty(forPlt)
+        forPlt = forPlt(:,2);
+    end
+    forPlt = forPlt(2:end,:);
+
     % stimulation ===================================================
     Stim2Q = false;
     forBuff = handles.recDataStructs.forBuffs{1}; 
@@ -559,6 +569,7 @@ try
         % update filtered data plot
         set(handles.h_filtDataTrace,'YData',fltPlt);
         if handles.check_polar.Value
+            % set x data ...
             if ~sum(isnan(ext_xlim))
                 set(handles.ax_filt, 'XLim', ext_xlim);
             end
@@ -566,7 +577,14 @@ try
 
         if handles.MdlSetUp
             try
-                forBuffSample = round(forBuff.*handles.fSample);
+                % update forecast data plot 
+                set(handles.h_predTrace, 'YData', forPlt);
+                if handles.check_polar.Value
+                    % set x data ...
+                end
+
+                % update phase indicator traces 
+                %forBuffSample = round(forBuff.*handles.fSample);
                 buffTraces = [...
                     handles.h_peakTrace, ...
                     handles.h_trouTrace, ...
