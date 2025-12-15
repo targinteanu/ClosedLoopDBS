@@ -20,12 +20,21 @@ function handles = helperGUIv1_plotSetupFltMdl(handles, tNow, ...
         title('Filtered & Predicted Data'); xlabel('time (s)'); ylabel(unitname);
         xlim(ext_xlim);
 
-        % initiate prediction & peak/trough indicators overlayed on
-        % filtered plot
         if handles.MdlSetUp
+            % initiate forecast data plot 
             if isempty(forPlt)
                 error('Forecast was not actually set up. Something is wrong in the code.')
             end
+            tMdl = forPlt.Time - tNow;
+            if ~handles.check_polar.Value
+                % do not track time exactly
+                tMdl = (seconds(tFlt(1))*handles.fSample):(handles.PDSwin1-handles.TimeShiftFIR*handles.fSample); % samples 
+                tMdl = seconds(tMdl/handles.fSample);
+            end
+            handles.h_predTrace = plot(tMdl, forPlt.Variables, ':');
+
+            % initiate prediction & peak/trough indicators overlayed on
+            % filtered plot
             tPk = forBuff(:,1); tTr = forBuff(:,2);
             handles.h_peakTrace = plot(handles.time0 + seconds(tPk) - tNow, zeros(size(tPk)), ...
                 '^', 'Color',"#EDB120"); 
@@ -33,7 +42,6 @@ function handles = helperGUIv1_plotSetupFltMdl(handles, tNow, ...
                 'v', 'Color',"#EDB120"); 
             handles.h_stimTrace = plot(handles.time0 + seconds(tSt) - tNow, zeros(size(tSt)), ...
                 '*', 'Color','r'); 
-            handles.h_predTrace = plot(forPlt.Time - tNow, forPlt.Variables, ':');
             %handles.h_sineTrace = plot(xValues3,handles.sineDataBuffer,'--');
 
             % initiate polar histogram 

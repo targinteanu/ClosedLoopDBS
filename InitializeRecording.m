@@ -40,9 +40,10 @@ end
 if numel(IndShiftFIR) && numel(selRaw2Flt)
     fltH = initFilteredData(rawH(selRaw2Flt), IndShiftFIR); 
     fltT = cellfun(@(D) [1,0].*D, rawT(selRaw2Flt), 'UniformOutput',false);
-    fltB = cellfun(@(D) [1,0].*D, rawB(selRaw2Flt), 'UniformOutput',false);
+    %fltB = cellfun(@(D) [1,0].*D, rawB(selRaw2Flt), 'UniformOutput',false);
     fltN = rawN(selRaw2Flt);
-    fltD = [fltN; fltH; fltT; fltB];
+    %fltD = [fltN; fltH; fltT; fltB];
+    fltD = [fltN; fltH; fltT; fltH];
 else
     fltD = emptyOut;
 end
@@ -50,7 +51,8 @@ end
 if numel(forecastwin) && numel(selFor)
     [forH, forT, forB] = initForecastData(...
         [rawH(selRaw2For), fltH(selFlt2For)], forecastwin);
-    forD = [[rawN(selRaw2For), fltN(selFlt2For)]; forH; forT; forB];
+    %forD = [[rawN(selRaw2For), fltN(selFlt2For)]; forH; forT; forB];
+    forD = [[rawN(selRaw2For), fltN(selFlt2For)]; forB; forT; forB];
 else
     forD = emptyOut;
 end
