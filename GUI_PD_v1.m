@@ -1332,8 +1332,7 @@ if get(hObject, 'Value') == 1
     handles.StimSetupArgs = stimGetSetupArgs(handles);
 
     if handles.StimTriggerMode
-        stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
-        stimulator = handles.HardwareFuncs.SetStimTriggerMode(stimulator);
+        stimulator = handles.HardwareFuncs.SetStimTriggerMode([], handles.StimSetupArgs);
     end
 
     handles.StimActive = true;
