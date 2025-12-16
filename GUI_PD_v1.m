@@ -1331,11 +1331,6 @@ if get(hObject, 'Value') == 1
 
     handles.StimSetupArgs = stimGetSetupArgs(handles);
 
-    if handles.StimTriggerMode
-        stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
-        stimulator = handles.HardwareFuncs.SetStimTriggerMode(stimulator);
-    end
-
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
 
@@ -1349,9 +1344,6 @@ if get(hObject, 'Value') == 1
 
 else
     % stop stimulus 
-    if handles.StimTriggerMode
-        stimulator = handles.HardwareFuncs.ShutdownStimulator(handles.StimSetupArgs);
-    end
     handles.StimActive = false;
     set(hObject, 'String', 'Stim Off');
 end
