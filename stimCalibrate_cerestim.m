@@ -1,6 +1,6 @@
 function [avgLag, stdLag] = stimCalibrate_cerestim(UserArgs, showplot, ...
     connectRecording, disconnectRecording, getTime, initRawData, getNewRawData, ...
-    stimSetup, stimShutdown, stimPulse, stimSetupTTL)
+    stimSetup, stimShutdown, stimPulse, stimTriggerFunc, stimTriggerFlag)
 
 if nargin < 2
     showplot = true;
@@ -13,16 +13,18 @@ end
 if nargin < 10
     if isempty(UserArgs)
         % use BlackRock CereStim 
+        stimTriggerFlag = false;
         stimSetup = @stimSetup_cerestim;
         stimShutdown = @stimShutdown_cerestim;
         stimPulse = @stimPulse_cerestim;
-        stimSetupTTL = @(~) [];
+        stimTriggerFunc = @stimTriggerMode_cerestim;
     else
         % use UserArgs 
+        stimTriggerFlag = UserArgs.StimTriggerMode;
         stimSetup = UserArgs.HardwareFuncs.SetupStimulator; 
         stimShutdown = UserArgs.HardwareFuncs.ShutdownStimulator; 
         stimPulse = UserArgs.HardwareFuncs.PulseStimulator;
-        stimSetupTTL = UserArgs.HardwareFuncs.SetupStimTTL;
+        stimTriggerFunc = UserArgsHardwareFuncs.SetStimTriggerMode;
     end
 end
 if nargin < 7
@@ -84,9 +86,13 @@ chanInfo = {chanInfos(chanInd)};
 
 time0 = datetime - seconds(getTime(initTic)); % time-of-day when cbmex time was 0
 
-stimTTL = stimSetupTTL(StimSetupArgs);
+stimulator_or_TTL = stimSetup(StimSetupArgs);
 
-stimulator = stimSetup(StimSetupArgs);
+if stimTriggerFlag
+    stimulator_in_trigmode = stimTriggerFunc([], StimSetupArgs);
+else
+    stimulator_in_trigmode = [];
+end
 
 %% warning before doing stimulation
 warnmsg = ['Stimulator is about to send many randomly spaced pulses for calibration. ' ...
@@ -110,7 +116,7 @@ for n = 1:numTests
     testDur = ceil(testDur*1000)/1000; % round up to ms 
     pause(testDur);
     stimtime1 = getTime(initTic);
-    stimulator = stimPulse(stimulator, stimTTL);
+    stimulator_or_TTL = stimPulse(stimulator_or_TTL);
     stimtime2 = getTime(initTic);
     StimSentTime(n) = mean([stimtime1, stimtime2]);
 end
@@ -152,9 +158,6 @@ end
 
 %% disconnect from hardware 
 disconnectRecording();
-stimShutdown(stimulator);
-if ~isempty(stimTTL)
-    delete(stimTTL);
-end
+stimShutdown(stimulator_or_TTL, stimulator_in_trigmode);
 
 end

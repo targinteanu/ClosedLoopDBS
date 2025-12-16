@@ -1,6 +1,6 @@
 function bgArgOut = bg_PhaseDetect(UserArgs, DQ, SQ, ...
     SetupRecording, ShutdownRecording, ...
-    SetupStimulator, ShutdownStimulator, PulseStimulator, SetupStimTTL, ...
+    SetupStimulator, ShutdownStimulator, PulseStimulator, ...
     GetNewRawData, GetTime)
 % 
 % Run brain recording with phase detection/prediction for PDS.
@@ -145,15 +145,9 @@ end
 
 % stimulator 
 if UserArgs.StimActive
-    if ~UserArgs.StimTriggerMode
-        StimArgs = SetupStimulator(UserArgs.StimSetupArgs);
-        StimTTL  = [];
-    else
-        StimArgs = [];
-        StimTTL  = SetupStimTTL(UserArgs.StimSetupArgs);
-    end
+    StimArgs = SetupStimulator(UserArgs.StimSetupArgs);
     stimScheduler = timer(...
-        "TimerFcn",{@stimFunction, StimArgs, StimTTL, initTic}, ...
+        "TimerFcn",{@stimFunction, StimArgs, initTic}, ...
         "StartDelay",inf);
 end
 
@@ -281,7 +275,7 @@ ShutdownRecording();
 % stimulator 
 if UserArgs.StimActive 
     if ~UserArgs.StimTriggerMode
-        StimArgs = ShutdownStimulator(StimArgs, UserArgs);
+        StimArgs = ShutdownStimulator(StimArgs, []);
     else
         delete(StimTTL);
     end
@@ -375,9 +369,9 @@ end
 fltArgs.fltInit = filtFin;
 end
 
-    function stimFunction(timerObj, evt, StimArgs, UserArgs, initTic)
+    function stimFunction(timerObj, evt, StimArgs, initTic)
         stimtime1 = GetTime(initTic);
-        StimArgs = PulseStimulator(StimArgs, UserArgs);
+        StimArgs = PulseStimulator(StimArgs);
         stimtime2 = GetTime(initTic);
         stimt = .5*(stimtime1 + stimtime2);
         timerObj.UserData = [timerObj.UserData; stimt];

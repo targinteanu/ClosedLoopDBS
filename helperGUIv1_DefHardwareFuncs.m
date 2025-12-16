@@ -32,17 +32,15 @@ if StimSel == 1
     HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
     HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
     HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
-    HardwareFuncs.SetupStimTTL = @(~) error('TTL not enabled.'); 
     HardwareFuncs.PulseStimulator = @stimPulse_cerestim;
     HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;  
 elseif StimSel == 2
     % c-pod + CereStim in trig mode 
     StimTriggerMode = true;
-    HardwareFuncs.SetupStimulator = @stimSetup_cerestim;
-    HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim;
+    HardwareFuncs.SetupStimulator = @stimSetup_cpod;
+    HardwareFuncs.ShutdownStimulator = @stimShutdown_cerestim_cpod;
     HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
     HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
-    HardwareFuncs.SetupStimTTL = @srlSetup_cpod;
     HardwareFuncs.PulseStimulator = @stimPulse_cpod; 
     HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;       
 elseif StimSel == 3
@@ -52,9 +50,8 @@ elseif StimSel == 3
     HardwareFuncs.ShutdownStimulator = @stimShutdown_AO;
     HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_AO;
     HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim; % should also work for AO
-    HardwareFuncs.SetupStimTTL = @(~) error('TTL not enabled.'); 
     HardwareFuncs.PulseStimulator = @stimPulse_AO;
-    HardwareFuncs.SetStimTriggerMode = @(s) error('Trigger mode not implemented AO.'); 
+    HardwareFuncs.SetStimTriggerMode = @(~) error('Trigger mode not implemented AO.'); 
 else
     % dummy mode / no stimulation 
     StimTriggerMode = false;
@@ -62,8 +59,7 @@ else
     HardwareFuncs.ShutdownStimulator = @(~,~) 0;
     HardwareFuncs.CheckConnectionStimulator = @() 0;
     HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
-    HardwareFuncs.SetupStimTTL = @(~) []; % no TTL enabled
-    HardwareFuncs.PulseStimulator = @(~,~) 0;
+    HardwareFuncs.PulseStimulator = @(~) 0;
     HardwareFuncs.SetStimTriggerMode = @(s) s;                          
 end
 
