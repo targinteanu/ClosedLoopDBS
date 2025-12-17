@@ -1,4 +1,4 @@
-function handles = helperGUIv1b_MainStim(handles, controllerFun)
+function handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, controllerFun)
 
 Stim2Q = false;
 forBuff = handles.recDataStructs.forBuffs{1}; 

@@ -426,7 +426,7 @@ try
     forBuff = handles.recDataStructs.forBuffs{1}; 
 
     % stimulation ===================================================
-    handles = helperGUIv1b_MainStim(handles, @Controller_PDS_PD);
+    handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, @Controller_PDS_PD);
     
     if handles.check_polar.Value
     % x axes alignment 
@@ -522,8 +522,10 @@ try
                 xStim = handles.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
                 maxNstim = handles.stimMaxFreq * xDurSec; % max to show 
                 maxNstim = ceil(maxNstim);
-                if maxNstim > length(xStim)
-                    xStim = xStim((end-maxNstim+1):end);
+                if maxNstim < length(xStim)
+                    iOldestStim = handles.stP1 - maxNstim;
+                    iOldestStim = max(1, iOldestStim);
+                    xStim = xStim(iOldestStim : handles.stP1);
                 end
                 xStim = xStim(xStim >= lastSampleProcTime - xDurSec);
                 if handles.check_polar.Value
@@ -614,7 +616,6 @@ try
             % setup additional phase-tracking buffers & plots
             if handles.MdlSetUp
                 tR = forBuff(:,3); tY = forBuff(:,4); tG = forBuff(:,5); tS = forBuff(:,6);
-                tSt = [];
                 axes(handles.ax_filt)
                 handles.h_redTrace = plot(handles.time0 + seconds(tR) - tNow, zeros(size(tR)), ...
                     's', 'Color',"#A2142F");
@@ -624,8 +625,7 @@ try
                     's', 'Color',"#77AC30");
                 handles.h_stpTrace = plot(handles.time0 + seconds(tS) - tNow, zeros(size(tS)), ...
                     's', 'Color',"#7E2F8E");
-                handles.h_stimTrace = plot(handles.time0 + seconds(tSt) - tNow, zeros(size(tSt)), ...
-                    '*r');
+                handles.h_stimTrace = plot(seconds(0), nan, '*r');
             end
         catch ME1
             getReport(ME1)
@@ -741,6 +741,7 @@ stimtime2 = handles.HardwareFuncs.GetTime(initTic);
 % disp time of pulse using eventdata
 eventTime = datestr(eventdata.Data.time);
 stimtime = .5*(stimtime1 + stimtime2);
+dstimtime = stimtime2 - stimtime1; 
 stimschedtime = hTimer.UserData; 
 disp(['Stimulus pulsed at ',eventTime,' within ',num2str(dstimtime),'s, ',...
       num2str(stimtime - stimschedtime),' s late'])
@@ -1239,9 +1240,15 @@ if get(hObject, 'Value') == 1
 
 else
     % stop stimulus 
+    if handles.StimTriggerMode
     [handles.stimulator, handles.stimulator2] = ...
         handles.HardwareFuncs.ShutdownStimulator(...
             handles.stimulator, handles.stimulator2);
+    else
+    handles.stimulator = ...
+        handles.HardwareFuncs.ShutdownStimulator(...
+            handles.stimulator, handles.stimulator2);
+    end
     handles.StimActive = false;
     set(hObject, 'String', 'Stim Off');
 end
