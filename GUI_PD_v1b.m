@@ -399,7 +399,7 @@ try
     
     % plot and buffer extraction ====================================
 
-    timeBuffs = handles.recDataStructs.timeBuffs;
+    timeBuffs = handles.recDataStructs.timeBuffs; timeBuff = timeBuffs{1};
     lastSampleProcTime = handles.recDataStructs.timeBuffs{handles.channelIndex}(end);
     
     rawPlt = handles.recDataStructs.rawD{4,handles.channelIndex};
@@ -506,7 +506,7 @@ try
                     xTr = forBuff(:,iTr);
                     xTr = xTr(~isnan(xTr));
                     if handles.check_polar.Value
-                        xTr = handles.time0 + seconds(xTr); % ?
+                        xTr = handles.time0 + seconds(xTr) - tNow; % ?
                     else
                         xTr = xTr - lastSampleProcTime;
                     end
@@ -529,7 +529,7 @@ try
                 end
                 xStim = xStim(xStim >= lastSampleProcTime - xDurSec);
                 if handles.check_polar.Value
-                    xStim = handles.time0 + seconds(xStim); % ?
+                    xStim = handles.time0 + seconds(xStim) - tNow; % ?
                 else
                     xStim = xStim - lastSampleProcTime;
                 end
@@ -556,8 +556,14 @@ try
     end
 
     % update raw data and timing plots
+    if handles.check_polar.Value
+        tStem = handles.time0 + seconds(timeBuff) - tNow; % ?
+    else
+        tStem = timeBuff - lastSampleProcTime; % TO DO: fix data2timetable eating one sample, then get rid of the nan
+    end
     set(handles.h_rawDataTrace,'YData',rawPlt);
-    %set(handles.h_timingTrace,'YData',[nan; diff(handles.recDataStructs.timeBuffs{1})]);
+    set(handles.h_timingTrace,'XData', tStem)
+    set(handles.h_timingTrace,'YData', [nan; diff(timeBuff)]);
     if handles.check_polar.Value
         % also update time (x) axis
     end
