@@ -106,7 +106,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
 
     % initiate timing stem plot
     %if handles.check_polar.Value
-        tStem = handles.time0 + seconds(timeBuff) - tNow;
+        tStem = handles.time0 + seconds(timeBuff) - tNow; % ?
     %else
     %    tStem = [seconds(nan), tRaw]; % TO DO: fix data2timetable eating one sample, then get rid of the nan
     %end

@@ -508,7 +508,7 @@ try
                     if handles.check_polar.Value
                         xTr = handles.time0 + seconds(xTr) - tNow; % ?
                     else
-                        xTr = xTr - lastSampleProcTime;
+                        xTr = seconds(xTr - lastSampleProcTime);
                     end
                     set(bTr, 'XData', xTr);
                     set(bTr, 'YData', zeros(size(xTr)));
@@ -531,7 +531,7 @@ try
                 if handles.check_polar.Value
                     xStim = handles.time0 + seconds(xStim) - tNow; % ?
                 else
-                    xStim = xStim - lastSampleProcTime;
+                    xStim = seconds(xStim - lastSampleProcTime);
                 end
                 set(handles.h_stimTrace, 'XData', xStim);
                 set(handles.h_stimTrace, 'YData', zeros(size(xStim)));
@@ -559,7 +559,7 @@ try
     if handles.check_polar.Value
         tStem = handles.time0 + seconds(timeBuff) - tNow; % ?
     else
-        tStem = timeBuff - lastSampleProcTime; % TO DO: fix data2timetable eating one sample, then get rid of the nan
+        tStem = seconds(timeBuff - lastSampleProcTime); % TO DO: fix data2timetable eating one sample, then get rid of the nan
     end
     set(handles.h_rawDataTrace,'YData',rawPlt);
     set(handles.h_timingTrace,'XData', tStem)
@@ -1260,7 +1260,7 @@ else
 end
 
 guidata(hObject, handles)
-settingChange(hObject);
+%settingChange(hObject);
 
 
 % --- Executes during object creation, after setting all properties.
