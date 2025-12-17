@@ -1,15 +1,16 @@
-function handles = helperGUIv1b_MainStim(handles)
+function handles = helperGUIv1b_MainStim(handles, controllerFun)
 
 Stim2Q = false;
 forBuff = handles.recDataStructs.forBuffs{1}; 
 forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
 timeBuffs = handles.recDataStructs.timeBuffs;
 forBuffNew = forBuffNew - timeBuffs{handles.channelIndex}(end,:); % [t2p, t2t]
-StimController = handles.ControllerResult;
-doStim = ((~isempty(StimController)) && handles.StimActive) && (handles.FilterSetUp && handles.MdlSetUp);
-if doStim && (StimController > 0)
+bp = 10; bpthresh = 9; % FIX THIS!!!
+i2Q = controllerFun(handles.srl, handles, bp, bpthresh);
+doStim = ((~isempty(i2Q)) && handles.StimActive) && (handles.FilterSetUp && handles.MdlSetUp);
+if doStim && (i2Q > 0)
     Stim2Q = true;
-    t2Q = forBuffNew(:,StimController);
+    t2Q = forBuffNew(:,i2Q);
 end
 if Stim2Q && (t2Q >= 0)
     t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 

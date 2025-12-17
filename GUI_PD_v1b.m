@@ -303,7 +303,7 @@ try
 % stop stim
 if handles.StimActive
     stop(handles.QueuedStim)
-    handles.HardwareFuncs.ShutdownStimulator(handles.stimulator);
+    handles.HardwareFuncs.ShutdownStimulator(handles.stimulator, handles.stimulator2);
     handles.StimActive = false;
     guidata(hObject, handles)
     setTgl(hObject, eventdata, handles, handles.tgl_StartStop, 0);
@@ -426,7 +426,7 @@ try
     forBuff = handles.recDataStructs.forBuffs{1}; 
 
     % stimulation ===================================================
-    handles = helperGUIv1b_MainStim(handles);
+    handles = helperGUIv1b_MainStim(handles, @Controller_PDS_PD);
     
     if handles.check_polar.Value
     % x axes alignment 
@@ -444,8 +444,8 @@ try
     % should trigger an event or listener that logs the info 
     [handles, newsrl] = helperGUIv0_UpdateSerialLog(handles);
     if newsrl
-        if handles.FilterSetUp
-            if numel(fltPlt) % should this be necessary when above is met?
+        %if handles.FilterSetUp
+            %if numel(fltPlt) % should this be necessary when above is met?
                 ControllerLastResult = handles.ControllerResult;
                 ControllerResult = Controller_PDS_PD( handles.srl, handles, ...
                     fltPlt((end-handles.PDSwin1+1):end) );
@@ -453,8 +453,8 @@ try
                     handles.ControllerResult = ControllerResult;
                     guidata(hObject, handles);
                 end
-            end
-        end
+            %end
+        %end
     end
 
     % update electrode grid 
@@ -513,6 +513,27 @@ try
                     set(bTr, 'XData', xTr);
                     set(bTr, 'YData', zeros(size(xTr)));
                 end
+
+                % update stim indicators 
+                xDurSec = handles.bufferSize/handles.fSample; 
+                if length(xDurSec) > 1
+                    keyboard; % if this happens, fix the code
+                end
+                xStim = handles.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
+                maxNstim = handles.stimMaxFreq * xDurSec; % max to show 
+                maxNstim = ceil(maxNstim);
+                if maxNstim > length(xStim)
+                    xStim = xStim((end-maxNstim+1):end);
+                end
+                xStim = xStim(xStim >= lastSampleProcTime - xDurSec);
+                if handles.check_polar.Value
+                    xStim = handles.time0 + seconds(xStim); % ?
+                else
+                    xStim = xStim - lastSampleProcTime;
+                end
+                set(handles.h_stimTrace, 'XData', xStim);
+                set(handles.h_stimTrace, 'YData', zeros(size(xStim)));
+
             catch ME2
                 getReport(ME2)
                 errordlg(ME2.message, 'Model Prediction Issue');
@@ -593,6 +614,7 @@ try
             % setup additional phase-tracking buffers & plots
             if handles.MdlSetUp
                 tR = forBuff(:,3); tY = forBuff(:,4); tG = forBuff(:,5); tS = forBuff(:,6);
+                tSt = [];
                 axes(handles.ax_filt)
                 handles.h_redTrace = plot(handles.time0 + seconds(tR) - tNow, zeros(size(tR)), ...
                     's', 'Color',"#A2142F");
@@ -602,6 +624,8 @@ try
                     's', 'Color',"#77AC30");
                 handles.h_stpTrace = plot(handles.time0 + seconds(tS) - tNow, zeros(size(tS)), ...
                     's', 'Color',"#7E2F8E");
+                handles.h_stimTrace = plot(handles.time0 + seconds(tSt) - tNow, zeros(size(tSt)), ...
+                    '*r');
             end
         catch ME1
             getReport(ME1)
@@ -700,6 +724,60 @@ function TimerError(obj, evt, hObject)
 % timer has encountered an error! Why was it not caught?
 handles = guidata(hObject);
 keyboard
+%}
+
+% ----------------------------------------------------------------------- %
+% ----                                                                --- %
+% ----               Stimulus Pulse Timer Functions                   --- %
+% ----                                                                --- %
+% ----------------------------------------------------------------------- %
+
+function myPULSE(hTimer,eventdata,hFigure)
+handles = guidata(hFigure);
+initTic = handles.initTic;
+stimtime1 = handles.HardwareFuncs.GetTime(initTic);
+handles.stimulator = handles.HardwareFuncs.PulseStimulator(handles.stimulator);
+stimtime2 = handles.HardwareFuncs.GetTime(initTic);
+% disp time of pulse using eventdata
+eventTime = datestr(eventdata.Data.time);
+stimtime = .5*(stimtime1 + stimtime2);
+stimschedtime = hTimer.UserData; 
+disp(['Stimulus pulsed at ',eventTime,' within ',num2str(dstimtime),'s, ',...
+      num2str(stimtime - stimschedtime),' s late'])
+handles.stimLastTime = stimtime; handles.stimNewTime = stimtime; 
+if handles.stP1 <= length(handles.stStorage1)
+    handles.stStorage1(handles.stP1) = stimtime; 
+    handles.stP1 = handles.stP1 + 1;
+else
+    % storage full; save
+    StimTime = handles.stStorage1;
+    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    disp(['Saving Stimulus to ',svfn])
+    save(svfn,'StimTime');
+    handles.SaveFileN = handles.SaveFileN + 1;
+    handles.stP1 = 1;
+    handles.stStorage1 = nan(size(handles.stStorage1));
+end
+guidata(hFigure,handles);
+
+function schedulePULSE(hTimer,eventdata,hFigure)
+%%{
+% announce when stimulus will go off
+eventTime = datestr(eventdata.Data.time);
+disp(['at ',eventTime,...
+    ' stimulus pulse scheduled for NSP time ',...
+    num2str(hTimer.UserData),...
+    ' in ',num2str(hTimer.StartDelay),' s'])
+%}
+
+function finishPULSE(hTimer,eventdata,hFigure)
+%%{
+% announce that this stim has completed or been aborted.
+eventTime = datestr(eventdata.Data.time);
+disp(['at ',eventTime,...
+    ' stimulus scheduled for NSP time ',...
+    num2str(hTimer.UserData),...
+    ' has been completed or aborted.'])
 %}
 
 % ----------------------------------------------------------------------- %
@@ -1254,9 +1332,11 @@ if get(hObject, 'Value') == 1
 
     handles.StimSetupArgs = stimGetSetupArgs(handles);
 
+    handles.stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
     if handles.StimTriggerMode
-        stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
-        stimulator = handles.HardwareFuncs.SetStimTriggerMode(stimulator);
+        handles.stimulator2 = handles.HardwareFuncs.SetStimTriggerMode([], handles.StimSetupArgs);
+    else
+        handles.stimulator2 = [];
     end
 
     handles.StimActive = true;
@@ -1272,9 +1352,9 @@ if get(hObject, 'Value') == 1
 
 else
     % stop stimulus 
-    if handles.StimTriggerMode
-        stimulator = handles.HardwareFuncs.ShutdownStimulator(handles.StimSetupArgs);
-    end
+    [handles.stimulator, handles.stimulator2] = ...
+        handles.HardwareFuncs.ShutdownStimulator(...
+            handles.stimulator, handles.stimulator2);
     handles.StimActive = false;
     set(hObject, 'String', 'Stim Off');
 end
