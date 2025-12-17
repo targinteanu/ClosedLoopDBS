@@ -22,7 +22,7 @@ function varargout = GUI_PD_v1b(varargin)
 
 % Edit the above text to modify the response to help GUI_PD_v1b
 
-% Last Modified by GUIDE v2.5 05-Dec-2025 10:40:05
+% Last Modified by GUIDE v2.5 17-Dec-2025 01:02:33
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -826,119 +826,6 @@ end
 % ----                                                                --- %
 % ----------------------------------------------------------------------- %
 
-
-% --- Executes on selection change in pop_RedStim.
-function pop_RedStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_RedStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_RedStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_RedStim
-contents = cellstr(get(hObject,'String'));
-RedStim = contents{get(hObject,'Value')};
-handles.StimMode.red = RedStim; 
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_RedStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_RedStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-pop_RedStim_Callback(hObject, eventdata, handles)
-
-
-% --- Executes on selection change in pop_YellowStim.
-function pop_YellowStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_YellowStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_YellowStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_YellowStim
-contents = cellstr(get(hObject,'String'));
-YellowStim = contents{get(hObject,'Value')};
-handles.StimMode.yellow = YellowStim; 
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_YellowStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_YellowStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-pop_YellowStim_Callback(hObject, eventdata, handles)
-
-
-% --- Executes on selection change in pop_GreenStim.
-function pop_GreenStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_GreenStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_GreenStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_GreenStim
-contents = cellstr(get(hObject,'String'));
-GreenStim = contents{get(hObject,'Value')};
-handles.StimMode.green = GreenStim; 
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_GreenStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_GreenStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on selection change in pop_StopStim.
-function pop_StopStim_Callback(hObject, eventdata, handles)
-% hObject    handle to pop_StopStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns pop_StopStim contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from pop_StopStim
-contents = cellstr(get(hObject,'String'));
-StopStim = contents{get(hObject,'Value')};
-handles.StimMode.Stopped = StopStim; 
-guidata(hObject, handles);
-
-
-% --- Executes during object creation, after setting all properties.
-function pop_StopStim_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to pop_StopStim (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-pop_StopStim_Callback(hObject, eventdata, handles)
-
-
-
 function txt_loco_Callback(hObject, eventdata, handles)
 % hObject    handle to txt_loco (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -1611,3 +1498,155 @@ handles.StimulatorLagTime = handles.HardwareFuncs.CalibrateStimulator(...
     handles.HardwareFuncs.PulseStimulator, ...
     handles.HardwareFuncs.SetupStimTTL);
 guidata(hObject, handles);
+
+
+
+function txt_RedStim_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_RedStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_RedStim as text
+%        str2double(get(hObject,'String')) returns contents of txt_RedStim as a double
+handles.PhaseOfInterest(3) = nan;
+phi = str2double(get(hObject,'String'));
+if isnan(phi)
+    stimmode = 0;
+else
+    phi = phi * pi / 180; % deg -> rad
+    stimmode = find(handles.PhaseOfInterest == phi);
+    if isempty(stimmode)
+        handles.PhaseOfInterest(3) = phi;
+        stimmode = 3;
+    else
+        stimmode = stimmode(1);
+    end
+end
+handles.StimMode.red = stimmode;
+guidata(hObject, handles)
+
+% --- Executes during object creation, after setting all properties.
+function txt_RedStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_RedStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_YellowStim_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_YellowStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_YellowStim as text
+%        str2double(get(hObject,'String')) returns contents of txt_YellowStim as a double
+handles.PhaseOfInterest(4) = nan;
+phi = str2double(get(hObject,'String'));
+if isnan(phi)
+    stimmode = 0;
+else
+    phi = phi * pi / 180; % deg -> rad
+    stimmode = find(handles.PhaseOfInterest == phi);
+    if isempty(stimmode)
+        handles.PhaseOfInterest(4) = phi;
+        stimmode = 4;
+    else
+        stimmode = stimmode(1);
+    end
+end
+handles.StimMode.yellow = stimmode;
+guidata(hObject, handles)
+
+% --- Executes during object creation, after setting all properties.
+function txt_YellowStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_YellowStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_GreenStim_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_GreenStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_GreenStim as text
+%        str2double(get(hObject,'String')) returns contents of txt_GreenStim as a double
+handles.PhaseOfInterest(5) = nan;
+phi = str2double(get(hObject,'String'));
+if isnan(phi)
+    stimmode = 0;
+else
+    phi = phi * pi / 180; % deg -> rad
+    stimmode = find(handles.PhaseOfInterest == phi);
+    if isempty(stimmode)
+        handles.PhaseOfInterest(5) = phi;
+        stimmode = 5;
+    else
+        stimmode = stimmode(1);
+    end
+end
+handles.StimMode.green = stimmode;
+guidata(hObject, handles)
+
+% --- Executes during object creation, after setting all properties.
+function txt_GreenStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_GreenStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_StoppedStim_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_StoppedStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_StoppedStim as text
+%        str2double(get(hObject,'String')) returns contents of txt_StoppedStim as a double
+handles.PhaseOfInterest(6) = nan;
+phi = str2double(get(hObject,'String'));
+if isnan(phi)
+    stimmode = 0;
+else
+    phi = phi * pi / 180; % deg -> rad
+    stimmode = find(handles.PhaseOfInterest == phi);
+    if isempty(stimmode)
+        handles.PhaseOfInterest(6) = phi;
+        stimmode = 6;
+    else
+        stimmode = stimmode(1);
+    end
+end
+handles.StimMode.Stopped = stimmode;
+guidata(hObject, handles)
+
+% --- Executes during object creation, after setting all properties.
+function txt_StoppedStim_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_StoppedStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
