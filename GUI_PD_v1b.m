@@ -1537,6 +1537,7 @@ else
 end
 handles.StimMode.red = stimmode;
 guidata(hObject, handles)
+settingChange(hObject)
 
 % --- Executes during object creation, after setting all properties.
 function txt_RedStim_CreateFcn(hObject, eventdata, handles)
@@ -1575,6 +1576,7 @@ else
 end
 handles.StimMode.yellow = stimmode;
 guidata(hObject, handles)
+settingChange(hObject)
 
 % --- Executes during object creation, after setting all properties.
 function txt_YellowStim_CreateFcn(hObject, eventdata, handles)
@@ -1613,6 +1615,7 @@ else
 end
 handles.StimMode.green = stimmode;
 guidata(hObject, handles)
+settingChange(hObject)
 
 % --- Executes during object creation, after setting all properties.
 function txt_GreenStim_CreateFcn(hObject, eventdata, handles)
@@ -1651,6 +1654,7 @@ else
 end
 handles.StimMode.Stopped = stimmode;
 guidata(hObject, handles)
+settingChange(hObject)
 
 % --- Executes during object creation, after setting all properties.
 function txt_StoppedStim_CreateFcn(hObject, eventdata, handles)
