@@ -1,11 +1,18 @@
-function [HardwareFuncs, StimTriggerMode] = helperGUIv1_DefHardwareFuncs()
+function [HardwareFuncs, StimTriggerMode] = helperGUIv1_DefHardwareFuncs(dostim)
+
+if nargin < 1
+    dostim = true;
+end
 
 RecOpts = {'Blackrock NSP'; 'Alpha Omega AlphaRS'}; % TO DO: add Neuro Omega ?
 StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'AlphaRS'; 'None'}; 
 RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
     "ListString",RecOpts, "SelectionMode","single");
+if dostim
 StimSel = listdlg("PromptString", "Stimulator Hardware Configuration:", ...
     "ListString",StimOpts, "SelectionMode","single");
+end
+
 if RecSel == 1
     % Blackrock NSP 
     HardwareFuncs = struct(...
@@ -16,15 +23,21 @@ if RecSel == 1
         'GetTime', @getTime_cbmex); 
 elseif RecSel == 2
     % AO AlphaRS; might also work with Neuro Omega (untested) 
+    chantypes = {'LFP', 'SPK', 'RAW', 'AI', 'SEG'};
+    chantypesel = listdlg("PromptString","Channel Type:", ...
+        "ListString",chantypes, "SelectionMode","single");
+    chantype = chantypes{chantypesel};
     HardwareFuncs = struct(...
         'SetupRecording', @connect_AO, ...
         'ShutdownRecording', @disconnect_AO, ...
-        'InitRawData', @initRawData_AO, ...
+        'InitRawData', @(a,b) initRawData_AO(a,b,chantype), ...
         'GetNewRawData', @getNewRawData_AO, ...
         'GetTime', @getTime_AO);
 else
     error('Recording option must be specified.')
 end
+
+if dostim
 if StimSel == 1
     % Blackrock CereStim API
     StimTriggerMode = false;
@@ -61,6 +74,7 @@ else
     HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
     HardwareFuncs.PulseStimulator = @(~) 0;
     HardwareFuncs.SetStimTriggerMode = @(s) s;                          
+end
 end
 
 end

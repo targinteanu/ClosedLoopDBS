@@ -1,10 +1,12 @@
 function [emptyData, contData, buffData, chanInfo, startTic] = ...
-    initRawData_AO(chsel, bufferSize)
+    initRawData_AO(chsel, bufferSize, chantype)
 % Initialize the multichannel raw data structure using Alpha Omega
 % interface. 
 %
 % Inputs: chsel is horizontal selected channel ID numbers output from AO.
 % bufferSize is the size(s) of each corresponding channel buffer (samples). 
+% chantype is e.g. 'LFP', 'AI' (analog in), 'SPK', 'RAW', 'SEG'. Currently,
+% only one type at a time is supported. 
 % 
 % Output data structure is a cell array with columns to each channel. Each
 % channel is represented by the matrix [time column, data column]. Time
@@ -12,11 +14,52 @@ function [emptyData, contData, buffData, chanInfo, startTic] = ...
 % 
 % chanInfo has fields: SampleRate, Name, Unit, IDnumber
 
+if nargin < 3
+    chantype = 'LFP';
+end
+
+%% hardcode known channel info according to type 
+% There does not seem to be a way to extract this info automatically.
+%
+% currently excluding FE/RM Audio, RM AO, UD, InPort,
+% StimMarker, Internal Detection, TTL, DOUT, TS Sync, ACC_X/Y/Z
+% (acceleration?)
+%
+% Channel names on Neuro Omega need to be included here!!! (unsure if they
+% are the same)
+% 
+if strcmpi(chantype, 'LFP')
+    % filtered/downsampled LFP
+    fs = 1875;
+    channelselector = @(n) (n < 97) && (n >= 33);
+elseif strcmpi(chantype, 'AI')
+    % analog in
+    fs = 3750;
+    channelselector = @(n) n < 9;
+elseif strcmpi(chantype, 'SEG')
+    % timestamp of threshold crossing (spike sorting)
+    fs = 30000;
+    channelselector = @(n) n < 97;
+elseif strcmpi(chantype, 'SPK')
+    % filtered spike
+    fs = 30000;
+    channelselector = @(n) false;
+elseif strcmpi(chantype, 'RAW')
+    % unprocessed (no filering/downsampling) ver of other signals
+    fs = 30000;
+    channelselector = @(n) n < 11;
+else
+    fs = nan; 
+    channelselector = @(n) false;
+end
+
 %% connect to hardware 
 connect_AO(); startTic = tic; 
 pause(1);
 
 %% setup
+
+chnamefspec = [chantype,' %f'];
 
 [Results, channelsData] = AO_GetAllChannels();
 %%{
@@ -43,50 +86,10 @@ chname = {channelsData.channelName};
 chincl = false(size(chnum)); Fs = nan(size(chnum));
 for ch = 1:length(chnum)
     chname_ch = chname{ch};
-    % 
-    % Currently including only LFP channels because they have the same
-    % sample rate. TO DO: include other channels with their sample rates 
-    %
-    % currently excluding FE/RM Audio, RM AO, UD, InPort,
-    % StimMarker, Internal Detection, TTL, DOUT, TS Sync, ACC_X/Y/Z
-    % (acceleration?)
-    %
-    % Channel names on Neuro Omega need to be included here!!! (unsure if they
-    % are the same)
-    % 
-    if contains(chname_ch, 'LFP')
-        %{
-        n = sscanf(chname_ch, 'LFP %f'); 
-        chincl(ch) = (n < 97) && (n >= 33);
-        Fs(ch) = 1875;
-        %}
-        %{
-    elseif contains(chname_ch, 'SEG')
-        % timestamp of threshold crossing (spike sorting)
-        n = sscanf(chname_ch, 'SEG %f'); 
-        chincl(ch) = n < 97;
-        Fs(ch) = 30000;
-        %}
-        %{
-    elseif contains(chname_ch, 'RAW')
-        % unprocessed (no filering/downsampling) ver of other signals 
-        n = sscanf(chname_ch, 'RAW %f'); 
-        chincl(ch) = n < 11;
-        Fs(ch) = 30000;
-        %}
-        %%{
-    elseif contains(chname_ch, 'AI')
-        % Analog In (?)
-        n = sscanf(chname_ch, 'AI %f'); 
-        chincl(ch) = n < 9;
-        Fs(ch) = 3750; 
-        %{
-        %}
-    elseif contains(chname_ch, 'SPK')
-        n = sscanf(chname_ch, 'SPK %f');
-        chincl(ch) = false;
-        Fs(ch) = 30000;
-        %}
+    if contains(chname_ch, chantype)
+        n = sscanf(chname_ch, chnamefspec);
+        chincl(ch) = true; % alternatively, use chanselector(n)
+        Fs(ch) = fs;
     end
     % 
     % TO DO: can above chan inclusion be automated, i.e. try 
@@ -94,13 +97,7 @@ for ch = 1:length(chnum)
     % exclude channels with nonzero error / nan DataCapture? 
     % 
 end
-%{
-chincl = ...
-    contains(chname, 'LFP') | ...
-    contains(chname, 'SEG') | ... SEEG (?)
-    contains(chname, 'RAW') | ... ?
-    contains(chname, 'AI') ; % Analog In (?)
-%}
+
 chnum = chnum(chincl); chname = chname(chincl); Fs = Fs(chincl);
 
 if isempty(chsel)
