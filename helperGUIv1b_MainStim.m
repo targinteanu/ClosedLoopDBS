@@ -2,7 +2,7 @@ function handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, controller
 
 Stim2Q = false;
 forBuff = handles.recDataStructs.forBuffs{1}; 
-forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
+forBuffNew = forBuff(end,:); 
 timeBuffs = handles.recDataStructs.timeBuffs;
 forBuffNew = forBuffNew - timeBuffs{handles.channelIndex}(end,:); % [t2p, t2t]
 bp = 10; bpthresh = 9; % FIX THIS!!!

@@ -204,7 +204,7 @@ while cont_loop
 
     % do stimulus 
     forBuff = forBuffs{1}; 
-    forBuffNew = [max(forBuff(:,1)), max(forBuff(:,2))]; 
+    forBuffNew = forBuff(end,:); 
     forBuffNew = forBuffNew - timeBuffs{chInd}(end,:); % [t2p, t2t]
     if doStim && (StimController > 0)
         t2stim = forBuffNew(:,StimController);
