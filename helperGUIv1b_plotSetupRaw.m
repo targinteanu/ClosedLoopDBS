@@ -5,8 +5,8 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     handles.channelIndex = get(handles.pop_channels,'Value'); 
     % Now we know the sampling rate of the selected channel
     handles.fSample = handles.fSamples(handles.channelIndex);
-    handles.bufferSize = str2double(get(handles.txt_display,'String')) * handles.fSample;
-    handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * handles.fSamples;
+    handles.bufferSize = ceil(str2double(get(handles.txt_display,'String')) * handles.fSample);
+    handles.bufferSizeGrid = ceil(str2double(get(handles.txt_griddur,'String')) * handles.fSamples);
 
     % assign channel indexes (NOT IDs!) to use for filtering and forecasting
     chInd = handles.channelIndex;
