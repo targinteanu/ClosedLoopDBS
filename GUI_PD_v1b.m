@@ -1211,6 +1211,8 @@ function tgl_stim_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of tgl_stim
 
+loopRunning = handles.RunMainLoop;
+
 if get(hObject, 'Value') == 1
     % start stimulus 
 
@@ -1234,8 +1236,14 @@ if get(hObject, 'Value') == 1
         remtf = remtf | (channelIDlist == chid);
     end
     handles.allChannelIDs = channelIDlist(~remtf);
+    
+    % enforce the newly disabled channels throughout GUI
     guidata(hObject, handles);
-    settingChange(hObject);
+    StopMainLoop(hObject, eventdata, handles);
+    pause(.01); drawnow; pause(.01);
+    StartMainLoop(hObject, eventdata, handles);
+    pause(.01); drawnow; pause(.01);
+    StopMainLoop(hObject, eventdata, handles);
 
     handles.stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
     if handles.StimTriggerMode
@@ -1246,6 +1254,11 @@ if get(hObject, 'Value') == 1
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
+
+    guidata(hObject, handles)
+    if loopRunning
+        StartMainLoop(hObject, eventdata, handles);
+    end
 
     catch ME
         hObject.Value = 0;
@@ -1269,9 +1282,10 @@ else
     handles.StimActive = false;
     % TO DO: re-enable channels that were disabled for stimulation 
     set(hObject, 'String', 'Stim Off');
+    guidata(hObject, handles)
 end
 
-guidata(hObject, handles)
+%guidata(hObject, handles)
 %settingChange(hObject);
 
 
