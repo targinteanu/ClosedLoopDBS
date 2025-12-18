@@ -2,7 +2,8 @@ function [...
     timeBuffs, rawData, ...
     artRemData, artRemArgs, ...
     fltData, fltArgs, ...
-    forBuffs, forData, forArgs] = ...
+    forBuffs, forData, forArgs, ...
+    setup_time, DAQ_time, artifact_time, filter_time, update_time, forecast_time] = ...
     iterReadBrain(...
         timeBuffs, rawData, daqFun, ...
         selRaw2Art, selFor2Art, selRaw2Flt, selRaw2For, selFlt2For, ...
@@ -43,7 +44,7 @@ if numel(selFlt2For)
     end
 end
 
-setup_time = toc; disp(['Setup Time = ',num2str(setup_time)])
+setup_time = toc; %disp(['Setup Time = ',num2str(setup_time)])
 %% DAQ 
 tic
 if doDAQ 
@@ -113,7 +114,7 @@ lenRaw = cellfun(@height, rawTails); lenFlt = lenRaw(selRaw2Flt);
 
 end
 
-DAQ_time = toc; disp(['DAQ time = ',num2str(DAQ_time)])
+DAQ_time = toc; %disp(['DAQ time = ',num2str(DAQ_time)])
 %% Artifact Removal 
 tic
 if doArt
@@ -137,7 +138,7 @@ rawTails(selRaw2Art) = artRemData(3,:); rawAllData(selRaw2Art) = artRemData(4,:)
 
 end
 
-artifact_time = toc; disp(['Artifact time = ',num2str(artifact_time)])
+artifact_time = toc; %disp(['Artifact time = ',num2str(artifact_time)])
 %% Filter
 tic
 if doFlt
@@ -159,14 +160,14 @@ else
     fltTails = {}; fltAllData = {};
 end
 
-filter_time = toc; disp(['Filter time = ',num2str(filter_time)])
+filter_time = toc; %disp(['Filter time = ',num2str(filter_time)])
 
 %% Update mdl coeffs 
 tic 
 
 
 
-update_time = toc; disp(['Model update time = ',num2str(update_time)])
+update_time = toc; %disp(['Model update time = ',num2str(update_time)])
 
 %% Forecast 
 tic
@@ -203,7 +204,7 @@ end
 
 end
 
-forecast_time = toc; disp(['Forecast time = ',num2str(forecast_time)])
+forecast_time = toc; %disp(['Forecast time = ',num2str(forecast_time)])
 
 %% helper 
     function [newBuffer, newTail, newAll] = ...
