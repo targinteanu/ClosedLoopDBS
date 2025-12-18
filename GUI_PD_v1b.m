@@ -402,6 +402,7 @@ try
 
     timeBuffs = handles.recDataStructs.timeBuffs; timeBuff = timeBuffs{1};
     lastSampleProcTime = handles.recDataStructs.timeBuffs{handles.channelIndex}(end);
+    handles.lastSampleProcTime = lastSampleProcTime;
     
     rawPlt = handles.recDataStructs.rawD{4,handles.channelIndex};
     if ~isempty(rawPlt)
