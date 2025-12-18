@@ -1229,6 +1229,7 @@ if get(hObject, 'Value') == 1
 
     handles.StimSetupArgs = stimGetSetupArgs(handles);
 
+    %{
     % channels selected for stimulation must be removed from recording
     channelIDlist = handles.channelIDlist;
     remtf = false(size(channelIDlist)); 
@@ -1244,6 +1245,7 @@ if get(hObject, 'Value') == 1
     StartMainLoop(hObject, eventdata, handles);
     pause(.01); drawnow; pause(.01);
     StopMainLoop(hObject, eventdata, handles);
+    %}
 
     handles.stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
     if handles.StimTriggerMode
@@ -1255,10 +1257,12 @@ if get(hObject, 'Value') == 1
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
 
+    %{
     guidata(hObject, handles)
     if loopRunning
         StartMainLoop(hObject, eventdata, handles);
     end
+    %}
 
     catch ME
         hObject.Value = 0;
@@ -1282,10 +1286,10 @@ else
     handles.StimActive = false;
     % TO DO: re-enable channels that were disabled for stimulation 
     set(hObject, 'String', 'Stim Off');
-    guidata(hObject, handles)
+    %guidata(hObject, handles)
 end
 
-%guidata(hObject, handles)
+guidata(hObject, handles)
 %settingChange(hObject);
 
 
