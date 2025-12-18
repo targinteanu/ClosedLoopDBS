@@ -92,16 +92,22 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     else
         common_xlim = xlim();
     end
+
     % add artifact removal if applicable 
     if handles.FilterSetUp && handles.MdlSetUp
         if handles.check_artifact.Value
             if isempty(artPlt)
                 set(handles.check_artifact,'Value',false);
-                handles.check_artifact_Value = false;
+                %handles.check_artifact_Value = false;
                 error('Artifact removal was not actually set up. Something is wrong in the code.')
             end
+            tArt = artPlt.Time - tNow;
+            if ~handles.check_polar.Value
+                % do not track time exactly 
+                tArt = seconds(((-length(tRaw)+1):(length(tArt)-length(tRaw)))/handles.fSample);
+            end
             hold on;
-            handles.h_artDataTrace = plot(artPlt.Time - tNow, artPlt.Variables, ':');
+            handles.h_artDataTrace = plot(tArt, artPlt.Variables, ':');
         end
     end
 

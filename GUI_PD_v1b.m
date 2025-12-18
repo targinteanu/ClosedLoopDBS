@@ -409,6 +409,12 @@ try
     end
     rawPlt = rawPlt(2:end);
 
+    artPlt = handles.recDataStructs.artD{4,1};
+    if ~isempty(artPlt)
+        artPlt = artPlt(:,2);
+    end
+    artPlt = artPlt(2:end);
+
     selFlt = handles.selInds.selFlt2For;
     if isempty(selFlt) || isnan(selFlt)
         selFlt = 1;
@@ -493,6 +499,25 @@ try
                     % set x data ...
                 end
 
+                if handles.check_artifact.Value
+                try 
+                    % update artifact-removed plot
+                    if handles.check_polar.Value
+                        % set x data ...
+                    else
+                        tArt = seconds(((-length(rawPlt)+1):(length(artPlt)-length(rawPlt)))/handles.fSample);
+                    end
+                    set(handles.h_artDataTrace, 'XData', tArt);
+                    set(handles.h_artDataTrace, 'YData', artPlt);
+                catch ME3
+                    getReport(ME3)
+                    errordlg(ME3.message, 'Artifact Removal Issue');
+                    set(handles.check_artifact,'Value',false);
+                    guidata(hObject, handles);
+                    pause(.01);
+                end
+                end
+
                 % update phase indicator traces 
                 %forBuffSample = round(forBuff.*handles.fSample);
                 buffTraces = [...
@@ -517,9 +542,11 @@ try
 
                 % update stim indicators 
                 xDurSec = handles.bufferSize/handles.fSample; 
+                %{
                 if length(xDurSec) > 1
                     keyboard; % if this happens, fix the code
                 end
+                %}
                 xStim = handles.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
                 maxNstim = handles.stimMaxFreq * xDurSec; % max to show 
                 maxNstim = ceil(maxNstim);
@@ -1009,6 +1036,7 @@ function check_polar_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_polar
+settingChange(hObject)
 
 
 % --- Executes on selection change in pop_channel1.
