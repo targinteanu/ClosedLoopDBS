@@ -504,7 +504,7 @@ try
                 for iTr = 1:length(handles.PhaseOfInterest)
                     bTr = buffTraces(iTr);
                     xTr = forBuff(:,iTr);
-                    xTr = xTr(~isnan(xTr));
+                    %xTr = xTr(~isnan(xTr));
                     if handles.check_polar.Value
                         xTr = handles.time0 + seconds(xTr) - tNow; % ?
                     else
@@ -573,13 +573,14 @@ try
     pause(dT)
 
 catch ME_loop 
-    getReport(ME_loop)
+    %getReport(ME_loop)
     if contains(ME_loop.message, 'No continuous data')
             % do nothing; proceed to next loop iteration to allow more time
             % for continuous data. 
             % TO DO: should there be some limit; enough of these in a row
             % and it stops cont_loop and sends the error? 
     else
+    getReport(ME_loop)
     errordlg(ME_loop.message, 'Main Loop Issue');
     handles.RunMainLoop = false;
     guidata(hObject, handles)
@@ -1226,6 +1227,16 @@ if get(hObject, 'Value') == 1
 
     handles.StimSetupArgs = stimGetSetupArgs(handles);
 
+    % channels selected for stimulation must be removed from recording
+    channelIDlist = handles.channelIDlist;
+    remtf = false(size(channelIDlist)); 
+    for chid = [handles.StimSetupArgs.channel1, handles.StimSetupArgs.channel2]
+        remtf = remtf | (channelIDlist == chid);
+    end
+    handles.allChannelIDs = channelIDlist(~remtf);
+    guidata(hObject, handles);
+    settingChange(hObject);
+
     handles.stimulator = handles.HardwareFuncs.SetupStimulator(handles.StimSetupArgs);
     if handles.StimTriggerMode
         handles.stimulator2 = handles.HardwareFuncs.SetStimTriggerMode([], handles.StimSetupArgs);
@@ -1256,6 +1267,7 @@ else
             handles.stimulator, handles.stimulator2);
     end
     handles.StimActive = false;
+    % TO DO: re-enable channels that were disabled for stimulation 
     set(hObject, 'String', 'Stim Off');
 end
 
@@ -1479,11 +1491,14 @@ function push_remchan_Callback(hObject, eventdata, handles)
 % hObject    handle to push_remchan (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[remind, ok] = listdlg("ListString",handles.channelList, ...
+[remind, ok] = listdlg("ListString", [handles.channelList, 'None'], ...
     "PromptString", 'REMOVE these channels:');
 if ok
     channelIDlist = handles.channelIDlist;
-    remtf = false(size(channelIDlist)); remtf(remind) = true;
+    remtf = false(size(channelIDlist)); 
+    if remind <= length(channelIDlist)
+        remtf(remind) = true;
+    end
     handles.allChannelIDs = channelIDlist(~remtf);
     guidata(hObject, handles);
     settingChange(hObject);
