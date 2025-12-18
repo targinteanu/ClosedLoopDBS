@@ -18,7 +18,18 @@ if handles.DAQstatus
 end
 
 handles.HardwareFuncs.SetupRecording();
+pause(.1);
+try
 handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic));
+catch ME
+    % restart
+    pause(.1);
+    handles.HardwareFuncs.ShutdownRecording();
+    pause(.1);
+    handles.HardwareFuncs.SetupRecording();
+    pause(.1);
+    handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic));
+end
 
 handles.DAQstatus = true;
 
