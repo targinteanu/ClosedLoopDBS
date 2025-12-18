@@ -1,6 +1,7 @@
 function connect_AO()
 
-MAC_addr = 'C8:DF:84:F8:9F:E2'; % MAC address of Functional Neuro Lab's AlphaRS 
+%MAC_addr = 'C8:DF:84:F8:9F:E2'; % MAC address of Functional Neuro Lab's AlphaRS 
+MAC_addr = 'bc:6a:29:d3:4a:63'; % MAC address of Neuro Omega 
 
 Result = AO_DefaultStartConnection(MAC_addr);
 
