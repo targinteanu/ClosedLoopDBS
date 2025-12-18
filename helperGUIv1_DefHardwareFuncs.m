@@ -1,4 +1,5 @@
-function [HardwareFuncs, StimTriggerMode] = helperGUIv1_DefHardwareFuncs(dostim)
+function [HardwareFuncs, StimTriggerMode, StimLagTime] = ...
+    helperGUIv1_DefHardwareFuncs(dostim)
 
 if nargin < 1
     dostim = true;
@@ -46,7 +47,8 @@ if StimSel == 1
     HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
     HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
     HardwareFuncs.PulseStimulator = @stimPulse_cerestim;
-    HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;  
+    HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim; 
+    StimLagTime = 0.03; % s 
 elseif StimSel == 2
     % c-pod + CereStim in trig mode 
     StimTriggerMode = true;
@@ -55,7 +57,8 @@ elseif StimSel == 2
     HardwareFuncs.CheckConnectionStimulator = @stimCheckConnection_cerestim;
     HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim;
     HardwareFuncs.PulseStimulator = @stimPulse_cpod; 
-    HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim;       
+    HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim; 
+    StimLagTime = 0.03; % s - not tested 
 elseif StimSel == 3
     % AO AlphaRS; might also work with Neuro Omega (untested) 
     StimTriggerMode = false; 
@@ -65,6 +68,7 @@ elseif StimSel == 3
     HardwareFuncs.CalibrateStimulator = @stimCalibrate_cerestim; % should also work for AO
     HardwareFuncs.PulseStimulator = @stimPulse_AO;
     HardwareFuncs.SetStimTriggerMode = @(~) error('Trigger mode not implemented AO.'); 
+    StimLagTime = 0; % ?
 else
     % dummy mode / no stimulation 
     StimTriggerMode = false;
@@ -73,7 +77,8 @@ else
     HardwareFuncs.CheckConnectionStimulator = @() 0;
     HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
     HardwareFuncs.PulseStimulator = @(~) 0;
-    HardwareFuncs.SetStimTriggerMode = @(s) s;                          
+    HardwareFuncs.SetStimTriggerMode = @(s) s;    
+    StimLagTime = 0; 
 end
 end
 

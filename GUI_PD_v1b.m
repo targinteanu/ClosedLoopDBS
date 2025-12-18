@@ -154,7 +154,8 @@ disableDefaultInteractivity(handles.ax_timing);
 disableDefaultInteractivity(handles.ax_elecgrid);
 
 % hardware-specific functions 
-[handles.HardwareFuncs, handles.StimTriggerMode] = helperGUIv1_DefHardwareFuncs();
+[handles.HardwareFuncs, handles.StimTriggerMode, handles.StimulatorLagTime]...
+    = helperGUIv1_DefHardwareFuncs();
 handles.initTic = tic;
 
 % Update handles structure
