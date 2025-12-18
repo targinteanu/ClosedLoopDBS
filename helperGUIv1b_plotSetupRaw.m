@@ -104,7 +104,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
             tArt = artPlt.Time - tNow;
             if ~handles.check_polar.Value
                 % do not track time exactly 
-                tArt = seconds(((-length(tRaw)+1):(length(tArt)-length(tRaw)))/handles.fSample);
+                tArt = tRaw;
             end
             hold on;
             handles.h_artDataTrace = plot(tArt, artPlt.Variables, ':');

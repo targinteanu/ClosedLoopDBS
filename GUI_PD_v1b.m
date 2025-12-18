@@ -414,6 +414,10 @@ try
         artPlt = artPlt(:,2);
     end
     artPlt = artPlt(2:end);
+    if length(artPlt) > length(rawPlt)
+        %artPlt = artPlt(1:length(rawPlt));
+        artPlt = artPlt( (length(artPlt)-length(rawPlt)+1):end );
+    end
 
     selFlt = handles.selInds.selFlt2For;
     if isempty(selFlt) || isnan(selFlt)
@@ -502,13 +506,10 @@ try
                 if handles.check_artifact.Value
                 try 
                     % update artifact-removed plot
-                    if handles.check_polar.Value
-                        % set x data ...
-                    else
-                        tArt = seconds(((-length(rawPlt)+1):(length(artPlt)-length(rawPlt)))/handles.fSample);
-                    end
-                    set(handles.h_artDataTrace, 'XData', tArt);
                     set(handles.h_artDataTrace, 'YData', artPlt);
+                    if handles.check_polar.Value
+                        % also update x data ...
+                    end
                 catch ME3
                     getReport(ME3)
                     errordlg(ME3.message, 'Artifact Removal Issue');
