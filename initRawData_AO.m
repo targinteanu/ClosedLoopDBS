@@ -84,12 +84,12 @@ chname = {channelsData.channelName};
 
 % limit to only desired continuous data channels
 chincl = false(size(chnum)); Fs = nan(size(chnum));
-for ch = 1:length(chnum)
-    chname_ch = chname{ch};
+for chInd = 1:length(chnum)
+    chname_ch = chname{chInd};
     if contains(chname_ch, chantype)
         n = sscanf(chname_ch, chnamefspec);
-        chincl(ch) = true; % alternatively, use chanselector(n)
-        Fs(ch) = fs;
+        chincl(chInd) = true; % alternatively, use chanselector(n)
+        Fs(chInd) = fs;
     end
     % 
     % TO DO: can above chan inclusion be automated, i.e. try 
@@ -127,8 +127,8 @@ BitResolution = 2500000/(2^16*ChannelGain);
 
 % add buffering channels 
 W = length(chsel);
-for ch = 1:W
-    chnum_ch = chsel(ch); chname_ch = chname{ch};
+for chInd = 1:W
+    chnum_ch = chsel(chInd); chname_ch = chname{chInd};
     Results = AO_AddBufferingChannel(chnum_ch, bufferSizeAO);
     if Results
         msg = [...
@@ -185,25 +185,25 @@ contData = emptyData;
 buffData = emptyData;
 chanInfo = emptyData;
 
-for ch = 1:length(chsel)
-    chInd = find(chnum == chsel(ch));
+for ch = 1:length(chnum)
+    chnum_ch = chnum(ch);
+    chInd = find(chsel == chnum_ch);
 
     if ~isempty(chInd)
         if length(chInd) > 1
             error('Non-unique channel ID(s).')
         end
-        chnum_ch = chsel(ch);
-        chname_ch = chname{chInd};
-        fs = Fs(chInd);
+        chname_ch = chname{ch};
+        fs = Fs(ch);
 
         % Create raw data buffer of zeros of the correct length
-        emptyData{ch} = [nan(bufferSize(ch),1), zeros(bufferSize(ch),1)];
-        if ~isempty(emptyData{ch})
+        emptyData{chInd} = [nan(bufferSize(chInd),1), zeros(bufferSize(chInd),1)];
+        if ~isempty(emptyData{chInd})
             %emptyData{ch}(1,1) = time - (bufferSize)/fs(chInd);
-            emptyData{ch}(end,1) = time - 1/fs; % ??
+            emptyData{chInd}(end,1) = time - 1/fs; % ??
         end
-        contData{ch} = [nan(L,1), continuousData(:,chInd)];
-        contData{ch}(1,1) = time;
+        contData{chInd} = [nan(L,1), continuousData(:,chInd)];
+        contData{chInd}(1,1) = time;
 
         % channel info 
         ud.SampleRate = fs; 
@@ -213,9 +213,9 @@ for ch = 1:length(chsel)
         ud.MinAnalog = 0;  % to negate offset calculation
         ud.Resolution = BitResolution;
         ud.IDnumber = chnum_ch;
-        chanInfo{ch} = ud; 
+        chanInfo{chInd} = ud; 
 
-        buffData{ch} = bufferData(emptyData{ch}, contData{ch});
+        buffData{chInd} = bufferData(emptyData{chInd}, contData{chInd});
 
     end
 

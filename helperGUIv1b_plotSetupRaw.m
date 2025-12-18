@@ -4,6 +4,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     % Check which channel is selected and get some data to plot
     handles.channelIndex = get(handles.pop_channels,'Value'); 
     % Now we know the sampling rate of the selected channel
+    handles.fSamples = cellfun(@(ch) ch.SampleRate, handles.allChannelInfo);
     handles.fSample = handles.fSamples(handles.channelIndex);
     handles.bufferSize = ceil(str2double(get(handles.txt_display,'String')) * handles.fSample);
     handles.bufferSizeGrid = ceil(str2double(get(handles.txt_griddur,'String')) * handles.fSamples);
@@ -49,7 +50,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     forBuff = nan(buffSize2, length(handles.PhaseOfInterest));
     tSt = nan(buffSize2,1);
     handles.allChannelInfo = rawD1;
-    handles.channelIDlist = cellfun(@(ch) ch.IDnumber, handles.allChannelInfo);
+    handles.allChannelIDs = cellfun(@(ch) ch.IDnumber, handles.allChannelInfo);
     rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),handles.time0); rawPlt = rawPlt{1};
     fltPlt = data2timetable(fltD4,fltD1,handles.time0); fltPlt = fltPlt{1};
     forPlt = data2timetable(forD4,forD1,handles.time0); forPlt = forPlt{1};
