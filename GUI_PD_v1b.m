@@ -1038,7 +1038,10 @@ function check_polar_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_polar
-settingChange(hObject)
+errordlg('This feature is not working yet.')
+set(hObject, 'Value', false);
+% TO DO: when this is implemented, remove above and uncomment below: 
+% settingChange(hObject)
 
 
 % --- Executes on selection change in pop_channel1.
