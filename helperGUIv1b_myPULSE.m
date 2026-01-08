@@ -31,5 +31,6 @@ else
 end
 
 % note stim timing for artifact removal
+handles.artRemArgs.StimTimes = {stimtime};
 
 end

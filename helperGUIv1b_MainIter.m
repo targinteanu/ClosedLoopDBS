@@ -66,8 +66,21 @@ artRemArgs.nOverlap = zeros(1, size(rawTails,2));
 for ch_art = 1:size(rawTails,2)
     tXfor = forTails{ch_art};
     tX = rawTails{ch_art}; % [time, data]
-    stimtimes = StimTimesTail{ch_art}; % time to stim (sec)
+    tN = 1; tProc = tX(tN,1); % this should not be NaN by def
+    if isnan(tProc)
+        % find the last valid proc time 
+        tN = find(~isnan(tX(:,1)));
+        if ~isempty(tN)
+            tN = tN(end); tProc = tX(tN,1);
+        else
+            tN = 1;
+        end
+    end
+    tN = tN - 1; % tProc sample offset from tail start
+    stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
+    stimtimes = stimtimes - tProc; % from last proc
     stiminds = round(stimtimes * FsArt(ch_art));
+    stiminds = stiminds + tN; % from tail start
     stiminds = stiminds(stiminds > 0);
     for i1 = stiminds'
         i2 = i1 + StimLen(ch_art) - 1;
