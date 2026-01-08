@@ -66,23 +66,17 @@ artRemArgs.nOverlap = zeros(1, size(rawTails,2));
 for ch_art = 1:size(rawTails,2)
     tXfor = forTails{ch_art};
     tX = rawTails{ch_art}; % [time, data]
-    tN = 1; tProc = tX(tN,1); % this should not be NaN by def
-    if isnan(tProc)
-        % find the last valid proc time 
-        tN = find(~isnan(tX(:,1)));
-        if ~isempty(tN)
-            tN = tN(end); tProc = tX(tN,1);
-        else
-            tN = 1;
-        end
-    end
-    tN = tN - 1; % tProc sample offset from tail start
+    [tN, tProc] = get_tProc(tX);
+    [tForN, tForProc] = get_tProc(tXfor);
+    tDiff = tForProc - tProc; iDiff = round(tDiff * FsArt(ch_art)); 
+    iDiff = iDiff + tForN - tN;
     stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
     stimtimes = stimtimes - tProc; % from last proc
     stiminds = round(stimtimes * FsArt(ch_art));
     stiminds = stiminds + tN; % from tail start
     stiminds = stiminds(stiminds > 0);
     for i1 = stiminds'
+        if ~isnan(i1)
         i2 = i1 + StimLen(ch_art) - 1;
         if i2 > height(tX)
             % artifact will carry over into the next packet 
@@ -93,11 +87,35 @@ for ch_art = 1:size(rawTails,2)
             nO = 0;
         end
         artRemArgs.nOverlap(ch_art) = max(artRemArgs.nOverlap(ch_art), nO);
-        i2 = min(i2, height(tX)); % why is this necessary??
-        tX(i1:i2,2) = tXfor(i1:i2,2);
+        if ~isnan(iDiff)
+            i3 = i1 + iDiff; i4 = i2 + iDiff; 
+            i3 = max(i3, 1); i3 = min(i3, height(tXfor));
+            i4 = max(i4, 1); i4 = min(i4, height(tXfor));
+            tXreplace = tXfor(i3:i4,2); 
+            i2 = min(i2, i1+height(tXreplace)-1);
+            tX(i1:i2,2) = tXreplace;
+        end
+        end
     end
     artRemTails{ch_art} = tX;
 end
+end
+
+function [tN, tProc] = get_tProc(tX)
+    % find the last proc time in a time-data buffer (in absolute seconds
+    % from hardware startup) and the sample-offset from buffer start. 
+    % Start with the assumption that the first sample has a valid t: 
+    tN = 1; tProc = tX(tN,1); % this should not be NaN by def
+    if isnan(tProc)
+        % If above fails, find the last valid proc time explicitly:
+        tN = find(~isnan(tX(:,1)));
+        if ~isempty(tN)
+            tN = tN(end); tProc = tX(tN,1);
+        else
+            tN = 1;
+        end
+    end
+    tN = tN - 1; % tProc sample offset from tail start
 end
 
 function [foreTails, foreBuffsAdd, foreArgs] = foreFun(foreArgs, inData)
