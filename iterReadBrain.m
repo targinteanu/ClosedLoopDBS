@@ -133,7 +133,8 @@ for CH = 1:size(artRemData, 2)
     newHead = bufferDataOverwrite(oldHead, oldTail, oldTime); 
     artRemData{2,CH} = newHead;
     artRemData{3,CH} = newTail; 
-    artRemData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
+    %artRemData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
+    artRemData{4,CH} = [newHead; newTail];
 end
 % overwrite raw data - internally only - ???
 rawTails(selRaw2Art) = artRemData(3,:); rawAllData(selRaw2Art) = artRemData(4,:);
