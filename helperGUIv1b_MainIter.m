@@ -62,6 +62,7 @@ FsArt = artRemArgs.SampleRates;
 StimDur = artRemArgs.StimDur; % seconds to remove
 StimLen = ceil(StimDur.*FsArt); % #samples to remove 
 StimTimesTail = artRemArgs.StimTimes; 
+artRemArgs.nOverlap = zeros(1, size(rawTails,2));
 for ch_art = 1:size(rawTails,2)
     tXfor = forTails{ch_art};
     tX = rawTails{ch_art}; % [time, data]
@@ -69,16 +70,16 @@ for ch_art = 1:size(rawTails,2)
     stiminds = round(stimtimes * FsArt(ch_art));
     stiminds = stiminds(stiminds > 0);
     for i1 = stiminds'
-        i2 = i1 + StimLen(ch_art);
+        i2 = i1 + StimLen(ch_art) - 1;
         if i2 > height(tX)
             % artifact will carry over into the next packet 
             nO = i2 - height(tX);
-            artRemArgs.nOverlap(ch_art) = nO;
             tX = [tX; nan(nO,2)]; 
         else
             % artifact limited to this packet 
-            artRemArgs.nOverlap(ch_art) = 0;
+            nO = 0;
         end
+        artRemArgs.nOverlap(ch_art) = max(artRemArgs.nOverlap(ch_art), nO);
         i2 = min(i2, height(tX)); % why is this necessary??
         tX(i1:i2,2) = tXfor(i1:i2,2);
     end
