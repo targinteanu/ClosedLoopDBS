@@ -1,5 +1,6 @@
 function handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, controllerFun)
 
+% setup: access GUI details, data, and calculate time to stim 
 Stim2Q = false;
 forBuff = handles.recDataStructs.forBuffs{1}; 
 forBuffNew = forBuff(end,:); 
@@ -12,6 +13,8 @@ if doStim && (i2Q > 0)
     Stim2Q = true;
     t2Q = forBuffNew(:,i2Q);
 end
+
+% logic: decide whether to stim 
 if Stim2Q && (t2Q >= 0)
     t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
     if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
@@ -34,15 +37,20 @@ if Stim2Q && (t2Q >= 0)
                 end
             end
             if stim2Q_proceed
+
+                % manage timer when stim 
                 if strcmp(handles.QueuedStim.Running, 'on')
                     stop(handles.QueuedStim);
                 end
                 handles.QueuedStim.StartDelay = t2Q;
                 handles.QueuedStim.UserData = t2Qabs;
                 start(handles.QueuedStim);
+
             end
         end
     end
+
+% manage timer when no stim
 else
     if strcmp(handles.QueuedStim.Running, 'on')
         stop(handles.QueuedStim);
