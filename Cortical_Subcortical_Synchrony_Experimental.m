@@ -6,13 +6,13 @@ NO_to_BR_ch = 'CMacro_LFP_01'; %%PD25N008 - CMacro_LFP_AP_T %PD25N006 - CMacro_L
 BR_to_NO_ch = 'AINP3'; %%PD24N009 - AINP4  %PD25N006 - AINP3 %PD25N008 - AINP2
 
 ns_files = { ... %PD25N009 - 'baseline001.ns2', ...'DBS004.ns2','memory003.ns2'
-    'datafile001.ns2' %%PD25N008 - 'baseline001.ns2', 'DepthStim002.ns2','nback004.ns2'
+    'baseline001.ns2', 'DepthStim002.ns2','nback004.ns2' %%PD25N008 - 'baseline001.ns2', 'DepthStim002.ns2','nback004.ns2'
                    %%PD25N006 - 'datafile001.ns2'
                    %%PD24N009 - 'datafile001.ns2', 'datafile001.ns5'
         
     }; 
 
-use_ns2_only = false;
+use_ns2_only = true;
 
 target_window = [-3 3];  
 target_channel = 'CMacro_LFP_01'; %%PD25N006 - CMacro_LFP_01 %%PD25N008 - CMacro_LFP_AP_T %%PD24N009 - CMacro_LFP_01
@@ -345,9 +345,101 @@ for i = 1:numel(signals)
 end
 xlabel('Time');
 
+%% ADF Test (testing for stationarity)
+% Extract signals
+x_ecog = TT_longest_refined.LS33;
+x_lfp  = TT_longest_refined.CMacro_LFP_01;
+
+% Remove NaNs if present
+% x_ecog = x_ecog(~isnan(x_ecog));
+% x_lfp  = x_lfp(~isnan(x_lfp));
+[h_ecog,p_ecog,stat_ecog,cval_ecog] = adftest(x_ecog);
+[h_lfp, p_lfp, stat_lfp, cval_lfp ] = adftest(x_lfp);
+
+fprintf('ECoG LS33: h = %d, p = %.5f\n', h_ecog, p_ecog);
+fprintf('LFP  CMacroLFP01: h = %d, p = %.5f\n', h_lfp, p_lfp);
+fprintf('ECoG LS33: ADF stat = %.4f\n', stat_ecog);
+fprintf('LFP  CMacroLFP01: ADF stat = %.4f\n', stat_lfp);
+
+
+t = TT_longest_refined.Time;
+
+figure;
+subplot(2,1,1)
+plot(t, x_ecog, 'k')
+title('ECoG LS33 (raw)')
+ylabel('Amplitude')
+grid on
+
+subplot(2,1,2)
+plot(t, x_lfp, 'r')
+title('LFP CMacroLFP01 (raw)')
+ylabel('Amplitude')
+xlabel('Time')
+grid on
+
+
 %% Get rid of Source File label
 
 TT_longest_refined = removevars(TT_longest_refined, {'SourceFile'});
+
+
+%% Grab NO time segment on its own vector
+% --- Infer offset using REFINED alignment (IMPORTANT) ---
+NO_to_BR_offset = NO_on_BR_refined.Time(1) - NO_timetable.Time(1);
+
+% --- Map TT_longest_refined bounds back to NO time ---
+tNO_start = TT_longest_refined.Time(1)  - NO_to_BR_offset;
+tNO_end   = TT_longest_refined.Time(end) - NO_to_BR_offset;
+
+% --- Plot in NO's native time space ---
+figure; hold on;
+plot(NO_timetable.Time, NO_timetable.(NO_to_BR_ch), 'k');
+xline(tNO_start, 'r', 'LineWidth', 2);
+xline(tNO_end,   'r', 'LineWidth', 2);
+
+% --- Overlay NO events ---
+E = NO_timetable.Properties.Events;
+xline(E.Time, '--b');
+
+grid on;
+xlabel('NO time (native)');
+ylabel('NO signal');
+title('TT\_longest\_refined window in NO timetable time');
+legend('NO signal','Window start','Window end','Events');
+
+% --- Print absolute NO times ---
+fprintf('NO absolute time:\n');
+fprintf('  Start: %.3f s\n', seconds(tNO_start));
+fprintf('  End:   %.3f s\n', seconds(tNO_end));
+fprintf('  Dur:   %.3f s\n', seconds(tNO_end - tNO_start));
+
+% --- Get ACTIVE event at window start (not nearest!) ---
+iEvt = find(E.Time <= tNO_start, 1, 'last');
+
+if isempty(iEvt)
+    event_label = "<none>";
+else
+    event_label = E.EventLabels(iEvt);
+end
+
+fprintf('Event at window start: %s\n', string(event_label));
+
+
+% --- Find all events that occur INSIDE the window ---
+idxEventsInWindow = E.Time > tNO_start & E.Time < tNO_end;
+
+events_crossed = E.EventLabels(idxEventsInWindow);
+
+if isempty(events_crossed)
+    fprintf('Window stays within a single event.\n');
+else
+    fprintf('Window crosses %d additional event(s):\n', numel(events_crossed));
+    disp(string(events_crossed));
+end
+
+
+
 
 
 %% Calculate PLV vector matrices
@@ -411,31 +503,137 @@ PLV_Relative_ref = getPLV_wrt_Ref(PLV_VectorMatrix, ref_channel); %Get PLV relat
 disp('Calculated PLV wrt Reference')
 
 
-%% Ranges of PLV
+%% PLV Summary Statistics
 
-NO_to_BR_ch = 'CMacro_LFP_AP_T';
+nSur = 100;
 
-ref_idx = find(strcmp(Channel_Names, NO_to_BR_ch));
-fprintf('"%s" is at channel index %d\n', Channel_Names{ref_idx}, ref_idx);
+channels = [19 20 21 40 41 42 61 62 63];%setdiff(1:63, 48);   % exclude bad channel 48
 
-% Compute PLV wrt reference
-PLV_Relative_ref = getPLV_wrt_Ref(PLV_VectorMatrix, ref_idx);
 
-% Select channels to analyze
-channels_of_interest = 1:63;   % <-- replace this with any list you want
+% ---------- Reference channel ----------
+NO_to_BR_ch = 'CMacro_LFP_01';
+ref_channel = find(strcmp(Channel_Names, NO_to_BR_ch));
+fprintf('"%s" is at channel index %d\n', Channel_Names{ref_channel}, ref_channel);
 
-PLV_subset = PLV_Relative_ref(channels_of_interest);
+% ---------- Real PLV ----------
+PLV = getPLV_wrt_Ref(PLV_VectorMatrix, ref_channel);
+PLV_raw = PLV(channels);
 
-fprintf('Raw PLV range (ALL channels):     %.4f to %.4f\n', ...
-    min(PLV_Relative_ref), max(PLV_Relative_ref));
+% ---------- Normalized PLV (relative to strongest channel) ----------
+PLV_norm = PLV_raw / max(PLV_raw);
 
-fprintf('Raw PLV range (subset channels):  %.4f to %.4f\n', ...
-    min(PLV_subset), max(PLV_subset));
+% ---------- Brainnetome labels ----------
+% ---------- Brainnetome labels (MATCH plot_PLV_Relative_Brainnetome) ----------
+cleanLabels = regexprep(string(meta.Brainnetome), '\s*\(\d+%?\)\s*$', '');
+
+% Extract electrode numbers from meta (e.g. "1", "L01", "LS01")
+metaNums = regexp(string(meta.Electrode), '\d+', 'match', 'once');
+metaNums = string(pad(metaNums, 2, 'left', '0'));   % zero-pad: "1" → "01"
+
+% Build electrode-number → region map
+brain_map = containers.Map(metaNums, cleanLabels);
+
+% Assign region to each channel using Channel_Names
+region_labels = strings(numel(channels),1);
+for i = 1:numel(channels)
+    chNum = regexp(string(Channel_Names{channels(i)}), '\d+', 'match', 'once');
+    if isKey(brain_map, chNum)
+        region_labels(i) = brain_map(chNum);
+    else
+        region_labels(i) = "Unlabeled";
+    end
+end
+
+regions = unique(region_labels);
+
+
+% ---------- Highest-AVG raw PLV region ----------
+meanPLV = zeros(numel(regions),1);
+for r = 1:numel(regions)
+    meanPLV(r) = mean(PLV_raw(strcmp(region_labels, regions{r})), 'omitnan');
+end
+
+[~,ridx] = max(meanPLV);
+topRegion = regions{ridx};
+
+idx_top   = strcmp(region_labels, topRegion);
+idx_other = ~idx_top;
+
+% ---------- Surrogate PLV (pipeline-consistent) ----------
+PLV_surrogate = nan(numel(channels), nSur);
+
+ref_phase = Phase_Data{ref_channel};
+T = numel(ref_phase);
+
+for s = 1:nSur
+    shift = randi(T);
+
+    Phase_Data_surr = Phase_Data;
+    Phase_Data_surr{ref_channel} = circshift(ref_phase, shift);
+
+    PLV_VM_surr = compute_PLV_VectorMatrix(Phase_Data_surr);
+    PLV_tmp = getPLV_wrt_Ref(PLV_VM_surr, ref_channel);
+
+    PLV_surrogate(:,s) = PLV_tmp(channels);
+
+    % ---- Progress print ----
+    if mod(s,10)==0 || s==1 || s==nSur
+        fprintf('  Surrogate %3d / %3d completed\n', s, nSur);
+    end
+end
+
+disp('Finished surrogate PLV generation.');
+
+% ---------- Surrogate means ----------
+mu_surr = mean(PLV_surrogate,2);
+
+% ---------- Highest PLV channel ----------
+[~,ch_max] = max(PLV_raw);
+
+% ---------- Metrics ----------
+Top_mean_raw   = mean(PLV_raw(idx_top),  'omitnan');
+Top_mean_norm  = mean(PLV_norm(idx_top), 'omitnan');
+
+Other_mean_raw  = mean(PLV_raw(idx_other),  'omitnan');
+Other_mean_norm = mean(PLV_norm(idx_other), 'omitnan');
+
+TopCh_surr_raw  = mu_surr(ch_max);
+TopCh_surr_norm = mu_surr(ch_max) / PLV_raw(ch_max);
+
+Pct_above = 100 * mean(PLV_raw(idx_top) > mu_surr(idx_top));
+
+% ---------- Output ----------
+fprintf('\n===== PLV Summary =====\n');
+fprintf('Highest AVG raw PLV region:      %s\n', topRegion);
+fprintf('Top region avg raw PLV:          %.4f\n', Top_mean_raw);
+fprintf('Top region avg normalized PLV:   %.3f\n', Top_mean_norm);
+fprintf('Other regions avg raw PLV:       %.4f\n', Other_mean_raw);
+fprintf('Other regions avg normalized:    %.3f\n', Other_mean_norm);
+fprintf('Highest PLV channel surrogate:   raw=%.4f | norm=%.3f\n', ...
+        TopCh_surr_raw, TopCh_surr_norm);
+fprintf('%% channels in %s > surrogate:    %.1f%%\n', topRegion, Pct_above);
+highestPLV_channel_name = Channel_Names{channels(ch_max)};
+highestPLV_raw  = PLV_raw(ch_max);
+highestPLV_norm = PLV_norm(ch_max);
+fprintf('Highest PLV channel:             %s (raw=%.4f, norm=%.3f)\n', ...
+        highestPLV_channel_name, highestPLV_raw, highestPLV_norm);
+
+% ---------- Z-PLV for highest PLV channel ----------
+
+% Surrogate mean and std for that channel
+mu_ch = mean(PLV_surrogate(ch_max, :));
+sd_ch = std( PLV_surrogate(ch_max, :));
+
+% Z-PLV
+Z_PLV = (PLV_raw(ch_max) - mu_ch) / sd_ch;
+
+fprintf('Highest PLV channel Z-PLV:       %.2f (%s)\n', ...
+        Z_PLV, Channel_Names{channels(ch_max)});
 
 
 %% Plot PLV wrt Reference Channel with Brainnetome labeling
 
-electrode_data_name = 'electrode_data(Sheet1).csv'; %%PD25N006 - 'electrode_data(Sheet1).csv' PD25N008 - 'PD25N008_electrode_data' PD24N009 - PD24N009_electrode_data
+electrode_data_name = 'PD24N009_electrode_data'; %%PD25N006 - 'electrode_data(Sheet1).csv' PD25N008 - 'PD25N008_electrode_data' PD24N009 - PD24N009_electrode_data
 electrode_data_filepath = fullfile(Patient_Folder_Path, Patient_ID, electrode_data_name);
 disp(electrode_data_filepath)
 meta = readtable(electrode_data_filepath, 'VariableNamingRule','preserve');
@@ -452,7 +650,7 @@ plot_PLV_Relative(Phase_Data(1:63),Phase_Data{ref_channel},PLV_Relative_ref, ref
 
 maxOrder = 50;          % test model orders 1–30 (adjust as needed)
 fs = 1000;              % sampling rate
-TT = TT_longest_refined;
+TT = TT_longest_refined(1:4000, :);
 chIdx = [61 70];        % your channel pair
 freq_band = 'beta';
 
