@@ -43,6 +43,7 @@ handles.MdlSetUp    = false;
 handles.showElecGrid = false;
 
 % tracking stimulations and artifact
+handles.lastSampleProcTime = -inf;
 handles.stimLastTime = -inf;
 handles.stimNewTime = -inf;
 handles.stimind = -1;
