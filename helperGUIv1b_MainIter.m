@@ -83,10 +83,11 @@ for ch_art = 1:size(rawTails,2)
     stimtimes = stimtimes - artRemArgs.ArtifactStartBefore;
     stiminds = floor(stimtimes * FsArt(ch_art));
     stiminds = stiminds + tN; % from tail start
-    stiminds = stiminds(stiminds > 0);
+    %stiminds = stiminds(stiminds > 0);
     for i1 = stiminds'
         if ~isnan(i1)
         i2 = i1 + StimLen(ch_art) - 1;
+        if i2 > 0
         if i2 > height(tX)
             % artifact will carry over into the next packet 
             nO = i2 - height(tX);
@@ -97,12 +98,14 @@ for ch_art = 1:size(rawTails,2)
         end
         artRemArgs.nOverlap(ch_art) = max(artRemArgs.nOverlap(ch_art), nO);
         if ~isnan(iDiff)
-            i3 = i1 + iDiff; i4 = i2 + iDiff; 
+            i1_ = max(1, i1);
+            i3 = i1_ + iDiff; i4 = i2 + iDiff; 
             i3 = max(i3, 1); i3 = min(i3, height(tXfor));
             i4 = max(i4, 1); i4 = min(i4, height(tXfor));
             tXreplace = tXfor(i3:i4,2); 
-            i2 = min(i2, i1+height(tXreplace)-1);
-            tX(i1:i2,2) = tXreplace;
+            i2 = min(i2, i1_+height(tXreplace)-1);
+            tX(i1_:i2,2) = tXreplace;
+        end
         end
         end
     end
