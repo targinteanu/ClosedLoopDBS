@@ -695,8 +695,9 @@ try
             foreArgs.FreqRange = [handles.locutoff, handles.hicutoff];
             foreArgs.PhaseOfInterest = handles.PhaseOfInterest;
             foreArgs.StimulatorLagTime = handles.StimulatorLagTime;
+            foreArgs.ARlearnrate = .01; % !!! MAKE ADJUSTABLE
             artRemArgs.SampleRates = Fs(selRaw2Art);
-            artRemArgs.StimDur = .11; % seconds !!! MAKE ADJUSTABLE
+            artRemArgs.StimDur = .16; artRemArgs.ArtifactStartBefore = .05; % seconds !!! MAKE ADJUSTABLE
             artRemArgs.StimTimes = cell(size(artRemArgs.SampleRates));
             artRemArgs.nOverlap = zeros(size(artRemArgs.SampleRates));
         else

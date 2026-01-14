@@ -31,6 +31,13 @@ if handles.check_artifact.Value && handles.MdlSetUp
 else
     artremfun = [];
 end
+if handles.StimActive
+    noRecentStim = ...
+        handles.stimLastTime + handles.artRemArgs.StimDur - handles.artRemArgs.ArtifactStartBefore ...
+        < handles.lastSampleProcTime;
+else
+    noRecentStim = true;
+end
 
 [...
 timeBuffs, rawData, ...
@@ -42,7 +49,8 @@ iterReadBrain(...
     selRaw2Art, selFor2Art, selRaw2Flt, selRaw2For, selFlt2For, ...
     artRemData, artremfun, handles.artRemArgs, ...
     fltData, filtfun, handles.filtArgs, ...
-    forBuffs, forData, forefun, handles.foreArgs);
+    forBuffs, forData, forefun, handles.foreArgs, ...
+    @(args,data) ARmdlUpdate(args,data,noRecentStim));
 
 handles.recDataStructs.rawD = rawData;
 handles.recDataStructs.artD = artRemData;
@@ -72,7 +80,8 @@ for ch_art = 1:size(rawTails,2)
     iDiff = iDiff + tForN - tN;
     stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
     stimtimes = stimtimes - tProc; % from last proc
-    stiminds = round(stimtimes * FsArt(ch_art));
+    stimtimes = stimtimes - artRemArgs.ArtifactStartBefore;
+    stiminds = floor(stimtimes * FsArt(ch_art));
     stiminds = stiminds + tN; % from tail start
     stiminds = stiminds(stiminds > 0);
     for i1 = stiminds'
@@ -149,6 +158,38 @@ for ch_fore = 1:size(inData,2)
     t2(t2 < 0) = nan;
     foreBuffsAdd{ch_fore} = t2; 
 end
+end
+
+function mdlArgs = ARmdlUpdate(mdlArgs, inData, noRecentStim)
+    % inData should just be the (filtered) channel(s) of interest
+    if noRecentStim
+    for ch_upd = 1:size(inData, 2)
+        ARupdated = false;
+        if mdlArgs.ARlearnrate(ch_upd) > 0
+            Mdl = mdlArgs.ARmdls{ch_upd};
+            w = -Mdl(2:end)/Mdl(1);
+            w = fliplr(w); 
+            dataPast = inData{ch_upd}((end-length(w)):end, 2);
+            E = dataPast(end,:); x = dataPast(1:(end-1),:);
+            ypred = w*x; E = E - ypred;
+            del = x*E;
+            %del = del./(x'*x + eps); % normalize
+            w = w + mdlArgs.ARlearnrate(ch_upd) * del';
+            r = roots([1, -fliplr(w)]);
+            if max(abs(r)) < 1 % ensure stability
+                Mdl = [1, -fliplr(w)];
+                ARupdated = true;
+            end
+            % simulate forward to determine if model blowing up
+            if ARupdated
+                dataFutu = myFastForecastAR(Mdl, dataPast, height(dataPast));
+                if norm(dataFutu) <= 10*norm(dataPast)
+                    mdlArgs.ARmdls{ch_upd} = Mdl;
+                end
+            end
+        end
+    end
+    end
 end
 
 function [fltTails, fltArgs] = filtFun(fltArgs, rawTails)
