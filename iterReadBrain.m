@@ -9,7 +9,7 @@ function [...
         selRaw2Art, selFor2Art, selRaw2Flt, selRaw2For, selFlt2For, ...
         artRemData, artRemFun, artRemArgs, ...
         fltData, fltFun, fltArgs, ...
-        forBuffs, forData, forFun, forArgs)
+        forBuffs, forData, forFun, forArgs, MdlUpdFun)
 % One iteration of brain reading, to be used as a main loop or timer
 % function. 
 % 
@@ -34,6 +34,7 @@ doDAQ = (~isempty(rawData)) && (~isempty(daqFun));
 doArt = doDAQ && (~isempty(artRemData)) && (~isempty(artRemFun));
 doFlt = doDAQ && (~isempty(fltFun)); 
 doFor = doDAQ && (~isempty(forFun));
+doUpd = doFor && (~isempty(MdlUpdFun));
 
 if (~doFlt) && (~isempty(selFlt2For))
     error('Filter required to forecast, but filter is not specified.');
@@ -168,7 +169,11 @@ filter_time = toc; %disp(['Filter time = ',num2str(filter_time)])
 %% Update mdl coeffs 
 tic 
 
+if doUpd
 
+forArgs = MdlUpdFun(forArgs, [rawAllData(selRaw2For), fltAllData(selFlt2For)]);
+
+end
 
 update_time = toc; %disp(['Model update time = ',num2str(update_time)])
 
