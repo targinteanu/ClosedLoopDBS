@@ -93,6 +93,7 @@ handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 handles.DAQstatus = handles.cbmexStatus;
 handles.artRemArgs.StimDur = .025; 
 handles.artRemArgs.ArtifactStartBefore = .005;
+handles.foreArgs.ARlearnrate = .1;
 handles.foreArgs.Amp = 0;
 handles.bufferSize     = 10; 
 handles.bufferSizeGrid = 10;
@@ -703,13 +704,13 @@ try
             handles.artRemArgs.StimTimes = cell(size(handles.artRemArgs.SampleRates));
             handles.artRemArgs.nOverlap = zeros(size(handles.artRemArgs.SampleRates));
         else
-            handles.foreArgs = [];
-            handles.artRemArgs = [];
+            %handles.foreArgs = [];
+            %handles.artRemArgs = [];
         end
     else
         filtArgs = [];
-        handles.foreArgs = [];
-        handles.artRemArgs = [];
+        %handles.foreArgs = [];
+        %handles.artRemArgs = [];
     end
     handles.filtArgs = filtArgs; 
 
