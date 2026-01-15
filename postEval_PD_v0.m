@@ -32,22 +32,28 @@ olStartEnd = [false, isoutlier(diff(dataOneChannel), 'mean')];
 olStartEnd = find(olStartEnd); 
 olStart = olStartEnd(1:2:end); olEnd = olStartEnd(2:2:end);
 %}
-artExtend = 10; % extend artifact by __ samples 
+dataOneChannel = dataOneChannelWithArtifact;
+artExtend = 20; % extend artifact by __ samples 
+artBegin = 5; % begin artifact __ samples before stim detection
 io = isoutlier(dataOneChannel, 'mean');
-artIndAll = io | StimTrainRec; 
-artIndAll(StimInd) = true;
+artIndAll = StimTrainRec;
+%artIndAll = io | StimTrainRec; 
+%artIndAll(StimInd) = true;
 artIndAll = movsum(artIndAll, artExtend) > 0;
-artIndAll(1) = true; artIndAll(end) = true;
 artIndAll = find(artIndAll);
+artIndAll = artIndAll + ceil(artExtend/2) - artBegin;
+artIndAll = artIndAll(artIndAll > 1); 
+artIndAll = artIndAll(artIndAll < length(dataOneChannel));
+artIndAll = [1, artIndAll, length(dataOneChannel)];
 [~,baselineStartInd] = max(diff(artIndAll));
 baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(baselineStartInd); 
 
 %% set baseline to fit model 
 if ~isempty(artIndAll)
-baselineWinLen = 1000; ARlen = 10; % samples 
+baselineWinLen = 1000; ARlen = 50; % samples 
 dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
-DCOS = mean(dataBaseline);
-dataBaseline = Myeegfilt(dataBaseline,SamplingFreq,13,30, 0, 1024);
+DCOS = mean(dataBaseline); dataBaseline = dataBaseline - DCOS;
+%dataBaseline = Myeegfilt(dataBaseline,SamplingFreq,13,30, 0, 1024);
 baselineWin = (baselineEndInd-baselineStartInd) + [-1,1]*baselineWinLen; 
 baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
 baselineWin(1) = max(1,baselineWin(1)); baselineWin(2) = min(length(dataBaseline),baselineWin(2));
@@ -188,6 +194,12 @@ title('Predicted Peaks');
 subplot(122); polarhistogram(dataPhase(TroughInd),18); 
 title('Predicted Troughs');
 
+figure; 
+subplot(121); polarhistogram(dataPhase(StimInd),18); 
+title('Stim Sent');
+subplot(122); polarhistogram(dataPhase(StimTrainRec),18); 
+title('Stim Received');
+
 %% stim polar histogram
 H = 2; W = ceil(length(expStatesU)/H);
 figure; 
@@ -281,6 +293,8 @@ winTimes = [...
     datetime(2024,10,01,11,37,00), datetime(2024,10,01,11,39,00)];
 winTimes = winTimes + hours(4); % convert EST to GMT
 %}
+
+%{
 winTimes = datetime(2025,10,16,15,0,0) + [...
     minutes(43), minutes(45.5); ...
     minutes(45.5), minutes(48)];
@@ -300,6 +314,7 @@ for w = 1:height(winTimes)
     polarhistogram(dataPhase(StimIndRec(winInd)), 18);
     title(['Stim Recd - ',winNames{w}]);
 end
+%}
 
 %{
 winNames = [20, 13, 15, 18, 23, 25, 27, 30];
