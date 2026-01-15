@@ -893,6 +893,8 @@ function push_filter_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+try
+
 %stop(handles.timer); % to avoid dataQueue overflow 
 
 % details from data 
@@ -914,6 +916,10 @@ handles.FilterOrder = filtorder;
 handles.TimeShiftFIR = filtorder/(2*srate); % seconds 
 handles.IndShiftFIR = ceil(filtorder/2); % samples ???
 
+if handles.bufferSize - handles.IndShiftFIR <= handles.PDSwin1
+    error('Filter is too large. Increase display window duration or decrease phase prediction window duration.')
+end
+
 handles.BPF = filtwts; 
 
 % restart timer and plots
@@ -925,6 +931,10 @@ pause(.01);
 StartMainLoop(hObject,eventdata,handles)
 %start(handles.timer);
 
+catch ME
+    getReport(ME)
+    errordlg(ME.message, 'Filter Setup Issue')
+end
 
 
 function txt_PDSwin_Callback(hObject, eventdata, handles)

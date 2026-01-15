@@ -31,7 +31,7 @@ if handles.check_artifact.Value && handles.MdlSetUp
 else
     artremfun = [];
 end
-if handles.StimActive
+if handles.StimActive && handles.MdlSetUp
     noRecentStim = ...
         handles.stimLastTime + handles.artRemArgs.StimDur - handles.artRemArgs.ArtifactStartBefore ...
         < handles.lastSampleProcTime;
