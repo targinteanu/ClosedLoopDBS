@@ -78,6 +78,7 @@ for ch_art = 1:size(rawTails,2)
     [tForN, tForProc] = get_tProc(tXfor);
     tDiff = tForProc - tProc; iDiff = round(tDiff * FsArt(ch_art)); 
     iDiff = iDiff + tForN - tN;
+    iDiff = -iDiff; % PATCH - why does this work??? why is this needed??
     stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
     stimtimes = stimtimes - tProc; % from last proc
     stimtimes = stimtimes - artRemArgs.ArtifactStartBefore;
