@@ -172,7 +172,7 @@ function mdlArgs = ARmdlUpdate(mdlArgs, inData, noRecentStim)
             E = dataPast(end,:); x = dataPast(1:(end-1),:);
             ypred = w*x; E = E - ypred;
             del = x*E;
-            %del = del./(x'*x + eps); % normalize
+            del = del./(x'*x + eps); % normalize
             w = w + mdlArgs.ARlearnrate(ch_upd) * del';
             r = roots([1, -fliplr(w)]);
             if max(abs(r)) < 1 % ensure stability
