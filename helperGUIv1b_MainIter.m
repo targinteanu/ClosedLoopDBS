@@ -149,13 +149,14 @@ for ch_fore = 1:size(inData,2)
 
     FT = FT(1:k,:); % use limited duration for hilbert padding
     %[t2,i2,phi_inst,f_inst] = blockPDS(...
-    t2 = blockPDS(...
+    [t2, ~,~,~, Amp] = blockPDS(...
         inData{ch_fore}(:,2), FT, fs(ch_fore), phis, ...
         Ts(ch_fore)+TstimLag, Fco(1), Fco(2));
     t2 = t2-Ts(ch_fore); % [t2peak, t2trough]
     % t2 = max(t2,0); % Should this be necessary? Will this cause problems?
     t2(t2 < 0) = nan;
     foreBuffsAdd{ch_fore} = t2; 
+    foreArgs.Amp(ch_fore) = Amp;
 end
 end
 

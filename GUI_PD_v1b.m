@@ -22,7 +22,7 @@ function varargout = GUI_PD_v1b(varargin)
 
 % Edit the above text to modify the response to help GUI_PD_v1b
 
-% Last Modified by GUIDE v2.5 17-Dec-2025 01:02:33
+% Last Modified by GUIDE v2.5 15-Jan-2026 03:20:34
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -91,6 +91,9 @@ handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % initiate other vars ...
 handles.DAQstatus = handles.cbmexStatus;
+handles.artRemArgs.StimDur = .025; 
+handles.artRemArgs.ArtifactStartBefore = .005;
+handles.foreArgs.Amp = 0;
 handles.bufferSize     = 10; 
 handles.bufferSizeGrid = 10;
 handles.allChannelIDs = [];
@@ -154,7 +157,7 @@ disableDefaultInteractivity(handles.ax_timing);
 disableDefaultInteractivity(handles.ax_elecgrid);
 
 % hardware-specific functions 
-[handles.HardwareFuncs, handles.StimTriggerMode, handles.StimulatorLagTime]...
+[handles.HardwareFuncs, handles.StimTriggerMode, handles.foreArgs.StimulatorLagTime]...
     = helperGUIv1_DefHardwareFuncs();
 handles.initTic = tic;
 
@@ -687,29 +690,28 @@ try
         filtArgs.fltInit = fIC; filtArgs.fltObj = {1; handles.BPF};
         filtArgs.TimeShift = handles.FilterOrder(1)/(2*Fs(selRaw2Flt));
         if handles.MdlSetUp
-            foreArgs.K = handles.PDSwin1; foreArgs.k = handles.PDSwin2;
-            foreArgs.TimeStart = nan(size([selRaw2For, selFlt2For]));
-            foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
-            foreArgs.ARmdls = {handles.Mdl};
-            foreArgs.SampleRates = Fs(selRaw2Flt); % !!! needs improvement
-            foreArgs.FreqRange = [handles.locutoff, handles.hicutoff];
-            foreArgs.PhaseOfInterest = handles.PhaseOfInterest;
-            foreArgs.StimulatorLagTime = handles.StimulatorLagTime;
-            foreArgs.ARlearnrate = .1; % !!! MAKE ADJUSTABLE
-            artRemArgs.SampleRates = Fs(selRaw2Art);
-            artRemArgs.StimDur = .09; artRemArgs.ArtifactStartBefore = .04; % seconds !!! MAKE ADJUSTABLE
-            artRemArgs.StimTimes = cell(size(artRemArgs.SampleRates));
-            artRemArgs.nOverlap = zeros(size(artRemArgs.SampleRates));
+            handles.foreArgs.K = handles.PDSwin1; handles.foreArgs.k = handles.PDSwin2;
+            handles.foreArgs.TimeStart = nan(size([selRaw2For, selFlt2For]));
+            handles.foreArgs.TimeShift = [zeros(size(selRaw2For)), filtArgs.TimeShift(selFlt2For)];
+            handles.foreArgs.ARmdls = {handles.Mdl};
+            handles.foreArgs.SampleRates = Fs(selRaw2Flt); % !!! needs improvement
+            handles.foreArgs.Amp = zeros(size(handles.foreArgs.SampleRates));
+            handles.foreArgs.FreqRange = [handles.locutoff, handles.hicutoff];
+            handles.foreArgs.PhaseOfInterest = handles.PhaseOfInterest;
+            handles.foreArgs.Amp = 0;
+            handles.artRemArgs.SampleRates = Fs(selRaw2Art);
+            handles.artRemArgs.StimTimes = cell(size(handles.artRemArgs.SampleRates));
+            handles.artRemArgs.nOverlap = zeros(size(handles.artRemArgs.SampleRates));
         else
-            foreArgs = [];
-            artRemArgs = [];
+            handles.foreArgs = [];
+            handles.artRemArgs = [];
         end
     else
         filtArgs = [];
-        foreArgs = [];
-        artRemArgs = [];
+        handles.foreArgs = [];
+        handles.artRemArgs = [];
     end
-    handles.filtArgs = filtArgs; handles.foreArgs = foreArgs; handles.artRemArgs = artRemArgs;
+    handles.filtArgs = filtArgs; 
 
     % handles = disconnectSerial(handles);
     handles.RunMainLoop = true; 
@@ -1557,7 +1559,7 @@ if handles.StimActive
 end
 handles.HardwareFuncs.CheckConnectionStimulator();
 handles.StimSetupArgs = stimGetSetupArgs(handles);
-handles.StimulatorLagTime = handles.HardwareFuncs.CalibrateStimulator(...
+handles.foreArgs.StimulatorLagTime = handles.HardwareFuncs.CalibrateStimulator(...
     handles, false, ...
     handles.HardwareFuncs.SetupRecording, handles.HardwareFuncs.ShutdownRecording, ...
     handles.HardwareFuncs.GetTime, handles.HardwareFuncs.InitRawData, handles.HardwareFuncs.GetNewRawData, ...
@@ -1713,6 +1715,126 @@ settingChange(hObject)
 % --- Executes during object creation, after setting all properties.
 function txt_StoppedStim_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to txt_StoppedStim (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_ARlearnrate_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_ARlearnrate (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_ARlearnrate as text
+%        str2double(get(hObject,'String')) returns contents of txt_ARlearnrate as a double
+handles.foreArgs.ARlearnrate = str2double(get(hObject,'String'));
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function txt_ARlearnrate_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_ARlearnrate (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_ArtStart_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_ArtStart (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_ArtStart as text
+%        str2double(get(hObject,'String')) returns contents of txt_ArtStart as a double
+handles.artRemArgs.ArtifactStartBefore = str2double(get(hObject,'String'));
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function txt_ArtStart_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_ArtStart (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_ArtDur_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_ArtDur (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_ArtDur as text
+%        str2double(get(hObject,'String')) returns contents of txt_ArtDur as a double
+handles.artRemArgs.StimDur = str2double(get(hObject,'String'));
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function txt_ArtDur_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_ArtDur (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_StimulatorLagTime_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_StimulatorLagTime (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_StimulatorLagTime as text
+%        str2double(get(hObject,'String')) returns contents of txt_StimulatorLagTime as a double
+handles.foreArgs.StimulatorLagTime = str2double(get(hObject,'String'));
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function txt_StimulatorLagTime_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_StimulatorLagTime (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function txt_PowerThresh_Callback(hObject, eventdata, handles)
+% hObject    handle to txt_PowerThresh (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of txt_PowerThresh as text
+%        str2double(get(hObject,'String')) returns contents of txt_PowerThresh as a double
+handles.bpthresh = str2double(get(hObject,'String'));
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function txt_PowerThresh_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to txt_PowerThresh (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 

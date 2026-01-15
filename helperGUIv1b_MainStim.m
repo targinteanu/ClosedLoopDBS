@@ -6,8 +6,12 @@ forBuff = handles.recDataStructs.forBuffs{1};
 forBuffNew = forBuff(end,:); 
 timeBuffs = handles.recDataStructs.timeBuffs;
 forBuffNew = forBuffNew - timeBuffs{handles.channelIndex}(end,:); % [t2p, t2t]
-bp = 10; bpthresh = 9; % FIX THIS!!!
-i2Q = controllerFun(handles.srl, handles, bp, bpthresh);
+if isempty(handles.foreArgs)
+    bp = 0;
+else
+    bp = handles.foreArgs.Amp;
+end
+i2Q = controllerFun(handles.srl, handles, bp, handles.bpthresh);
 doStim = ((~isempty(i2Q)) && handles.StimActive) && (handles.FilterSetUp && handles.MdlSetUp);
 if doStim && (i2Q > 0)
     Stim2Q = true;
