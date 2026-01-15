@@ -143,7 +143,7 @@ for CH = 1:size(artRemData, 2)
     %artRemData{4,CH} = [newHead; newTail];
 end
 % overwrite raw data - internally only - ???
-rawTails(selRaw2Art) = artRemData(3,:); rawAllData(selRaw2Art) = artRemData(4,:);
+rawTails(selRaw2Flt) = artRemData(3,:); rawAllData(selRaw2Flt) = artRemData(4,:); % !!! NEED to clarify selraw2art vs selraw2flt
 
 end
 

@@ -96,11 +96,12 @@ for ch_art = 1:size(rawTails,2)
             i3 = i1_ + iDiff; i4 = i2 + iDiff; 
             i3 = max(i3, 1); i3 = min(i3, height(tXfor));
             i4 = max(i4, 1); i4 = min(i4, height(tXfor));
-            tXreplace = tXfor(i3:i4,2); 
-            i2 = min(i2, i1_+height(tXreplace)-1);
+            Xreplace = tXfor(i3:i4,2); 
+            Xreplace = Xreplace - mean(tXfor(:,2)) + mean(tX(:,2)); % correct DC offset
+            i2 = min(i2, i1_+height(Xreplace)-1);
             nO = min(nO, i2-height(tX));
             tX = [tX; nan(nO,2)]; 
-            tX(i1_:i2,2) = tXreplace;
+            tX(i1_:i2,2) = Xreplace;
             artRemArgs.nOverlap(ch_art) = max(artRemArgs.nOverlap(ch_art), nO);
         end
         end
@@ -176,10 +177,12 @@ function mdlArgs = ARmdlUpdate(mdlArgs, inData, noRecentStim)
             del = x*E;
             del = del./(x'*x + eps); % normalize
             w = w + mdlArgs.ARlearnrate(ch_upd) * del';
+            if (~sum(isnan(w))) && (~sum(isinf(w)))
             r = roots([1, -fliplr(w)]);
             if max(abs(r)) < 1 % ensure stability
                 Mdl = [1, -fliplr(w)];
                 ARupdated = true;
+            end
             end
             % simulate forward to determine if model blowing up
             if ARupdated
