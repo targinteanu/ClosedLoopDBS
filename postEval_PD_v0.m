@@ -18,6 +18,11 @@ stimtgtphase = inputdlg('Stimulation target phase (degrees):');
 stimtgtphase = (str2double(stimtgtphase));
 stimtgtphase = stimtgtphase*pi/180; % rad
 
+%% 
+for v = ["dataOneChannel", "dataOneChannelWithArtifact", "t", "tRel", "StimTrainRec", "dataAllChannels"]
+    eval(v+" = "+v+"(:,60000:600000);");
+end
+
 %% Get indexes of peaks, troughs, and stimulus pulses 
 PeakInd = PeakTime*SamplingFreq; 
 TroughInd = TroughTime*SamplingFreq; 
@@ -294,12 +299,12 @@ winTimes = [...
 winTimes = winTimes + hours(4); % convert EST to GMT
 %}
 
-%{
-winTimes = datetime(2025,10,16,15,0,0) + [...
-    minutes(43), minutes(45.5); ...
-    minutes(45.5), minutes(48)];
+winTimes = datetime(2026,1,15,16,0,0) + [...
+    minutes(32), minutes(34); ...
+    minutes(38), minutes(39); ...
+    minutes(39), minutes(40.25)];
 winTimes.TimeZone = t0.TimeZone;
-winNames = {'target 160', 'target -20'};
+winNames = {'trough rest', 'peak motor', 'trough motor'};
 
 figure; 
 for w = 1:height(winTimes)
