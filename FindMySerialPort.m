@@ -17,6 +17,9 @@ elseif strcmp(thiscomputer, 'LAPTOP-Q2F2EVC4')
 elseif strcmp(thiscomputer, 'LAPTOP-T2VLTA0O')
     % Kelly Mills - movement disorders Lenovo laptop
     thisport = "COM3";
+elseif strcmp(thiscomputer, 'LAPTOP-5FGQBCUD')
+    % Anderson Lab - large Lenovo thinkpad laptop
+    thisport = "COM3";
 elseif strcmp(thiscomputer, 'DESKTOP-SDRL657')
     % Yousef Salimpour - Surface Book 
     thisport = "COM3";
