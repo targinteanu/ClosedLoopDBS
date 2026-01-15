@@ -88,15 +88,8 @@ for ch_art = 1:size(rawTails,2)
         if ~isnan(i1)
         i2 = i1 + StimLen(ch_art) - 1;
         if i2 > 0
-        if i2 > height(tX)
-            % artifact will carry over into the next packet 
-            nO = i2 - height(tX);
-            tX = [tX; nan(nO,2)]; 
-        else
-            % artifact limited to this packet 
-            nO = 0;
-        end
-        artRemArgs.nOverlap(ch_art) = max(artRemArgs.nOverlap(ch_art), nO);
+        nO = i2 - height(tX); % there will be this much overlap on the NEXT buffer
+        nO = max(0, nO);    
         if ~isnan(iDiff)
             i1_ = max(1, i1);
             i3 = i1_ + iDiff; i4 = i2 + iDiff; 
@@ -104,7 +97,10 @@ for ch_art = 1:size(rawTails,2)
             i4 = max(i4, 1); i4 = min(i4, height(tXfor));
             tXreplace = tXfor(i3:i4,2); 
             i2 = min(i2, i1_+height(tXreplace)-1);
+            nO = min(nO, i2-height(tX));
+            tX = [tX; nan(nO,2)]; 
             tX(i1_:i2,2) = tXreplace;
+            artRemArgs.nOverlap(ch_art) = max(artRemArgs.nOverlap(ch_art), nO);
         end
         end
         end

@@ -416,8 +416,8 @@ try
     end
     artPlt = artPlt(2:end);
     if length(artPlt) > length(rawPlt)
-        %artPlt = artPlt(1:length(rawPlt));
-        artPlt = artPlt( (length(artPlt)-length(rawPlt)+1):end );
+        artPlt = artPlt(1:length(rawPlt));
+        %artPlt = artPlt( (length(artPlt)-length(rawPlt)+1):end );
     end
 
     selFlt = handles.selInds.selFlt2For;
@@ -697,7 +697,7 @@ try
             foreArgs.StimulatorLagTime = handles.StimulatorLagTime;
             foreArgs.ARlearnrate = .01; % !!! MAKE ADJUSTABLE
             artRemArgs.SampleRates = Fs(selRaw2Art);
-            artRemArgs.StimDur = .16; artRemArgs.ArtifactStartBefore = .05; % seconds !!! MAKE ADJUSTABLE
+            artRemArgs.StimDur = .09; artRemArgs.ArtifactStartBefore = .04; % seconds !!! MAKE ADJUSTABLE
             artRemArgs.StimTimes = cell(size(artRemArgs.SampleRates));
             artRemArgs.nOverlap = zeros(size(artRemArgs.SampleRates));
         else

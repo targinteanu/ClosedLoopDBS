@@ -123,19 +123,24 @@ if doArt
 nOverlapOld = artRemArgs.nOverlap;
 [artRemTails, artRemArgs] = artRemFun(artRemArgs, ...
     rawTails(selRaw2Art), forData(3,selFor2Art));
-nOverlapNew = artRemArgs.nOverlap;
+%nOverlapNew = artRemArgs.nOverlap;
 if ~(size(artRemTails,2) == size(artRemData,2))
     error('Artifact removal channels are inconsistent.');
 end
 for CH = 1:size(artRemData, 2)
     oldHead = artRemData{2,CH}; oldTail = artRemData{3,CH}; newTail = artRemTails{CH};
-    oldTime = nOverlapOld(CH); newTime = nOverlapNew(CH); % # samples NOT to buffer 
-    oldTime = height(oldTail)-oldTime; newTime = height(newTail)-newTime; % # NEW samples
-    newHead = bufferDataOverwrite(oldHead, oldTail, oldTime); 
+    oldTime = nOverlapOld(CH); %newTime = nOverlapNew(CH); % # samples NOT to buffer 
+    if oldTime > 0
+        newTail = newTail(oldTime:end,:);
+    end
+    %oldTime = height(oldTail)-oldTime; newTime = height(newTail)-newTime; % # NEW samples
+    %newHead = bufferDataOverwrite(oldHead, oldTail, oldTime); 
+    newHead = bufferData(oldHead, oldTail);
     artRemData{2,CH} = newHead;
     artRemData{3,CH} = newTail; 
     %artRemData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
-    artRemData{4,CH} = [newHead; newTail];
+    artRemData{4,CH} = bufferData(newHead, newTail);
+    %artRemData{4,CH} = [newHead; newTail];
 end
 % overwrite raw data - internally only - ???
 rawTails(selRaw2Art) = artRemData(3,:); rawAllData(selRaw2Art) = artRemData(4,:);
