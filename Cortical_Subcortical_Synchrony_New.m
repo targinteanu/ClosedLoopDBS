@@ -64,7 +64,7 @@
     % Choose patient here
     % =========================
     Patient_Folder_Path = 'C:\Users\cours\Downloads\AndersonLabDataAndPackages\Patient Data';
-    whichPatient = 'PD25N008';
+    whichPatient = 'PD25N006';
     
     P = presets.(whichPatient);
     
@@ -259,7 +259,7 @@
     disp(TT_overlap)
     
     
-    %% Building Full Synchronized Table
+    %% Building Full Synchronized Time Table
     
     fs = 1000;
     t_common = (max(BR_timetable.Time(1), NO_on_BR.Time(1)) : ...
@@ -381,37 +381,41 @@
     xlabel('Time');
     
     %% ADF Test (testing for stationarity)
-    % Extract signals
     x_ecog = TT_longest_refined.LS33;
     x_lfp  = TT_longest_refined.CMacro_LFP_01;
+    t      = TT_longest_refined.Time;
     
-    % Remove NaNs if present
-    % x_ecog = x_ecog(~isnan(x_ecog));
-    % x_lfp  = x_lfp(~isnan(x_lfp));
-    [h_ecog,p_ecog,stat_ecog,cval_ecog] = adftest(x_ecog);
-    [h_lfp, p_lfp, stat_lfp, cval_lfp ] = adftest(x_lfp);
+    fs = 1000;                 % <-- set this
+    win_sec = 1;             % <-- choose window length (seconds)
     
-    fprintf('ECoG LS33: h = %d, p = %.5f\n', h_ecog, p_ecog);
-    fprintf('LFP  CMacroLFP01: h = %d, p = %.5f\n', h_lfp, p_lfp);
-    fprintf('ECoG LS33: ADF stat = %.4f\n', stat_ecog);
-    fprintf('LFP  CMacroLFP01: ADF stat = %.4f\n', stat_lfp);
+    N = round(win_sec * fs);    % samples in first window
+    N = min(N, height(TT_longest_refined));   % safety
     
+    idx = 1:N;
     
-    t = TT_longest_refined.Time;
+    x_ecog_w = x_ecog(idx);
+    x_lfp_w  = x_lfp(idx);
+    t_w      = t(idx);
+    
+    % ADF on first window only
+    [h_ecog,p_ecog,stat_ecog,cval_ecog] = adftest(x_ecog_w);
+    [h_lfp, p_lfp, stat_lfp, cval_lfp ] = adftest(x_lfp_w);
+    
+    fprintf('First %.3f s window:\n', N/fs);
+    fprintf('ECoG LS33: h = %d, p = %.5f, ADF stat = %.4f\n', h_ecog, p_ecog, stat_ecog);
+    fprintf('LFP  CMacroLFP01: h = %d, p = %.5f, ADF stat = %.4f\n', h_lfp, p_lfp, stat_lfp);
     
     figure;
     subplot(2,1,1)
-    plot(t, x_ecog, 'k')
-    title('ECoG LS33 (raw)')
-    ylabel('Amplitude')
-    grid on
+    plot(t_w, x_ecog_w, 'k')
+    title(sprintf('ECoG LS33 (first %.3f s)', N/fs))
+    ylabel('Amplitude'); grid on
     
     subplot(2,1,2)
-    plot(t, x_lfp, 'r')
-    title('LFP CMacroLFP01 (raw)')
-    ylabel('Amplitude')
-    xlabel('Time')
-    grid on
+    plot(t_w, x_lfp_w, 'r')
+    title(sprintf('LFP CMacroLFP01 (first %.3f s)', N/fs))
+    ylabel('Amplitude'); xlabel('Time'); grid on
+
     
     
     %% Get rid of Source File label
@@ -539,15 +543,15 @@
     disp('Calculated PLV wrt Reference')
     
     
-    %% PLV Summary Statistics
+    %% PLV Analysis (Surrogate Analysis + Summary Statistics)
     
     nSur = 100;
-    
+ 
     channels = [19 20 21 40 41 42 61 62 63];%setdiff(1:63, 48);   % exclude bad channel 48
     
-    
+     
     % ---------- Reference channel ----------
-    NO_to_BR_ch = 'CMacro_LFP_01';
+    NO_to_BR_ch       = P.NO_to_BR_ch;
     ref_channel = find(strcmp(Channel_Names, NO_to_BR_ch));
     fprintf('"%s" is at channel index %d\n', Channel_Names{ref_channel}, ref_channel);
     
@@ -688,7 +692,7 @@
     fs        = 1000;
     blockSize = 250;
     TT_all    = TT_longest_refined;
-    chIdx     = [61 70];
+    chIdx     = [21 70]; %61 70 %63 74 %33 69 %21 70
     
     nTotal  = height(TT_all);
     nBlocks = floor(nTotal / blockSize);
@@ -755,75 +759,105 @@
     fprintf('  Max order    : %d\n', maxOrderEst);
     
     
-    
-    %% Mann-Whitney U Test of GC (Alternative to 2 sample t test)
-    
-    
-    
-    %OLD VERSION BEFORE 1/9/26
-    segment_length_sec = 4;    % segment length (seconds)
+
+    %% Unconditional, Bivariate Time-Domain GC Test (MGVC Toolbox)
+
+    segment_length_sec = 0.25;    % window size (seconds)    
+    order = 15;                  % model order from AIC
+    chIdx = [33 69];             % [A B] 33 69, 63 74, 21 70
+
     fs = 1000;
-    order = 50; %model order you get from AIC
-    freq_band = 'beta';
-    chIdx = [33 69];            % [A B] [61 70]
     
-    % === Use channel names for labeling ===
     A_name = Channel_Names{chIdx(1)};
     B_name = Channel_Names{chIdx(2)};
-    
     TT = TT_longest_refined;
     
-    % Pre-filter the full-length signals once (safe length) NEW
+    % --- Prefilter the full-length signals once ---
     filtOrder = 1024;
     
-    A_full = double(TT{:, chIdx(1)});  A_full = A_full(:).';   % force row
-    B_full = double(TT{:, chIdx(2)});  B_full = B_full(:).';   % force row
+    A_full = double(TT{:, chIdx(1)});  A_full = A_full(:).';
+    B_full = double(TT{:, chIdx(2)});  B_full = B_full(:).';
     
     A_beta = Myeegfilt(A_full, fs, 13, 30, 0, filtOrder);
     B_beta = Myeegfilt(B_full, fs, 13, 30, 0, filtOrder);
-    % End of new
     
-    
-    samples_per_segment = segment_length_sec * fs;
+    % --- Segmenting ---
+    samples_per_segment = round(segment_length_sec * fs);
     nTotalSamples = height(TT);
     nSegments = floor(nTotalSamples / samples_per_segment);
     
-    fprintf('Splitting into %d segments of %.1f s each (%.0f samples)\n', ...
+    fprintf('Splitting into %d segments of %.2f s each (%d samples)\n', ...
             nSegments, segment_length_sec, samples_per_segment);
     
-    GC_all = zeros(2,2,nSegments);
-    GC_AB_seg = zeros(nSegments,1);
-    GC_BA_seg = zeros(nSegments,1);
+    GC_all    = nan(2,2,nSegments);
+    GC_AB_seg = nan(nSegments,1);
+    GC_BA_seg = nan(nSegments,1);
+    
+    ok_seg    = false(nSegments,1);
+    fail_msgs = strings(nSegments,1);
     
     for k = 1:nSegments
         idxStart = (k-1)*samples_per_segment + 1;
         idxEnd   = k*samples_per_segment;
-        Tseg = TT(idxStart:idxEnd, chIdx);   % only keep the two channels
-        Tseg{:,1} = A_beta(idxStart:idxEnd).';
-        Tseg{:,2} = B_beta(idxStart:idxEnd).';
-        [GC,~,~,~] = compute_static_GC(Tseg, fs, order, [], 'none', false, false);
+    
+        % MVGC expects variables x time
+        Xseg = [A_beta(idxStart:idxEnd);
+                B_beta(idxStart:idxEnd)];
+    
+        [GC, ok, msg] = mvgc_uncond_time_gc_2ch(Xseg, order);
+    
+        if ~ok
+            fail_msgs(k) = string(msg);
+            % uncomment if you want to see each failure:
+            % warning('Segment %d/%d failed: %s', k, nSegments, msg);
+            continue;
+        end
+    
+        ok_seg(k) = true;
     
         GC_all(:,:,k) = GC;
-        GC_AB_seg(k)  = GC(2,1);
-        GC_BA_seg(k)  = GC(1,2);
+        GC_AB_seg(k)  = GC(2,1);    % A -> B
+        GC_BA_seg(k)  = GC(1,2);    % B -> A
     
         fprintf('Segment %2d/%2d done | GC(%s→%s)=%.4f | GC(%s→%s)=%.4f\n', ...
             k, nSegments, A_name, B_name, GC_AB_seg(k), B_name, A_name, GC_BA_seg(k));
     end
     
+    fprintf('\nMVGC: %d/%d segments succeeded.\n', nnz(ok_seg), nSegments);
+    
+    % show top failure reasons if lots failed
+    if nnz(ok_seg) < nSegments
+        msgs = fail_msgs(fail_msgs ~= "");
+        if ~isempty(msgs)
+            [u,~,ic] = unique(msgs);
+            counts = accumarray(ic,1);
+            [counts,idx] = sort(counts,'descend');
+            u = u(idx);
+            fprintf('Top failure reasons:\n');
+            for i = 1:min(5,numel(u))
+                fprintf('  %dx  %s\n', counts(i), u(i));
+            end
+        end
+    end
+    
+    %Calculate mean GC
     GC_mean = mean(GC_all, 3, 'omitnan');
     
-    % === Statistics ===
-    [p_val,~,stats] = signrank(GC_AB_seg, GC_BA_seg);
-    zval = stats.zval;
-    fprintf('\nWilcoxon signed-rank: z = %.3f, p = %.4g\n', zval, p_val);
+    % === Statistics  ===
+    valid = isfinite(GC_AB_seg) & isfinite(GC_BA_seg);
+    fprintf('Valid paired segments for stats: %d/%d\n', nnz(valid), nSegments);
     
-    [~,p_ttest,~,stats_t] = ttest(GC_AB_seg, GC_BA_seg);
-    fprintf('Paired t-test: t(%d) = %.3f, p = %.4g\n', stats_t.df, stats_t.tstat, p_ttest);
+    if nnz(valid) >= 3
+        [p_val,~,stats] = signrank(GC_AB_seg(valid), GC_BA_seg(valid));
+        fprintf('\nWilcoxon signed-rank: z = %.3f, p = %.4g\n', stats.zval, p_val);
     
-    diffs = GC_AB_seg - GC_BA_seg;
-    qqplot(diffs);
-    title(sprintf('QQ Plot of paired differences: %s↔%s', A_name, B_name));
+        [~,p_ttest,~,stats_t] = ttest(GC_AB_seg(valid), GC_BA_seg(valid));
+        fprintf('Paired t-test: t(%d) = %.3f, p = %.4g\n', stats_t.df, stats_t.tstat, p_ttest);
+    
+    else
+        warning('Not enough valid segments for signrank/ttest. Skipping stats.');
+    end
+
     %% Mean and SD
     
     % === Mean and standard deviation of segment-wise GC ===
@@ -840,6 +874,279 @@
     fprintf('GC %s→%s: mean = %.4f | std = %.4f | sem = %.4f\n', ...
         B_name, A_name, mean_BA, std_BA, sem_BA);
     
+%% NEW VISUALIZE (MGVC Version)
+    % ===== Labels =====
+    A_label = 'ECoG Ch.33';   % or 'ECoG Ch.33'
+    B_label = 'STN';   % or 'STN'
+    
+    avg_sec = 4;  % desired averaging window (seconds)
+    
+    % ===== Valid mask (prevents NaNs from breaking plots/stats) =====
+    valid = isfinite(GC_AB_seg) & isfinite(GC_BA_seg);
+    
+    % Segment start times
+    t_seg = (0:nSegments-1) * segment_length_sec;
+    
+    % If you haven't computed stats yet, do it here (robust)
+    if nnz(valid) >= 3
+        [p_val,~,stats] = signrank(GC_AB_seg(valid), GC_BA_seg(valid));
+        zval = stats.zval;
+    else
+        p_val = NaN; zval = NaN;
+    end
+    
+    figure('Name','Segmented GC Summary','Position',[100 100 1100 900]);
+    
+    % (1) Segment-wise GC vs time (RAW)
+    subplot(3,1,1);
+    plot(t_seg, GC_AB_seg, 'b', 'LineWidth',1, ...
+        'DisplayName', sprintf('%s→%s', A_label, B_label)); hold on;
+    plot(t_seg, GC_BA_seg, 'r', 'LineWidth',1, ...
+        'DisplayName', sprintf('%s→%s', B_label, A_label));
+    xlabel('Segment start (s)');
+    ylabel('GC value');
+    legend('Location','best'); grid on;
+    title(sprintf('Granger Causality over %.3g s windows', ...
+        segment_length_sec));
+    
+    % (1b) GC averaged over avg_sec (NON-overlapping blocks)
+    subplot(3,1,2);
+    
+    nPerBlock = max(1, round(avg_sec / segment_length_sec));
+    nBlocks   = floor(nSegments / nPerBlock);
+    
+    GC_AB_blk = nan(nBlocks,1);
+    GC_BA_blk = nan(nBlocks,1);
+    t_blk     = nan(nBlocks,1);
+    
+    for b = 1:nBlocks
+        idx = (b-1)*nPerBlock + (1:nPerBlock);
+        GC_AB_blk(b) = mean(GC_AB_seg(idx), 'omitnan');
+        GC_BA_blk(b) = mean(GC_BA_seg(idx), 'omitnan');
+        t_blk(b)     = mean(t_seg(idx));
+    end
+    
+    plot(t_blk, GC_AB_blk, 'b', 'LineWidth',2, ...
+        'DisplayName', sprintf('%s→%s', A_label, B_label)); hold on;
+    plot(t_blk, GC_BA_blk, 'r', 'LineWidth',2, ...
+        'DisplayName', sprintf('%s→%s', B_label, A_label));
+    xlabel('Time (s)');
+    ylabel('GC value');
+    legend('Location','best'); grid on;
+    title(sprintf('GC Averaged Over %.1f s', avg_sec));
+    
+
+    
+    % (3a) Bar comparison (means)
+    subplot(3,2,5);
+    
+    mean_AB = mean(GC_AB_seg, 'omitnan');
+    mean_BA = mean(GC_BA_seg, 'omitnan');
+    barVals = [mean_AB, mean_BA];
+    
+    bb = bar(barVals, 0.5);
+    
+    hold on;
+    errorbar(1, barVals(1), sem_AB, 'Color',[0 0 0.5], ...
+    'LineStyle','none','LineWidth',1,'CapSize',12);   % bright cyan-blue
+    errorbar(2, barVals(2), sem_BA, 'Color',[0.5 0 0], ...
+    'LineStyle','none','LineWidth',1,'CapSize',12);   % bright salmon-red
+
+
+    bb.FaceColor = 'flat';
+    bb.CData = [0 0 1; 1 0 0];
+    
+    set(gca,'XTickLabel',{sprintf('%s→%s',A_label,B_label), ...
+                          sprintf('%s→%s',B_label,A_label)});
+    ylabel('Mean GC');
+    
+    if isfinite(p_val)
+        title(sprintf('Wilcoxon signed-rank: p=%.4g (z=%.3f)', p_val, zval));
+    else
+        title('Wilcoxon signed-rank: not enough valid segments');
+    end
+    
+    grid on;
+    
+    mbar = max(barVals);
+    if isfinite(mbar) && mbar > 0
+        ylim([mbar*0.75, mbar*1.1]);
+    end
+    
+    xt = 1:2;
+    for i = 1:numel(barVals)
+        if isfinite(barVals(i))
+            text(xt(i), barVals(i) + 0.04*mbar, sprintf('%.4f', barVals(i)), ...
+                'HorizontalAlignment','center','FontSize',9,'FontWeight','bold');
+        end
+    end
+    
+    % Mean 2×2 GC matrix (true average)
+    subplot(3,2,6);
+        imagesc(GC_mean);
+    axis square; colormap(parula); colorbar;
+    
+    mx = max(GC_mean(:), [], 'omitnan');
+    if isfinite(mx) && mx > 0
+        caxis([0 mx*1.1]);
+    end
+    
+    xlabel('Source'); ylabel('Target');
+    set(gca,'XTick',1:2,'XTickLabel',{A_label, B_label}, ...
+            'YTick',1:2,'YTickLabel',{A_label, B_label}, 'FontSize',8);
+    title('Mean GC Matrix');
+
+
+
+
+%% 3 patient GC visualization
+    
+    figure('Name','Mean Granger Causality per Subject','Position',[100 100 900 500]);
+    
+    % ===== MANUAL INPUT =====
+    patients = {'Subject 1','Subject 2','Subject 3'};
+    
+    A_label = 'ECoG';
+    B_label = 'STN';
+    
+    % Rows = patients, columns = [A->B  B->A]
+    GC_means = [
+        0.9010  0.8177;
+        0.8155  0.7157;
+        1.0599  0.9012
+    ];
+
+    % Rows = patients, columns = [A->B  B->A]
+    GC_sems = [
+        0.0068  0.0082;
+        0.0058  0.0088;
+        0.0105  0.0109
+    ];
+
+    
+    % ===== Plot (tight bars) =====
+    b = bar(GC_means, 1.0, 'grouped');   % <--- width = 1.0 (tight)
+
+    hold on;
+    for i = 1:numel(b)
+        x = b(i).XEndPoints;
+        y = b(i).YEndPoints;
+        
+        if i == 1
+            ecolor = [0 0 0.5];    % bright blue
+        else
+            ecolor = [0.5 0 0];  % bright red
+        end
+        
+        errorbar(x, y, GC_sems(:,i), ...
+            'LineStyle','none', ...
+            'Color',ecolor, ...
+            'LineWidth',2, ...
+            'CapSize',12);
+    end
+
+    b(1).FaceColor = [0 0 1];            % A->B (blue)
+    b(2).FaceColor = [1 0 0];            % B->A (red)
+    
+    % Axes formatting
+    set(gca,'XTick',1:numel(patients),'XTickLabel',patients);
+    ylabel('Mean GC');
+    title('Mean Granger Causality per Subject');
+    grid on;
+    
+    % Legend (top right)
+    legend({sprintf('%s → %s',A_label,B_label), ...
+            sprintf('%s → %s',B_label,A_label)}, ...
+            'Location','northeast');
+    
+    % Y-limits
+    mbar = max(GC_means(:));
+    ylim([mbar*0.5 mbar*1.1]);
+    
+    % ===== Numeric labels =====
+    ngroups = size(GC_means,1);
+    nbars   = size(GC_means,2);
+    
+    for i = 1:nbars
+        x = b(i).XEndPoints;
+        y = b(i).YEndPoints;
+        text(x, y + 0.03*mbar, ...
+            compose('%.4f', y), ...
+            'HorizontalAlignment','center', ...
+            'FontSize',10,'FontWeight','bold');
+    end
+
+
+
+
+
+    %% Mann-Whitney U Test of GC (Alternative to 2 sample t test, OLD version)
+    % 
+    % 
+    % %OLD VERSION BEFORE 1/9/26
+    % segment_length_sec = 0.25;    % segment length (seconds)
+    % fs = 1000;
+    % order = 13; %model order you get from AIC
+    % freq_band = 'beta';
+    % chIdx = [33 69];            % [A B] [61 70]
+    % 
+    % % === Use channel names for labeling ===
+    % A_name = Channel_Names{chIdx(1)};
+    % B_name = Channel_Names{chIdx(2)};
+    % 
+    % TT = TT_longest_refined;
+    % 
+    % % Pre-filter the full-length signals once (safe length) NEW
+    % filtOrder = 1024;
+    % 
+    % A_full = double(TT{:, chIdx(1)});  A_full = A_full(:).';   % force row
+    % B_full = double(TT{:, chIdx(2)});  B_full = B_full(:).';   % force row
+    % 
+    % A_beta = Myeegfilt(A_full, fs, 13, 30, 0, filtOrder);
+    % B_beta = Myeegfilt(B_full, fs, 13, 30, 0, filtOrder);
+    % % End of new
+    % 
+    % 
+    % samples_per_segment = segment_length_sec * fs;
+    % nTotalSamples = height(TT);
+    % nSegments = floor(nTotalSamples / samples_per_segment);
+    % 
+    % fprintf('Splitting into %d segments of %.1f s each (%.0f samples)\n', ...
+    %         nSegments, segment_length_sec, samples_per_segment);
+    % 
+    % GC_all = zeros(2,2,nSegments);
+    % GC_AB_seg = zeros(nSegments,1);
+    % GC_BA_seg = zeros(nSegments,1);
+    % 
+    % for k = 1:nSegments
+    %     idxStart = (k-1)*samples_per_segment + 1;
+    %     idxEnd   = k*samples_per_segment;
+    %     Tseg = TT(idxStart:idxEnd, chIdx);   % only keep the two channels
+    %     Tseg{:,1} = A_beta(idxStart:idxEnd).';
+    %     Tseg{:,2} = B_beta(idxStart:idxEnd).';
+    %     [GC,~,~,~] = compute_static_GC(Tseg, fs, order, [], 'none', false, false);
+    % 
+    %     GC_all(:,:,k) = GC;
+    %     GC_AB_seg(k)  = GC(2,1);
+    %     GC_BA_seg(k)  = GC(1,2);
+    % 
+    %     fprintf('Segment %2d/%2d done | GC(%s→%s)=%.4f | GC(%s→%s)=%.4f\n', ...
+    %         k, nSegments, A_name, B_name, GC_AB_seg(k), B_name, A_name, GC_BA_seg(k));
+    % end
+    % 
+    % GC_mean = mean(GC_all, 3, 'omitnan');
+    % 
+    % % === Statistics ===
+    % [p_val,~,stats] = signrank(GC_AB_seg, GC_BA_seg);
+    % zval = stats.zval;
+    % fprintf('\nWilcoxon signed-rank: z = %.3f, p = %.4g\n', zval, p_val);
+    % 
+    % [~,p_ttest,~,stats_t] = ttest(GC_AB_seg, GC_BA_seg);
+    % fprintf('Paired t-test: t(%d) = %.3f, p = %.4g\n', stats_t.df, stats_t.tstat, p_ttest);
+    % 
+    % diffs = GC_AB_seg - GC_BA_seg;
+    % qqplot(diffs);
+    % title(sprintf('QQ Plot of paired differences: %s↔%s', A_name, B_name));
     
     %% === Visualization ===
     
@@ -1090,7 +1397,7 @@
     % plot_PLV_Relative(Phase_Data,PLV_Relative_ref, ref_channel, Channel_Names);
     
     %%
-    
+    addpath('C:\Users\cours\Downloads\AndersonLabDataAndPackages\Packages\fieldtrip-20251023')
     ft_defaults
     
     %% FieldTrip Visualizations
@@ -1100,13 +1407,9 @@
     % --- Check for lh.pial under Imaging/freesurfer/surf ---
     %lh_pial_default = fullfile(Patient_Folder_Path, Patient_ID, 'freesurfer', 'surf', 'lh.pial');
     %lh_pial_path = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', 'freesurfer', 'surf', 'lh.pial.T1'); %%rh vs lh
-    
     %lh_pial_path = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', 'fsaverage', 'surf', 'lh.pial'); %%rh vs lh
-    
-    
     %rh_pial_default = fullfile(Patient_Folder_Path, Patient_ID, 'freesurfer', 'surf', 'rh.pial');
     %rh_pial_path = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', 'freesurfer', 'surf', 'rh.pial.T1');
-    
     %rh_pial_path = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', 'fsaverage', 'surf', 'rh.pial');
     
     
@@ -1114,43 +1417,9 @@
     
     lh_pial_mni_path = fullfile(ftpath, 'template', 'anatomy', 'surface_pial_left.mat');
     rh_pial_mni_path = fullfile(ftpath, 'template', 'anatomy', 'surface_pial_right.mat');
-    
-    
-    % if exist(lh_pial_default,'file')
-    %     lh_pial_path = lh_pial_default;
-    % else
-    %     error('No lh.pial found.');
-    % end
-    
-    % if exist(rh_pial_default,'file')
-    %     rh_pial_path = rh_pial_default;
-    % else
-    %     error('No rh.pial found.');
-    % end
-    
-    
-    % --- ACPC electrode file ---
-    acpc_imaging = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', [Patient_ID '_elec_acpc_fr.mat']);
-    acpc_default = fullfile(Patient_Folder_Path, Patient_ID, ['Subject' Patient_ID '_elec_acpc_fr.mat']);
-    
-    if exist(acpc_imaging, 'file')
-        ACPC_Path = acpc_imaging;
-    elseif exist(acpc_default, 'file')
-        ACPC_Path = acpc_default;
-    else
-        error('No ACPC electrode file found for %s.', Patient_ID);
-    end
-    
-    % --- FSAVG electrode file ---
-    %FSAVG_Path = fullfile(Patient_Folder_Path, Patient_ID, ['Subject' Patient_ID '_elec_fsavg_frs.mat']);
-    % ACPC_Path = fullfile(Patient_Folder_Path, Patient_ID, [Patient_ID '_elec_acpc_fr.mat']);
-    FS_PATH = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', [Patient_ID '_elec_fsavg_frs.mat']);
+
     MNI_FRV_Path = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', [Patient_ID '_elec_mni_frv.mat']);
-    
-    % disp('lh_pial_path:'), disp(lh_pial_path)
-    % disp('ACPC_Path:'), disp(ACPC_Path)
-    % disp('FSAVG_Path:'), disp(FSAVG_Path)
-    
+
     % --- Load meshes dynamically ---
     disp('--- Parameter sanity check ---')
     disp(['ACPC file exists: ', string(exist(ACPC_Path,'file')==2)]);
@@ -1160,12 +1429,35 @@
     disp(['Electrode count: ', num2str(size(elec.chanpos,1))]);
     disp(['Data vector length: ', num2str(length(PLV_Relative_ref(1:63)))]);
     
+    % % --- ACPC electrode file ---
+    % acpc_imaging = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', [Patient_ID '_elec_acpc_fr.mat']);
+    % acpc_default = fullfile(Patient_Folder_Path, Patient_ID, ['Subject' Patient_ID '_elec_acpc_fr.mat']);
+    % 
+    % if exist(acpc_imaging, 'file')
+    %     ACPC_Path = acpc_imaging;
+    % elseif exist(acpc_default, 'file')
+    %     ACPC_Path = acpc_default;
+    % else
+    %     error('No ACPC electrode file found for %s.', Patient_ID);
+    % end
+    % 
+    % % --- FSAVG electrode file ---
+    % %FSAVG_Path = fullfile(Patient_Folder_Path, Patient_ID, ['Subject' Patient_ID '_elec_fsavg_frs.mat']);
+    % % ACPC_Path = fullfile(Patient_Folder_Path, Patient_ID, [Patient_ID '_elec_acpc_fr.mat']);
+    % FS_PATH = fullfile(Patient_Folder_Path, Patient_ID, 'Imaging', [Patient_ID '_elec_fsavg_frs.mat']);
+   
+    % disp('lh_pial_path:'), disp(lh_pial_path)
+    % disp('ACPC_Path:'), disp(ACPC_Path)
+    % disp('FSAVG_Path:'), disp(FSAVG_Path)
+    
+
+    
     %% Plot PLV wrt Macro LFP on ACPC FR Mesh
     
     data = PLV_Relative_ref(1:63);
-    data(48) = 0;
+    %data(48) = 0;
     
-    %load_ACPC_FR_mesh(FS_PATH, rh_pial_path, data, []);
+    %load_ACPC_FR_mesh(FS_PATH, rh_pial_path, data, []);x`
     
     %load_ACPC_FR_mesh(ACPC_Path, lh_pial_path, data);
     %load_FSAVG_FRS_mesh(FS_PATH, rh_pial_path, data);
@@ -2599,7 +2891,13 @@
         elec_mni = ft_convert_units(elec_mni, 'mm');
         elec_mni.coordsys = 'mni';
     
-    
+        % --- choose electrode positions robustly ---
+        if isfield(elec_mni,'elecpos') && ~isempty(elec_mni.elecpos)
+            pos = elec_mni.elecpos;
+        else
+            pos = elec_mni.chanpos;
+        end
+
     
         pial_lh = load(pial_lh_path);
         if isfield(pial_lh, 'mesh')
@@ -2610,7 +2908,7 @@
     
     
      
-        nElec = size(elec_mni.chanpos, 1);
+        nElec = size(pos, 1);
         data = data(:);
     
         if numel(data) ~= nElec
@@ -2631,7 +2929,7 @@
     
     
         source = struct();
-        source.pos = elec_mni.chanpos;
+        source.pos = pos;
         source.pow = norm_data;
         source.dimord = 'pos';
         source.coordsys = 'mni';
@@ -2688,9 +2986,9 @@
     
     
         if any(ref_idx)
-            scatter3(elec_mni.chanpos(ref_idx,1),...
-                     elec_mni.chanpos(ref_idx,2),...
-                     elec_mni.chanpos(ref_idx,3),...
+            scatter3(pos(ref_idx,1),...
+                     pos(ref_idx,2),...
+                     pos(ref_idx,3),...
                      100, 'r', 'filled', 'MarkerEdgeColor','k','LineWidth',1.5);
         end
     
@@ -2703,3 +3001,77 @@
         ylabel(cb, 'PLV value');
     
     end
+
+
+
+
+
+function [F, ok, msg] = mvgc_uncond_time_gc_2ch(X, p)
+% Unconditional (pairwise) time-domain GC via MVGC VAR fitting.
+% X: 2 x T, p: VAR order. Returns F(i,j)=j->i
+
+    % Error Checks
+    ok = false; msg = '';
+    F = nan(2);
+    
+    if size(X,1) ~= 2
+        msg = 'X must be 2xT.';
+        return;
+    end
+    if any(~isfinite(X(:)))
+        msg = 'Non-finite values in segment.';
+        return;
+    end
+    T = size(X,2);
+    if T <= p + 2
+        msg = sprintf('Too few samples (T=%d) for p=%d.', T, p);
+        return;
+    end
+
+    % Main Calculation %
+
+    %Preprocessing - Demean and z-score
+    X = X - mean(X,2);
+    s = std(X,0,2);
+    if any(s < 1e-12)
+        msg = 'Near-zero std in a channel.';
+        return;
+    end
+    X = X ./ s;
+
+    % Fit full MVAR model (using MVGC function)
+    try
+        [~, SIGfull] = tsdata_to_var(X, p, 'OLS');      % MVGC time-series data to VAR model
+    catch ME
+        msg = ['tsdata_to_var(full) failed: ' ME.message];
+        return;
+    end
+    vfull = diag(SIGfull);
+
+    % Fit reduced MVAR model (using MVGC function)
+    try
+        [~, SIG1] = tsdata_to_var(X(1,:), p, 'OLS');    % channel 1 alone
+        [~, SIG2] = tsdata_to_var(X(2,:), p, 'OLS');    % channel 2 alone
+    catch ME
+        msg = ['tsdata_to_var(reduced) failed: ' ME.message];
+        return;
+    end
+    
+    % Calculate variance of residual errors
+    v1_red = SIG1(1);  % variance of residual for ch1-only model
+    v2_red = SIG2(1);  % variance of residual for ch2-only model
+
+    % GC = log(var_reduced / var_full)
+    F = zeros(2);
+    F(1,2) = log(v1_red / vfull(1));  % 2 -> 1  (B -> A)
+    F(2,1) = log(v2_red / vfull(2));  % 1 -> 2  (A -> B)
+
+    if any(~isfinite(F(:)))
+        msg = 'Non-finite GC values.';
+        F(:) = nan;
+        return;
+    end
+
+    ok = true;
+end
+
