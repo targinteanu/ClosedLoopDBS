@@ -22,7 +22,7 @@ if RecSel == 1
         'InitRawData', @initRawData_cbmex, ...
         'GetNewRawData', @getNewRawData_cbmex, ...
         'GetTime', @getTime_cbmex); 
-elseif RecSel == ((RecSel==2) || (RecSel==3))
+elseif ((RecSel==2) || (RecSel==3))
     % AO 
     if RecSel==2
         % AlphaRS
