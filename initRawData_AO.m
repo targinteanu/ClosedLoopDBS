@@ -53,11 +53,11 @@ else
     channelselector = @(n) false;
 end
 
-%% connect to hardware 
-connect_AO(); startTic = tic; 
-pause(1);
-
 %% setup
+
+% hardware should be connected already
+startTic = tic; 
+pause(1);
 
 chnamefspec = [chantype,' %f'];
 

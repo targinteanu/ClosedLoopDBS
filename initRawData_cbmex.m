@@ -14,7 +14,8 @@ function [emptyData, contData, buffData, chanInfo, startTic] = ...
 
 %% access cbmex 
 
-connect_cbmex(); startTic = tic;
+% cbmex should have been connected already
+startTic = tic;
 pause(1);
 
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
