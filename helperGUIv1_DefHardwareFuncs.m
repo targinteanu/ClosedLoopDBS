@@ -5,7 +5,7 @@ if nargin < 1
     dostim = true;
 end
 
-RecOpts = {'Blackrock NSP'; 'Alpha Omega AlphaRS'; 'Neuro Omega'}; 
+RecOpts = {'Blackrock NSP'; 'Alpha Omega AlphaRS'; 'Neuro Omega'; 'Neuralynx'}; 
 StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'Alpha Omega'; 'None'}; 
 RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
     "ListString",RecOpts, "SelectionMode","single");
@@ -41,6 +41,8 @@ elseif RecSel == ((RecSel==2) || (RecSel==3))
         'InitRawData', @(a,b) initRawData_AO(a,b,chantype), ...
         'GetNewRawData', @getNewRawData_AO, ...
         'GetTime', @getTime_AO);
+elseif RecSel == 4
+    % NeuraLynx
 else
     error('Recording option must be specified.')
 end
