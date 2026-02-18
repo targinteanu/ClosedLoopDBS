@@ -5,8 +5,8 @@ if nargin < 1
     dostim = true;
 end
 
-RecOpts = {'Blackrock NSP'; 'Alpha Omega AlphaRS'}; % TO DO: add Neuro Omega ?
-StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'AlphaRS'; 'None'}; 
+RecOpts = {'Blackrock NSP'; 'Alpha Omega AlphaRS'; 'Neuro Omega'}; 
+StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'Alpha Omega'; 'None'}; 
 RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
     "ListString",RecOpts, "SelectionMode","single");
 if dostim
@@ -22,14 +22,21 @@ if RecSel == 1
         'InitRawData', @initRawData_cbmex, ...
         'GetNewRawData', @getNewRawData_cbmex, ...
         'GetTime', @getTime_cbmex); 
-elseif RecSel == 2
-    % AO AlphaRS; might also work with Neuro Omega (untested) 
+elseif RecSel == ((RecSel==2) || (RecSel==3))
+    % AO 
+    if RecSel==2
+        % AlphaRS
+        devicename = 'aRS';
+    else
+        % Neuro Omega
+        devicename = 'NO';
+    end
     chantypes = {'LFP', 'SPK', 'RAW', 'AI', 'SEG'};
     chantypesel = listdlg("PromptString","Channel Type:", ...
         "ListString",chantypes, "SelectionMode","single");
     chantype = chantypes{chantypesel};
     HardwareFuncs = struct(...
-        'SetupRecording', @connect_AO, ...
+        'SetupRecording', @() connect_AO(devicename), ...
         'ShutdownRecording', @disconnect_AO, ...
         'InitRawData', @(a,b) initRawData_AO(a,b,chantype), ...
         'GetNewRawData', @getNewRawData_AO, ...
@@ -60,7 +67,10 @@ elseif StimSel == 2
     HardwareFuncs.SetStimTriggerMode = @stimTriggerMode_cerestim; 
     StimLagTime = 0.03; % s - not tested 
 elseif StimSel == 3
-    % AO AlphaRS; might also work with Neuro Omega (untested) 
+    % AO AlphaRS or Neuro Omega
+    if ~((RecSel==2) || (RecSel==3))
+        error('Cannot Connect: Alpha Omega stimulator and recording device must be the same.')
+    end
     StimTriggerMode = false; 
     HardwareFuncs.SetupStimulator = @stimSetup_AO;
     HardwareFuncs.ShutdownStimulator = @stimShutdown_AO;
