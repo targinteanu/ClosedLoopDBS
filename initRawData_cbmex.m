@@ -53,6 +53,8 @@ end
 
 %% assign data to the structure 
 
+% Does this loop work with removing channels? See differences in
+% initRawData_AO
 for ch = 1:length(chsel)
     chInd = find(chnum == chsel(ch)); 
 

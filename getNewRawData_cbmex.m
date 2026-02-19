@@ -1,5 +1,8 @@
 function [newContData, chname, chnum] = getNewRawData_cbmex(chsel)
 
+% TO DO: to make compatible with Nlx version, this should take selChanInfo,
+% and chsel is chanInfo.IDnumber 
+
 % to do: this should also return the channel info for checking 
 
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
