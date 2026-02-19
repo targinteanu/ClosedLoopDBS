@@ -779,7 +779,7 @@ handles = helperGUIv1b_myPULSE(hTimer, eventdata, handles);
 guidata(hFigure,handles);
 
 function schedulePULSE(hTimer,eventdata,hFigure)
-%%{
+%{
 % announce when stimulus will go off
 eventTime = datestr(eventdata.Data.time);
 disp(['at ',eventTime,...
@@ -789,7 +789,7 @@ disp(['at ',eventTime,...
 %}
 
 function finishPULSE(hTimer,eventdata,hFigure)
-%%{
+%{
 % announce that this stim has completed or been aborted.
 eventTime = datestr(eventdata.Data.time);
 disp(['at ',eventTime,...
@@ -1542,6 +1542,7 @@ if ok
         remtf(remind) = true;
     end
     handles.allChannelIDs = channelIDlist(~remtf);
+    handles.allChannelInfo = handles.channelInfoList(~remtf);
     guidata(hObject, handles);
     settingChange(hObject);
 end

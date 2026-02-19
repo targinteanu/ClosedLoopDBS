@@ -7,12 +7,14 @@ handles.stimulator = handles.HardwareFuncs.PulseStimulator(handles.stimulator);
 stimtime2 = handles.HardwareFuncs.GetTime(initTic);
 
 % disp time of pulse using eventdata
-eventTime = datestr(eventdata.Data.time);
 stimtime = .5*(stimtime1 + stimtime2);
+%{
+eventTime = datestr(eventdata.Data.time);
 dstimtime = stimtime2 - stimtime1; 
 stimschedtime = hTimer.UserData; 
 disp(['Stimulus pulsed at ',eventTime,' within ',num2str(dstimtime),'s, ',...
       num2str(stimtime - stimschedtime),' s late'])
+%}
 
 % record stim timing in the GUI 
 handles.stimLastTime = stimtime; handles.stimNewTime = stimtime; 
