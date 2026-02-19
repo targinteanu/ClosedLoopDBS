@@ -1,9 +1,11 @@
-function [newContData, chname, chnum] = getNewRawData_cbmex(chsel)
+function [newContData, chname, chnum] = getNewRawData_cbmex(selChanInfo)
 
 % TO DO: to make compatible with Nlx version, this should take selChanInfo,
 % and chsel is chanInfo.IDnumber 
 
 % to do: this should also return the channel info for checking 
+
+chsel = cellfun(@(ifo) ifo.IDnumber, selChanInfo);
 
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
 

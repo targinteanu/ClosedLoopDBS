@@ -1,9 +1,11 @@
-function [newContData, chname, chnum] = getNewRawData_AO(chsel)
+function [newContData, chname, chnum] = getNewRawData_AO(selChanInfo)
 % chsel (IDs, NOT indexes) must not be empty; it will set the channels in
 % order 
 
 % TO DO: to make compatible with Nlx version, this should take selChanInfo,
 % and chsel is chanInfo.IDnumber 
+
+chsel = cellfun(@(ifo) ifo.IDnumber, selChanInfo);
 
 W = length(chsel);
 [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);

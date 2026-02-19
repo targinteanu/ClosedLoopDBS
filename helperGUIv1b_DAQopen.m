@@ -37,6 +37,7 @@ handles.DAQstatus = true;
 % are enabled
 [~,~,~,allChannelInfo] = handles.HardwareFuncs.InitRawData(handles.allChannelIDs, handles.bufferSizeGrid);
 handles.allChannelInfo = allChannelInfo;
+handles.channelInfoList = allChannelInfo;
 
 %handles.HardwareFuncs.ShutdownRecording();
 
