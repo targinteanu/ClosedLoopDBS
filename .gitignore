@@ -14,3 +14,4 @@ replay_pid22104.log
 /__pycache__
 *.csv
 .DS_Store
+/resources
