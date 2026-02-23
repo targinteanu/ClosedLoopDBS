@@ -78,7 +78,7 @@ for ch_art = 1:size(rawTails,2)
     [tForN, tForProc] = get_tProc(tXfor);
     tDiff = tForProc - tProc; iDiff = round(tDiff * FsArt(ch_art)); 
     iDiff = iDiff + tForN - tN;
-    iDiff = -iDiff; % PATCH - why does this work??? why is this needed??
+    iDiff = -iDiff; % now, tXfor(iDiff:end,:) ~ tX
     stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
     stimtimes = stimtimes - tProc; % from last proc
     stimtimes = stimtimes - artRemArgs.ArtifactStartBefore;
@@ -92,12 +92,12 @@ for ch_art = 1:size(rawTails,2)
         nO = i2 - height(tX); % there will be this much overlap on the NEXT buffer
         nO = max(0, nO);    
         if ~isnan(iDiff)
-            i1_ = max(1, i1);
+            i1_ = max(1, i1); i1_ = min(height(tX), i1_);
             i3 = i1_ + iDiff; i4 = i2 + iDiff; 
             i3 = max(i3, 1); i3 = min(i3, height(tXfor));
             i4 = max(i4, 1); i4 = min(i4, height(tXfor));
             Xreplace = tXfor(i3:i4,2); 
-            Xreplace = Xreplace - mean(tXfor(:,2)) + mean(tX(:,2)); % correct DC offset
+            Xreplace = Xreplace - mean(tXfor(:,2)) + mean(tX(1:i1_,2)); % correct DC offset
             i2 = min(i2, i1_+height(Xreplace)-1);
             nO = min(nO, i2-height(tX));
             tX = [tX; nan(nO,2)]; 
