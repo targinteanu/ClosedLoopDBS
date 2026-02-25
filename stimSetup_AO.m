@@ -16,6 +16,14 @@ if (N1 > 1) || (N2 > 1)
     error('Multi-channel stimulation on AO is not yet supported.')
 end
 
+if isempty(ch1)
+    % setting ReturnChannel = -1 enables Global Return. 
+    ch1 = -1;
+end
+if isempty(ch2)
+    error('For global return, leave channel1 empty and select channel2.')
+end
+
 % StimSetupArgs was made for CereStim; convert these values to be more
 % useful for AO
 dur = StimSetupArgs.pulses/StimSetupArgs.frequency; % s
