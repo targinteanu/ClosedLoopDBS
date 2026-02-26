@@ -165,7 +165,7 @@ end
 if Results
     [~,~,LastError] = AO_GetError();
     [errchan, nerr] = sscanf(LastError, 'ERROR --> AO_GetAlignedData :: Channel %f has no samples');
-    if (nerr > 0) || (err == -3) % what is -3?
+    if (Results == -3) || (nerr > 0)
         warning(['Removing channel ',num2str(errchan),' due to error code ',num2str(Results)])
         remchan = (chsel == errchan);
         chsel = chsel(~remchan);
