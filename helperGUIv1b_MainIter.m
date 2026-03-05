@@ -72,6 +72,7 @@ StimLen = ceil(StimDur.*FsArt); % #samples to remove
 StimTimesTail = artRemArgs.StimTimes; 
 artRemArgs.nOverlap = zeros(1, size(rawTails,2));
 for ch_art = 1:size(rawTails,2)
+    if (~isempty(rawTails{ch_art})) && (~isempty(forTails{ch_art})) % FIX THIS!
     tXfor = forTails{ch_art};
     tX = rawTails{ch_art}; % [time, data]
     [tN, tProc] = get_tProc(tX);
@@ -108,6 +109,7 @@ for ch_art = 1:size(rawTails,2)
         end
     end
     artRemTails{ch_art} = tX;
+    end
 end
 end
 
@@ -144,6 +146,7 @@ phis = foreArgs.PhaseOfInterest;
 TstimLag = foreArgs.StimulatorLagTime;
 foreTails = cell(size(inData)); foreBuffsAdd = foreTails; 
 for ch_fore = 1:size(inData,2)
+    if ~isempty(inData{ch_fore}) % FIX THIS!
     armdl = ARmdls{ch_fore};
     FT = myFastForecastAR(armdl, inData{ch_fore}(:,2), K);
     foreTails{ch_fore} = [nan(height(FT),1), FT];
@@ -159,6 +162,7 @@ for ch_fore = 1:size(inData,2)
     t2(t2 < 0) = nan;
     foreBuffsAdd{ch_fore} = t2; 
     foreArgs.Amp(ch_fore) = Amp;
+    end
 end
 end
 
@@ -168,6 +172,7 @@ function mdlArgs = ARmdlUpdate(mdlArgs, inData, noRecentStim)
     for ch_upd = 1:size(inData, 2)
         ARupdated = false;
         if mdlArgs.ARlearnrate(ch_upd) > 0
+            if ~isempty(inData{ch_upd}) % FIX THIS!
             Mdl = mdlArgs.ARmdls{ch_upd};
             w = -Mdl(2:end)/Mdl(1);
             w = fliplr(w); 
@@ -191,6 +196,7 @@ function mdlArgs = ARmdlUpdate(mdlArgs, inData, noRecentStim)
                     mdlArgs.ARmdls{ch_upd} = Mdl;
                 end
             end
+            end
         end
     end
     end
@@ -202,9 +208,11 @@ filtInit = fltArgs.fltInit;
 filtFin = cell(size(filtInit));
 fltTails = cell(size(rawTails));
 for ch_flt = 1:size(rawTails,2)
+    if ~isempty(rawTails{ch_flt}) % FIX THIS!
     a = filtObj{1,ch_flt}; b = filtObj{2,ch_flt};
     [FT,filtFin{ch_flt}] = filter(b,a,rawTails{ch_flt}(:,2:end),filtInit{ch_flt});
     fltTails{ch_flt} = [rawTails{ch_flt}(:,1) - fltArgs.TimeShift(ch_flt), FT];
+    end
 end
 fltArgs.fltInit = filtFin;
 end
