@@ -1,5 +1,5 @@
 function [tX, chnum, fs] = getNewContinuousData_Nlx(chname, chtype)
-fs = nan;
+fs = nan; chnum = nan;
 
 if strcmp(chtype, 'CscAcqEnt')
     % Continuously Sampled Channel
@@ -49,7 +49,9 @@ if numRecordsDropped > 0
     warning(['Nlx dropped ',num2str(numRecordsDropped),' records since last DAQ.']);
 end
 
-chnum = channelNumberArray(end); % should something be done with the other entries ??
+if ~isempty(channelNumberArray)
+    chnum = channelNumberArray(end); % should something be done with the other entries ??
+end
 tX = [t', double(dataArray)'];
 
     function [X,T] = unInterleave(x, t, n)
