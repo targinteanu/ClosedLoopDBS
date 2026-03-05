@@ -16,7 +16,7 @@ for index = 1:length(dasObjects)
      if strcmp(char(dasTypes(index)), 'AcqSource') ~= 1 
         succeeded = NlxCloseStream(dasObjects(index));
         if succeeded == 0
-            warning(['FAILED to close stream for ', char(dasObjects(index))]);
+            %warning(['FAILED to close stream for ',char(dasObjects(index))]); % TODO: debug why it keeps failing
         end
      end
 end;

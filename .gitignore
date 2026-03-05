@@ -15,3 +15,4 @@ replay_pid22104.log
 *.csv
 .DS_Store
 /resources
+MatlabNetComLogfile.txt
