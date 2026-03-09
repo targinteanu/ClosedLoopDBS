@@ -5,7 +5,8 @@ newContData = cell(1,W);
 for ch = 1:W
     ifo = selChanInfo{ch};
     try
-        newContData{ch} = getNewContinuousData_Nlx(ifo.Name, ifo.Type);
+        tX = getNewContinuousData_Nlx(ifo.Name, ifo.Type);
+        newContData{ch} = tX;
     catch ME
         warning(['Could not update channel ',ifo.Name,': ',ME.message]);
     end

@@ -4,7 +4,7 @@ function connect_Nlx()
 %If you are running MATLAB on a PC other than the one with the NetCom
 %server, you will need to change the server name to the name of the server
 %PC.
-serverName = 'localhost';
+serverName = '169.254.195.204'; % Chu lab Nlx PC IP address
 fprintf('Connecting to %s...', serverName);
 succeeded = NlxConnectToServer(serverName);
 if succeeded ~= 1

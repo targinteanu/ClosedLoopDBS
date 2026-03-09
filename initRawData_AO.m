@@ -79,7 +79,18 @@ if Results
     error(['Failed to obtain channel info with error code ',num2str(Results)])
 end
 
+try
 chnum = [channelsData.channelID]; chnum = double(chnum);
+catch ME
+    if ~isstruct(channelsData)
+        if isnan(channelsData)
+            error('Did not receive channel info from AO. Try restarting Neuro Omega.')
+        end
+    else
+        rethrow(ME);
+    end
+end
+
 chname = {channelsData.channelName};
 
 % limit to only desired continuous data channels
@@ -154,7 +165,7 @@ end
 if Results
     [~,~,LastError] = AO_GetError();
     [errchan, nerr] = sscanf(LastError, 'ERROR --> AO_GetAlignedData :: Channel %f has no samples');
-    if nerr > 0
+    if (Results == -3) || (nerr > 0)
         warning(['Removing channel ',num2str(errchan),' due to error code ',num2str(Results)])
         remchan = (chsel == errchan);
         chsel = chsel(~remchan);

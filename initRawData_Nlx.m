@@ -25,6 +25,7 @@ if succeeded == 0
 else
     fprintf('Retrieved %d objects from the DAS\n', length(dasObjects));
 end
+dasObjects = dasObjects'; dasTypes = dasTypes'; % make horizontal; check compatibility with BR version
 
 %open up a stream for all objects that can stream date
 objsconnected = false(size(dasObjects));
@@ -119,11 +120,11 @@ for ch = 1:length(chnum)
         chtype_ch = char(dasTypes{ch});
 
         % Create raw data buffer of zeros of the correct length
-        time = min(continuousData{chInd(:,1)}); 
+        time = min(continuousData{chInd}(:,1)); 
         emptyData{ch} = [nan(bufferSize(ch),1), zeros(bufferSize(ch),1)];
         if ~isempty(emptyData{ch})
-            %emptyData{ch}(1,1) = time - (bufferSize)/fs(chInd);
-            emptyData{ch}(end,1) = time - 1/fs(chInd); % ??
+            %emptyData{ch}(1,1) = time - (bufferSize)/Fs(chInd);
+            emptyData{ch}(end,1) = time - 1/Fs(chInd); % ??
         end
         contData{ch} = continuousData{chInd};
 

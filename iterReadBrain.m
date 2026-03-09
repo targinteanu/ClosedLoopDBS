@@ -66,9 +66,11 @@ if width(rawData) == width(newTails)
         [rawData{2,CH}, rawData{3,CH}, rawData{4,CH}] = ...
             bufferjuggle(rawData{2,CH},rawData{3,CH},newTail,@bufferData);
         fs = chInfo{CH}.SampleRate;
+        if ~isempty(newTail) % FIX THIS!!
         tailProcTime = newTail(1,1) + (height(newTail)-1)/fs; 
         curTime(CH) = tailProcTime;
         timeBuffs{1,CH} = bufferData(timeBuffs{1,CH}, tailProcTime);
+        end
     end
 else
 % assign manually using channel ID

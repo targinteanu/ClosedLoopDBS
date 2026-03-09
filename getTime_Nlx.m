@@ -6,6 +6,6 @@ if ~succeeded
     error('Failed to get Nlx timestamp.')
 end
 
-t = t/1e6; % uS -> s
+t = str2double(t{1})/1e6; % us -> s
 
 end
