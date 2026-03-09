@@ -103,11 +103,13 @@ handles.grnDataBuffer = []; handles.h_grnTrace = [];
 handles.stpDataBuffer = []; handles.h_stpTrace = [];
 
 handles.QueuedStim = timer(...
-    'StartDelay', 10, ...
+    'Name', 'Queued Stim Pulse', ...
+    'StartDelay', 10, ... this may be changed at each point in main loop
     'TimerFcn',   {@myPULSE, hObject}, ...
     'StopFcn',    {@finishPULSE, hObject}, ...
     'StartFcn',   {@schedulePULSE, hObject}, ...
-    'UserData',   Inf);
+    'BusyMode',   'queue', ...
+    'UserData',   Inf); % this may be changed at each point in main loop
 
 % turn off graphs' interactivity 
 disableDefaultInteractivity(handles.ax_polar);
@@ -388,6 +390,15 @@ try
         %stop(handles.timer)
         StopMainLoop(hObject,eventdata,handles)
     end
+
+    doloop = true;
+    if strcmp(handles.QueuedStim.Running, 'on')
+        if handles.QueuedStim.StartDelay < handles.StimulatorLagTime
+            % is there enough time to make a change
+            doloop = false;
+        end
+    end
+    if doloop
     
     [events, time, continuousData] = cbmex('trialdata',1);
 
@@ -471,6 +482,7 @@ try
     drawnow 
     pause(.001)
 
+    end
     end
     end
 
@@ -566,6 +578,7 @@ handles = guidata(hFigure);
 stimulator = handles.stimulator;
 % Most of the following is equivalent to stimPulse_cerestim(stimulator) ;
 % should it be replaced??
+%{
 if ~stimulator.isConnected()
     warning('Stimulator is not connected.')
 end
@@ -579,17 +592,21 @@ if stimstatus == 2
     % in a conditional that stimstatus == 0 [stopped] or 1 [paused] (?), or
     % try using stimulator.stop()
 end
+%}
 % if stimstatus == 0
 stimtime1 = cbmex('time');
-stimulator.play(1); % consider changing to groupStimulus or manualStim to save time
+%stimulator.play(1); % consider changing to groupStimulus or manualStim to save time
 stimtime2 = cbmex('time');
 dstimtime = stimtime2 - stimtime1; 
 % disp time of pulse using eventdata
-eventTime = datestr(eventdata.Data.time);
+disp(seconds(datetime - datetime(eventdata.Data.time)))
+eventTime = datestr(eventdata.Data.time, 'HH:MM:SS.FFF');
 stimtime = .5*(stimtime1 + stimtime2);
 stimschedtime = hTimer.UserData; 
+%{
 disp(['Stimulus pulsed at ',eventTime,' within ',num2str(dstimtime),'s, ',...
       num2str(stimtime - stimschedtime),' s late'])
+%}
 handles.stimLastTime = stimtime; handles.stimNewTime = stimtime; 
 if handles.stP1 <= length(handles.stStorage1)
     handles.stStorage1(handles.stP1) = stimtime; 
@@ -1151,8 +1168,11 @@ if get(hObject, 'Value') == 1
     channel1 = channel(1)
     channel2 = channel(2:end)
 
+    %{
     handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
         width1, width2, interphase, frequency, pulses);
+    %}
+    handles.stimulator = 0;
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 

@@ -137,7 +137,8 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
                             if strcmp(handles.QueuedStim.Running, 'on')
                                 stop(handles.QueuedStim);
                             end
-                            handles.QueuedStim.StartDelay = t2Q;
+                            %disp(datestr(datetime + seconds(t2Q),'HH:MM:SS.FFF'))
+                            handles.QueuedStim.StartDelay = t2Q; 
                             handles.QueuedStim.UserData = t2Qabs;
                             start(handles.QueuedStim);
                         end
