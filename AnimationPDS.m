@@ -224,10 +224,14 @@ iDBS(1:DBSper:end) = true;
 iDBS = iDBS & (A >= Athresh); % make like medtronic closed loop DBS
 
 %% setup display 
+% For time plots, plot the entire signal, but set the x axis limits to the
+% window of interest. 
 
 displaywin = ceil(displaywin * Fs); % samples 
 cursample = 1;
-winidx = (0:displaywin)+cursample;
+curwin = [0, displaywin-1] + cursample;
+%{
+winidx = curwin(1):curwin(2);
 xnow = x(winidx);
 phnow = ph(winidx);
 tnow = t(winidx);
@@ -235,8 +239,11 @@ iPDSnow = iPDS(winidx);
 iDBSnow = iDBS(winidx);
 xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
 xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
-nPDS = sum(iPDS(1:(displaywin+cursample)));
-nDBS = sum(iDBS(1:(displaywin+cursample)));
+%}
+xPDS = nan(size(x)); xPDS(iPDS) = x(iPDS);
+xDBS = nan(size(x)); xDBS(iDBS) = x(iDBS);
+nPDS = sum(iPDS(1:curwin(2)));
+nDBS = sum(iDBS(1:curwin(2)));
 
 myfig = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
 %tiledlayout(2,3);
@@ -248,38 +255,38 @@ else
     mkr = 'v';
 end
 %nexttile([1,2]); 
-subplot(2,1,1);
-plt_X_PDS = plot(tnow, xnow, 'LineWidth',1.5);
+ax(1,1) = subplot(2,1,1);
+plot(t, x, 'LineWidth',1.5);
 grid on; hold on; 
-plt_PDS = stem(tnow, xPDSnow, mkr);
+stem(t, xPDS, mkr);
 xlabel('time (s)'); ylabel(['EPhys',unitname]);
-%xlim([tnow(1), tnow(end)]);
+xlim(t(curwin));
 title_PDS = title({'Phase Dependent Stimulation'; ...
     ['Total Stim Count = ',num2str(nPDS)]});
 
 %{
 % PDS rose plot
 bedge = linspace(-pi, pi, nbins);
-nexttile; 
-rose_PDS = polarhistogram(phnow(iPDSnow), 'BinEdges',bedge);
+ax(1,2) = nexttile; 
+polarhistogram(phnow(iPDSnow), 'BinEdges',bedge);
 title('Stimulation Phase')
 %}
 
 % DBS time plot 
 %nexttile([1,2]); 
-subplot(2,1,2);
-plt_X_DBS = plot(tnow, xnow, 'LineWidth',1.5);
+ax(2,1) = subplot(2,1,2);
+plot(t, x, 'LineWidth',1.5);
 grid on; hold on; 
-plt_DBS = stem(tnow, xDBSnow, 's');
+stem(t, xDBS, 's');
 xlabel('time (s)'); ylabel(['EPhys',unitname]);
-%xlim([tnow(1), tnow(end)]);
+xlim(t(curwin));
 title_DBS = title({'Existing Closed Loop DBS'; ...
     ['Total Stim Count = ',num2str(nDBS)]});
 
 %{
 % PDS rose plot
-nexttile; 
-rose_DBS = polarhistogram(phnow(iDBSnow), 'BinEdges',bedge);
+ax(2,2) = nexttile; 
+polarhistogram(phnow(iDBSnow), 'BinEdges',bedge);
 title('Stimulation Phase')
 %}
 
@@ -292,7 +299,9 @@ while cursample + packetsize + displaywin <= length(x)
 ticStart = tic;
 
 cursample = cursample + packetsize;
-winidx = (0:displaywin)+cursample;
+curwin = [0, displaywin-1] + cursample;
+%{
+winidx = curwin(1):curwin(2);
 xnow = x(winidx);
 phnow = ph(winidx);
 tnow = t(winidx);
@@ -300,17 +309,26 @@ iPDSnow = iPDS(winidx);
 iDBSnow = iDBS(winidx);
 xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
 xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
-nPDS = sum(iPDS(1:(displaywin+cursample)));
-nDBS = sum(iDBS(1:(displaywin+cursample)));
+%}
+nPDS = sum(iPDS(1:curwin(2)));
+nDBS = sum(iDBS(1:curwin(2)));
 
+%{
 plt_X_PDS.XData = tnow; plt_X_PDS.YData = xnow; 
 plt_X_DBS.XData = tnow; plt_X_DBS.YData = xnow; 
 plt_PDS.XData = tnow; plt_PDS.YData = xPDSnow;
 plt_DBS.XData = tnow; plt_DBS.YData = xDBSnow;
+%}
 
+% update rose plots to reflect current display window
 %rose_PDS = polarhistogram(phnow(iPDSnow), 'BinEdges',bedge);
 %rose_DBS = polarhistogram(phnow(iDBSnow), 'BinEdges',bedge);
 
+% advance x axis window 
+ax(1,1).XLim = t(curwin);
+ax(2,1).XLim = t(curwin);
+
+% update stim count display 
 title_PDS.String{2} = ['Total Stim Count = ',num2str(nPDS)];
 title_DBS.String{2} = ['Total Stim Count = ',num2str(nDBS)];
 
