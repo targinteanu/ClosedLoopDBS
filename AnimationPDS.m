@@ -15,8 +15,8 @@
 
     % display
     playbackspeed = 1; % relative to real time
-    displaywin = 0.2; % seconds 
-    packetsize = 1; % sample 
+    displaywin = 0.5; % seconds 
+    packetsize = 10; % sample 
     nbins = 18; % polar histogram (rose) bins
 
 %% Load data 
@@ -202,15 +202,16 @@ H = hilbert(x);
 ph = angle(H); A = abs(H);
 
 % set amplitude threshold 
-[~,Athresh] = midcross(A); 
-%Athresh = median(A); 
+%[~,Athresh] = midcross(A); 
+Athresh = median(A(~isoutlier(x))); 
 
 % find where phase crosses target 
 phtarget = radfix(phtarget);
 ph = ph - phtarget; ph = radfix(ph);
 sph = sign(ph);
 sph = sph(2:end) .* sph(1:(end-1)); 
-iPDS = sph <= 0; % zero-cross 
+dph = diff(ph);
+iPDS = (sph <= 0) & (dph >= 0); % rising zero-cross 
 iPDS = [false; iPDS];
 
 % finalize PDS stim timing 
@@ -225,7 +226,8 @@ iDBS = iDBS & (A >= Athresh); % make like medtronic closed loop DBS
 %% setup display 
 
 displaywin = ceil(displaywin * Fs); % samples 
-winidx = (0:displaywin)+1;
+cursample = 1;
+winidx = (0:displaywin)+cursample;
 xnow = x(winidx);
 phnow = ph(winidx);
 tnow = t(winidx);
@@ -233,11 +235,11 @@ iPDSnow = iPDS(winidx);
 iDBSnow = iDBS(winidx);
 xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
 xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
-nPDS = sum(iPDS(1:(displaywin+1)));
-nDBS = sum(iDBS(1:(displaywin+1)));
+nPDS = sum(iPDS(1:(displaywin+cursample)));
+nDBS = sum(iDBS(1:(displaywin+cursample)));
 
 myfig = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
-tiledlayout(2,3);
+%tiledlayout(2,3);
 
 % PDS time plot 
 if (phtarget > -pi/2) && (phtarget < pi/2)
@@ -245,31 +247,79 @@ if (phtarget > -pi/2) && (phtarget < pi/2)
 else
     mkr = 'v';
 end
-nexttile([1,2]); 
+%nexttile([1,2]); 
+subplot(2,1,1);
 plt_X_PDS = plot(tnow, xnow, 'LineWidth',1.5);
 grid on; hold on; 
 plt_PDS = stem(tnow, xPDSnow, mkr);
 xlabel('time (s)'); ylabel(['EPhys',unitname]);
-xlim(tnow(1), tnow(end));
+%xlim([tnow(1), tnow(end)]);
 title_PDS = title({'Phase Dependent Stimulation'; ...
     ['Total Stim Count = ',num2str(nPDS)]});
 
+%{
 % PDS rose plot
+bedge = linspace(-pi, pi, nbins);
 nexttile; 
-rose_PDS = polarhistogram(phnow(iPDSnow), nbins);
+rose_PDS = polarhistogram(phnow(iPDSnow), 'BinEdges',bedge);
 title('Stimulation Phase')
+%}
 
 % DBS time plot 
-nexttile([1,2]); 
+%nexttile([1,2]); 
+subplot(2,1,2);
 plt_X_DBS = plot(tnow, xnow, 'LineWidth',1.5);
 grid on; hold on; 
 plt_DBS = stem(tnow, xDBSnow, 's');
 xlabel('time (s)'); ylabel(['EPhys',unitname]);
-xlim(tnow(1), tnow(end));
+%xlim([tnow(1), tnow(end)]);
 title_DBS = title({'Existing Closed Loop DBS'; ...
     ['Total Stim Count = ',num2str(nDBS)]});
 
+%{
 % PDS rose plot
 nexttile; 
-rose_DBS = polarhistogram(phnow(iDBSnow), nbins);
+rose_DBS = polarhistogram(phnow(iDBSnow), 'BinEdges',bedge);
 title('Stimulation Phase')
+%}
+
+%% loop through remaining samples 
+
+pausetime = packetsize * playbackspeed / Fs; % seconds 
+
+while cursample + packetsize + displaywin <= length(x)
+
+ticStart = tic;
+
+cursample = cursample + packetsize;
+winidx = (0:displaywin)+cursample;
+xnow = x(winidx);
+phnow = ph(winidx);
+tnow = t(winidx);
+iPDSnow = iPDS(winidx);
+iDBSnow = iDBS(winidx);
+xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
+xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
+nPDS = sum(iPDS(1:(displaywin+cursample)));
+nDBS = sum(iDBS(1:(displaywin+cursample)));
+
+plt_X_PDS.XData = tnow; plt_X_PDS.YData = xnow; 
+plt_X_DBS.XData = tnow; plt_X_DBS.YData = xnow; 
+plt_PDS.XData = tnow; plt_PDS.YData = xPDSnow;
+plt_DBS.XData = tnow; plt_DBS.YData = xDBSnow;
+
+%rose_PDS = polarhistogram(phnow(iPDSnow), 'BinEdges',bedge);
+%rose_DBS = polarhistogram(phnow(iDBSnow), 'BinEdges',bedge);
+
+title_PDS.String{2} = ['Total Stim Count = ',num2str(nPDS)];
+title_DBS.String{2} = ['Total Stim Count = ',num2str(nDBS)];
+
+ticDur = toc(ticStart);
+
+drawnow; 
+if ticDur < pausetime
+    pause(pausetime - ticDur);
+    drawnow;
+end
+
+end
