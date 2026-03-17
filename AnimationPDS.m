@@ -16,7 +16,7 @@
     % display
     playbackspeed = 1; % relative to real time
     displaywin = 1.5; % seconds 
-    packetsize = 450; % sample 
+    packetsize = 1; % sample 
     nbins = 18; % polar histogram (rose) bins
 
 %% Load data 
@@ -177,6 +177,7 @@ else
     channelIdx = 1;
 end
 
+channelName = channelNames{channelIdx};
 x = T{:,channelIdx};
 t = T.Time; 
 t = seconds(t - t(1));
@@ -210,7 +211,7 @@ ph = angle(H); A = abs(H);
 % set amplitude threshold 
 %[~,Athresh] = midcross(A); 
 %Athresh = median(A(~isoutlier(x))); 
-Athresh = 0.5*median(A(~isnoise)); 
+Athresh = 0.6*median(A(~isnoise)); 
 
 % find where phase crosses target 
 phtarget = radfix(phtarget);
@@ -229,6 +230,20 @@ DBSper = round(Fs/DBSfreq); % period (samples)
 iDBS = false(size(x));
 iDBS(1:DBSper:end) = true;
 iDBS = iDBS & (A >= Athresh); % make like medtronic closed loop DBS
+
+%% prepare to save video
+
+Vfn = inputdlg('Save Video As: ', 'Save Video', [1,100], ...
+    {fullfile(fp,[fn,'_',channelName,'_AnimationPDS'])});
+
+Vsave = ~isempty(Vfn);
+if Vsave
+    Vfn = Vfn{1};
+    VW = VideoWriter(Vfn, 'Archival');
+    open(VW)
+else
+    warning('Not saving video.')
+end
 
 %% setup display 
 % For time plots, plot the entire signal, but set the x axis limits to the
@@ -299,9 +314,16 @@ title('Stimulation Phase')
 ax(2,2) = gca();
 %}
 
+if Vsave
+    Vframe = getframe(myfig);
+    writeVideo(VW, Vframe);
+end
+
 %% loop through remaining samples 
 
 pausetime = packetsize * playbackspeed / Fs; % seconds 
+
+try
 
 while cursample + packetsize + displaywin <= length(x)
 
@@ -344,6 +366,12 @@ title_PDS.String{2} = ['Total Stim Count = ',num2str(nPDS)];
 title_DBS.String{2} = ['Total Stim Count = ',num2str(nDBS)];
 
 drawnow;
+
+if Vsave
+    Vframe = getframe(myfig);
+    writeVideo(VW, Vframe);
+end
+
 ticDur = toc(ticStart);
 if ticDur < pausetime
     pause(pausetime - ticDur);
@@ -352,4 +380,19 @@ end
 
 toc(ticStart)
 
+end
+
+catch ME6
+    if contains(ME6.identifier, 'DeletedAxes') || ~isvalid(myfig)
+        ermsg = 'Figure Closed.';
+    else
+        ermsg = ['Error: ',ME6.message];
+    end
+    warning(['Stopped at sample ',...
+        num2str(cursample + packetsize + displaywin),' of ',num2str(length(x)),...
+        ' due to ',ermsg]);
+end
+
+if Vsave
+    close(VW)
 end
