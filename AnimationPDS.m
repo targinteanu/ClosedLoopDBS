@@ -15,8 +15,8 @@
 
     % display
     playbackspeed = 1; % relative to real time
-    displaywin = 0.5; % seconds 
-    packetsize = 10; % sample 
+    displaywin = 1.5; % seconds 
+    packetsize = 450; % sample 
     nbins = 18; % polar histogram (rose) bins
 
 %% Load data 
@@ -339,12 +339,13 @@ ax(2,1).XLim = t(curwin);
 title_PDS.String{2} = ['Total Stim Count = ',num2str(nPDS)];
 title_DBS.String{2} = ['Total Stim Count = ',num2str(nDBS)];
 
+drawnow;
 ticDur = toc(ticStart);
-
-drawnow; 
 if ticDur < pausetime
     pause(pausetime - ticDur);
-    drawnow;
+    %drawnow;
 end
+
+toc(ticStart)
 
 end
