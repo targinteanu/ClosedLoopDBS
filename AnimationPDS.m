@@ -191,6 +191,12 @@ if isempty(unitname)
     end
 end
 
+%% identify outliers 
+y = log10(movmean((x-mean(x)).^2, 201) + eps); % power estimate 
+[clusIdx, clusC] = kmeans(y, 3); 
+[~,noiseIdx] = max(clusC);
+isnoise = clusIdx == noiseIdx;
+
 %% target phase identification 
 
 % filter 
@@ -203,7 +209,8 @@ ph = angle(H); A = abs(H);
 
 % set amplitude threshold 
 %[~,Athresh] = midcross(A); 
-Athresh = median(A(~isoutlier(x))); 
+%Athresh = median(A(~isoutlier(x))); 
+Athresh = 0.5*median(A(~isnoise)); 
 
 % find where phase crosses target 
 phtarget = radfix(phtarget);
