@@ -239,7 +239,7 @@ Vfn = inputdlg('Save Video As: ', 'Save Video', [1,100], ...
 Vsave = ~isempty(Vfn);
 if Vsave
     Vfn = Vfn{1};
-    VW = VideoWriter(Vfn, 'Archival');
+    VW = VideoWriter(Vfn);
     open(VW)
 else
     warning('Not saving video.')
