@@ -8,6 +8,7 @@ function [newContData, chname, chnum] = getNewRawData_cbmex(selChanInfo)
 chsel = cellfun(@(ifo) ifo.IDnumber, selChanInfo);
 
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
+% TO DO: the time units may be different (microseconds?) on the gemini!
 
 if isempty(continuousData)
     error('No continuous data; ensure that data acquisition has been enabled.')
