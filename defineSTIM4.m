@@ -51,6 +51,16 @@ if (sum(channel1 < 1) || sum(channel1 > 96)) || ...
     warning('Selected channel is not available for this device.')
 end
 
+%% set safety limits 
+
+nENsafety = stimulator.isSafetyDisabled();
+if nENsafety
+    error('Stimulator safety limits are not enabled.')
+end
+
+x = stimulator.maxOutputVoltage(15); % 9.5V
+%stimulator.stimulusMaxValue(...)
+
 %% define 
 
 % psuedobipolar stimulation setting
