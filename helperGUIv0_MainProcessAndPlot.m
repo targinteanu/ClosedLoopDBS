@@ -93,7 +93,9 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
             handles.stimind = stimind - N;
             handles.stimNewTime = -inf;
             if stimind > 0
-                handles.stimDataBuffer(stimind) = true;
+                if stimind <= length(handles.stimDataBuffer)
+                    handles.stimDataBuffer(stimind) = true;
+                end
             end
             else
                 handles.stimind = -1;
