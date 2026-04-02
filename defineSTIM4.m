@@ -1,7 +1,23 @@
 function stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
         width1, width2, interphase, frequency, pulses)
-% channel1 = Cathode; choose the correct channel combination on one of the headboxes 
-% channel2 = Anode
+% 
+% Setup biphasic current-controlled stimulation pulses on Blackrock CereStim96. 
+% 
+% Inputs: 
+%    channel1 = Cathode; choose the correct channel combination on one of the headboxes 
+%    channel2 = Anode
+%       If either is passed as array, the channels will be stimulated simultaneously with 
+%       total current adding to amp1 and amp2
+%    amp1, amp2: current amplitude (uA) of positive and negative pulse phases, e.g. 2000
+%    width1, width2: duration (us) of positive and negative pulse phases, e.g. 100
+%    interphase: duration between start of positive and negative pulse phases, i.e. set 
+%       equal to width1 for no delay between positive and negative phase 
+%    frequency (Hz) of biphasic stim pulses if pulses > 1 specified 
+%    pulses: number of pulses when stimulator.play(1) is used 
+% 
+% Outputs: 
+%    stimulator: object that can be called as follows: >> stimulator.play(1)
+% 
 
 %% connect 
 
