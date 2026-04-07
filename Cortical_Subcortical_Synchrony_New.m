@@ -16,7 +16,7 @@
         "br_win",       [1800 2500], ...
         "no_win",       [1700 2400], ...
         "frontCut",    60, ...
-        "backCut",     3800, ...
+        "backCut",     3800, ... %3820
         "electrode_data_name", "electrode_data(Sheet1).csv", ...
         "badChannel",        [] ...
     );
@@ -64,7 +64,7 @@
     % Choose patient here
     % =========================
     Patient_Folder_Path = 'C:\Users\cours\Downloads\AndersonLabDataAndPackages\Patient Data';
-    whichPatient = 'PD25N006';
+    whichPatient = 'PD24N009';
     
     P = presets.(whichPatient);
     
@@ -235,11 +235,13 @@
     ylim([-5 25]);
     
     %% First Cross Correlation and Alignment
-    
+
     fs        = 1000;
     br_win    = P.br_win;
     no_win    = P.no_win;
     BR_to_NO_ch       = P.BR_to_NO_ch;
+    %   [600 850], ...
+       % "no_win",       [2900 3150], ....
     
     % br_win = [1800 2500];   %%PD25N006 - br_win = [1800 2500], no_win = [1700 2400] %%PD25N008 - [800 1500] [400 1100]
     % no_win = [1700 2400];   %%PD25N009 - br_win = [500 1000], no_win = [2800 3300] %%PD24N009 - [600 850] [2900 3150]
@@ -545,9 +547,12 @@
     
     %% PLV Analysis (Surrogate Analysis + Summary Statistics)
     
-    nSur = 100;
+    nSur = 100;   %1000 independent realizations
+
+    seed = 12345;  % choose any fixed integer you want
+    rng(seed,'twister');
  
-    channels = [19 20 21 40 41 42 61 62 63];%setdiff(1:63, 48);   % exclude bad channel 48
+    channels = [19 20 21 40 41 42 61 62 63];%[20 21 41 42 63];%[12 13 14 15 32 33 34 35 36 54 55 56 57 58];%[19 20 21 40 41 42 61 62 63];%setdiff(1:63, 48);   % exclude bad channel 48
     
      
     % ---------- Reference channel ----------
@@ -563,7 +568,6 @@
     PLV_norm = PLV_raw / max(PLV_raw);
     
     % ---------- Brainnetome labels ----------
-    % ---------- Brainnetome labels (MATCH plot_PLV_Relative_Brainnetome) ----------
     cleanLabels = regexprep(string(meta.Brainnetome), '\s*\(\d+%?\)\s*$', '');
     
     % Extract electrode numbers from meta (e.g. "1", "L01", "LS01")
@@ -606,7 +610,7 @@
     T = numel(ref_phase);
     
     for s = 1:nSur
-        shift = randi(T);
+        shift = randi(T-1);
     
         Phase_Data_surr = Phase_Data;
         Phase_Data_surr{ref_channel} = circshift(ref_phase, shift);
@@ -657,7 +661,34 @@
     highestPLV_norm = PLV_norm(ch_max);
     fprintf('Highest PLV channel:             %s (raw=%.4f, norm=%.3f)\n', ...
             highestPLV_channel_name, highestPLV_raw, highestPLV_norm);
+
+    % ---------- Empirical p-values (Phipson & Smyth correction) ----------
+    % One-sided: probability surrogate >= observed
+    % p = (k+1)/(n+1) prevents p=0
     
+    p_emp_all = nan(numel(channels),1);
+    k_all     = nan(numel(channels),1);
+    
+    for i = 1:numel(channels)
+        surr_i = PLV_surrogate(i,:);
+        surr_i = surr_i(isfinite(surr_i));
+        k_all(i) = sum(surr_i >= PLV_raw(i));
+        p_emp_all(i) = (k_all(i) + 1) / (numel(surr_i) + 1);
+    end
+    
+    % Empirical p-value for the highest PLV channel (your main reported one)
+    p_emp_top = p_emp_all(ch_max);
+    k_top     = k_all(ch_max);
+
+    fprintf('Highest PLV channel empirical p: %.6g  (k=%d, nSur=%d, seed=%d)\n', ...
+        p_emp_top, k_top, nSur, seed);
+
+    fprintf('\nEmpirical p-values per channel (one-sided, surr>=obs):\n');
+    for i = 1:numel(channels)
+        fprintf('  %s: PLV=%.4f  p=%.6g (k=%d)\n', ...
+            Channel_Names{channels(i)}, PLV_raw(i), p_emp_all(i), k_all(i));
+    end
+        
     % ---------- Z-PLV for highest PLV channel ----------
     
     % Surrogate mean and std for that channel
@@ -763,8 +794,8 @@
     %% Unconditional, Bivariate Time-Domain GC Test (MGVC Toolbox)
 
     segment_length_sec = 0.25;    % window size (seconds)    
-    order = 15;                  % model order from AIC
-    chIdx = [33 69];             % [A B] 33 69, 63 74, 21 70
+    order = 25;                  % model order from AIC 15, 15, 25
+    chIdx = [21 70];             % [A B] 33 69, 63 74, 21 70
 
     fs = 1000;
     
@@ -858,6 +889,65 @@
         warning('Not enough valid segments for signrank/ttest. Skipping stats.');
     end
 
+    r = abs(stats.zval) / sqrt(n);
+    fprintf('Effect size r = %.3f\n', r);
+
+    %%
+    % ===== SURROGATE GC (time-shift for n= 100) =====
+
+    nSurr = 100;
+    Tseg  = numel(Aseg);
+    
+    minShift = max(order+5, round(0.10*Tseg));
+    minShift = min(minShift, Tseg-1);
+    
+    GC_AB_surr = nan(nSurr,1);
+    GC_BA_surr = nan(nSurr,1);
+    
+    GC_AB_obs = 1.0599;   % A -> B
+    GC_BA_obs = 0.9012;   % B -> A
+    
+    
+    for s = 1:nSurr
+        % random circular shift of B (break directed timing)
+        if (Tseg - minShift) > minShift
+            sh = randi([minShift, Tseg-minShift]);
+        else
+            sh = randi([minShift, Tseg-1]);
+        end
+    
+        Bshift = circshift(Bseg(:), sh).';
+        Xsurr  = [Aseg(:).'; Bshift(:).'];      % 2 x T
+    
+        [GCs, okS, ~] = mvgc_uncond_time_gc_2ch(Xsurr, order);
+    
+        if okS && all(isfinite(GCs(:)))
+            GC_AB_surr(s) = GCs(2,1);
+            GC_BA_surr(s) = GCs(1,2);
+        end
+    end
+    
+    vAB = isfinite(GC_AB_surr);
+    vBA = isfinite(GC_BA_surr);
+    
+    % one-sided surrogate p-values (smoothed so never exactly 0)
+    p_surr_AB = (sum(GC_AB_surr(vAB) >= GC_AB_obs) + 1) / (nnz(vAB) + 1);
+    p_surr_BA = (sum(GC_BA_surr(vBA) >= GC_BA_obs) + 1) / (nnz(vBA) + 1);
+    
+    % z-scores vs surrogate null
+    z_surr_AB = (GC_AB_obs - mean(GC_AB_surr(vAB))) / std(GC_AB_surr(vAB));
+    z_surr_BA = (GC_BA_obs - mean(GC_BA_surr(vBA))) / std(GC_BA_surr(vBA));
+    fprintf('Surrogate GC (n=%d): ', nSurr);
+    fprintf('A→B: GC=%.4f | p=%.3f | z=%.2f || ', GC_AB_obs, p_surr_AB, z_surr_AB);
+    fprintf('B→A: GC=%.4f | p=%.3f | z=%.2f\n', GC_BA_obs, p_surr_BA, z_surr_BA);
+    
+    fprintf('AB surrogate mean=%.4f std=%.6f | BA surrogate mean=%.4f std=%.6f\n', ...
+        mean(GC_AB_surr(vAB)), std(GC_AB_surr(vAB)), ...
+        mean(GC_BA_surr(vBA)), std(GC_BA_surr(vBA)));
+
+    
+
+
     %% Mean and SD
     
     % === Mean and standard deviation of segment-wise GC ===
@@ -878,6 +968,11 @@
     % ===== Labels =====
     A_label = 'ECoG Ch.33';   % or 'ECoG Ch.33'
     B_label = 'STN';   % or 'STN'
+
+    % ===== Color specification =====
+    col_AB = [0.15 0.55 0.87];   % blue (A → B)
+    col_BA = [0.87 0.33 0];   % red  (B → A)
+
     
     avg_sec = 4;  % desired averaging window (seconds)
     
@@ -899,9 +994,9 @@
     
     % (1) Segment-wise GC vs time (RAW)
     subplot(3,1,1);
-    plot(t_seg, GC_AB_seg, 'b', 'LineWidth',1, ...
+    plot(t_seg, GC_AB_seg, 'Color', col_AB, 'LineWidth',1, ...
         'DisplayName', sprintf('%s→%s', A_label, B_label)); hold on;
-    plot(t_seg, GC_BA_seg, 'r', 'LineWidth',1, ...
+    plot(t_seg, GC_BA_seg, 'Color', col_BA, 'LineWidth',1, ...
         'DisplayName', sprintf('%s→%s', B_label, A_label));
     xlabel('Segment start (s)');
     ylabel('GC value');
@@ -926,9 +1021,9 @@
         t_blk(b)     = mean(t_seg(idx));
     end
     
-    plot(t_blk, GC_AB_blk, 'b', 'LineWidth',2, ...
+    plot(t_blk, GC_AB_blk, 'Color', col_AB, 'LineWidth',2, ...
         'DisplayName', sprintf('%s→%s', A_label, B_label)); hold on;
-    plot(t_blk, GC_BA_blk, 'r', 'LineWidth',2, ...
+    plot(t_blk, GC_BA_blk, 'Color', col_BA, 'LineWidth',2, ...
         'DisplayName', sprintf('%s→%s', B_label, A_label));
     xlabel('Time (s)');
     ylabel('GC value');
@@ -954,7 +1049,7 @@
 
 
     bb.FaceColor = 'flat';
-    bb.CData = [0 0 1; 1 0 0];
+    bb.CData = [col_AB; col_BA];
     
     set(gca,'XTickLabel',{sprintf('%s→%s',A_label,B_label), ...
                           sprintf('%s→%s',B_label,A_label)});
@@ -997,6 +1092,62 @@
     title('Mean GC Matrix');
 
 
+%% Firing Rate Analysis
+
+FR_file = 'fr_series.mat'; S = load(FR_file); % struct 
+FR_4s = S.fr_PD25N006_C2; 
+FR_4s = FR_4s(:); 
+
+n = min([length(FR_4s), length(GC_AB_blk), length(GC_BA_blk)]); 
+FR = FR_4s(1:n); 
+GCAB = GC_AB_blk(1:n); 
+GCBA = GC_BA_blk(1:n); 
+valid_corr = isfinite(FR) & isfinite(GCAB) & isfinite(GCBA);
+
+[r_AB, p_AB] = corr(FR(valid_corr), GCAB(valid_corr), 'Type','Pearson'); 
+[r_BA, p_BA] = corr(FR(valid_corr), GCBA(valid_corr), 'Type','Pearson');
+
+% ===== PLOTS WITH REGRESSION + 95% CI =====
+figure('Name','Firing Rate vs Granger Causality','Position',[200 200 900 400]);
+
+% ---------- A → B ----------
+subplot(1,2,1);
+scatter(FR(valid_corr), GCAB(valid_corr), 60, 'b', 'filled'); 
+hold on; grid on;
+
+mdl_AB = fitlm(FR(valid_corr), GCAB(valid_corr));
+
+xfit = linspace(min(FR(valid_corr)), max(FR(valid_corr)), 100)';
+[yfit, yCI] = predict(mdl_AB, xfit);
+
+
+% Best-fit line
+plot(xfit, yfit, 'k-', 'LineWidth',2);
+
+xlabel('Firing Rate (Hz)');
+ylabel(sprintf('GC %s→%s', A_label, B_label));
+title(sprintf('r = %.3f, p = %.3g | y = %.3fx + %.3f', ...
+    r_AB, p_AB, mdl_AB.Coefficients.Estimate(2), mdl_AB.Coefficients.Estimate(1)));
+
+% ---------- B → A ----------
+subplot(1,2,2);
+scatter(FR(valid_corr), GCBA(valid_corr), 60, 'r', 'filled'); 
+hold on; grid on;
+
+mdl_BA = fitlm(FR(valid_corr), GCBA(valid_corr));
+
+xfit = linspace(min(FR(valid_corr)), max(FR(valid_corr)), 100)';
+[yfit, yCI] = predict(mdl_BA, xfit);
+
+
+% Best-fit line
+plot(xfit, yfit, 'k-', 'LineWidth',2);
+
+xlabel('Firing Rate (Hz)');
+ylabel(sprintf('GC %s→%s', B_label, A_label));
+title(sprintf('r = %.3f, p = %.3g | y = %.3fx + %.3f', ...
+    r_BA, p_BA, mdl_BA.Coefficients.Estimate(2), mdl_BA.Coefficients.Estimate(1)));
+
 
 
 %% 3 patient GC visualization
@@ -1008,6 +1159,10 @@
     
     A_label = 'ECoG';
     B_label = 'STN';
+
+    col_AB = [0.15 0.55 0.87];   % blue (A → B)
+    col_BA = [0.87 0.33 0];   % red  (B → A)
+
     
     % Rows = patients, columns = [A->B  B->A]
     GC_means = [
@@ -1045,8 +1200,9 @@
             'CapSize',12);
     end
 
-    b(1).FaceColor = [0 0 1];            % A->B (blue)
-    b(2).FaceColor = [1 0 0];            % B->A (red)
+    b(1).FaceColor = col_AB;
+    b(2).FaceColor = col_BA;
+
     
     % Axes formatting
     set(gca,'XTick',1:numel(patients),'XTickLabel',patients);
@@ -2394,10 +2550,10 @@
                           'Parent',ax);
     
                 % Labels
-                text(x_i+0.5,y_i+0.65,string(channelNames{i}), ...
-                     'HorizontalAlignment','center','FontSize',7,'FontWeight','bold','Parent',ax);
-                text(x_i+0.5,y_i+0.35,sprintf('%.3f',labels(i)), ...
-                     'HorizontalAlignment','center','FontSize',6,'Parent',ax);
+                %text(x_i+0.5,y_i+0.65,string(channelNames{i}), ...
+                     %'HorizontalAlignment','center','FontSize',7,'FontWeight','bold','Parent',ax);
+                text(x_i+0.5,y_i+0.5,sprintf('%.3f',labels(i)), ...
+                     'HorizontalAlignment','center','FontSize',7,'Parent',ax);
             end
     
             axis(ax,'equal'); xlim(ax,[0,grid_width]); ylim(ax,[0,grid_height]);
