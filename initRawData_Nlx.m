@@ -114,7 +114,7 @@ for ch = 1:length(chnum)
 
     if ~isempty(chInd)
         if length(chInd) > 1
-            warning('Non-unique channel ID(s).')
+            warning(['Channel ID ',num2str(chnum_ch),' is not unique.'])
             chInd = chInd(1);
         end
         chname_ch = char(dasObjects{ch});
