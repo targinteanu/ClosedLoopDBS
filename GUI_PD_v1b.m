@@ -462,6 +462,7 @@ try
     if newsrl
         %if handles.FilterSetUp
             %if numel(fltPlt) % should this be necessary when above is met?
+            if length(fltPlt) > handles.PDSwin1+1
                 ControllerLastResult = handles.ControllerResult;
                 ControllerResult = Controller_PDS_PD( handles.srl, handles, ...
                     fltPlt((end-handles.PDSwin1+1):end) );
@@ -469,6 +470,7 @@ try
                     handles.ControllerResult = ControllerResult;
                     guidata(hObject, handles);
                 end
+            end
             %end
         %end
     end
