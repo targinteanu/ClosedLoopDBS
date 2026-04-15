@@ -90,11 +90,12 @@ mkdir(svloc);
 handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % initiate other vars ...
-handles.DAQstatus = handles.cbmexStatus;
+handles.DAQstatus = handles.cbmexStatus; handles = rmfield(handles, 'DAQstatus');
 handles.artRemArgs.StimDur = .025; 
 handles.artRemArgs.ArtifactStartBefore = .005;
 handles.foreArgs.ARlearnrate = .1;
 handles.foreArgs.Amp = 0;
+handles.foreArgs.StimulatorLagTime = handles.StimulatorLagTime; handles = rmfield(handles, 'StimulatorLagTime');
 handles.bufferSize     = 10; 
 handles.bufferSizeGrid = 10;
 handles.allChannelIDs = [];

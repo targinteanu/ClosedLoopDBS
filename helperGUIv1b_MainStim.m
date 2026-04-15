@@ -15,7 +15,7 @@ i2Q = controllerFun(handles.srl, handles, bp, handles.bpthresh);
 doStim = ((~isempty(i2Q)) && handles.StimActive) && (handles.FilterSetUp && handles.MdlSetUp);
 if doStim && (i2Q > 0)
     Stim2Q = true;
-    t2Q = forBuffNew(:,i2Q);
+    t2Q = forBuffNew(:,i2Q) - handles.foreArgs.StimulatorLagTime;
 end
 
 % logic: decide whether to stim 
@@ -30,10 +30,10 @@ if Stim2Q && (t2Q >= 0)
                 % last queued stim has not yet fired 
                 if t2Qabs > handles.QueuedStim.UserData
                     % new requested point is later than current timer
-                    stim2Q_proceed = t2Q > handles.StimulatorLagTime; 
+                    stim2Q_proceed = t2Q > handles.foreArgs.StimulatorLagTime; 
                         % is there enough time to make a change
                     stim2Q_proceed = stim2Q_proceed && ...
-                        (t2Qabs - handles.QueuedStim.UserData) > handles.StimulatorLagTime; 
+                        (t2Qabs - handles.QueuedStim.UserData) > handles.foreArgs.StimulatorLagTime; 
                         % is the change outside margin of error
                     stim2Q_proceed = stim2Q_proceed && ...
                         (t2Qabs - handles.QueuedStim.UserData) < 1/handles.hicutoff; 
