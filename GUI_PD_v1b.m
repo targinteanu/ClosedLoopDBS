@@ -90,7 +90,7 @@ mkdir(svloc);
 handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % initiate other vars ...
-handles.DAQstatus = handles.cbmexStatus; handles = rmfield(handles, 'DAQstatus');
+handles.DAQstatus = handles.cbmexStatus; handles = rmfield(handles, 'cbmexStatus');
 handles.artRemArgs.StimDur = .025; 
 handles.artRemArgs.ArtifactStartBefore = .005;
 handles.foreArgs.ARlearnrate = .1;
