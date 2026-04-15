@@ -33,6 +33,7 @@ configureCallback(receiverSerial,"terminator",srlfunc);
 end
 handles.srl = receiverSerial; 
 handles.srlLastMsg  = ud.ReceivedData;
+handles.NoSerial = noSerialSetup;
 
 % initialize data collection flags
 handles.cbmexStatus = false;

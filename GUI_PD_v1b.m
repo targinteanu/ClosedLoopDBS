@@ -363,7 +363,7 @@ guidata(hObject, handles)
 %stop(handles.timer)
 StopMainLoop(hObject,eventdata,handles)
 %delete(handles.timer)
-if ~handles.SerialArgs.NoSerial
+if ~handles.NoSerial
     delete(handles.srl);
 end
 catch ME3
