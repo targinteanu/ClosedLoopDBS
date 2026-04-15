@@ -91,7 +91,7 @@ handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % initiate other vars ...
 handles.DAQstatus = handles.cbmexStatus; handles = rmfield(handles, 'cbmexStatus');
-handles.artRemArgs.StimDur = .025; 
+handles.artRemArgs.StimDur = .01; 
 handles.artRemArgs.ArtifactStartBefore = .005;
 handles.foreArgs.ARlearnrate = .1;
 handles.foreArgs.Amp = 0;
