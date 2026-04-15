@@ -98,7 +98,8 @@ for ch_art = 1:size(rawTails,2)
             i3 = max(i3, 1); i3 = min(i3, height(tXfor));
             i4 = max(i4, 1); i4 = min(i4, height(tXfor));
             Xreplace = tXfor(i3:i4,2); 
-            Xreplace = Xreplace - mean(tXfor(:,2)) + mean(tX(1:i1_,2)); % correct DC offset
+            %Xreplace = Xreplace - mean(tXfor(:,2)) + mean(tX(1:i1_,2)); % correct DC offset to mean
+            Xreplace = Xreplace - Xreplace(1) + tX(i1_,2); % correct DC offset to single val
             i2 = min(i2, i1_+height(Xreplace)-1);
             nO = min(nO, i2-height(tX));
             tX = [tX; nan(nO,2)]; 
