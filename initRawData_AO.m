@@ -162,15 +162,22 @@ if Results == -3
     pause(.1); 
     [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);
 end
+if isnan(DataCapture)
+    error('Issue with DataCapture. On Neuro Omega, check options > logging > select channels')
+end
 if Results
     [~,~,LastError] = AO_GetError();
     [errchan, nerr] = sscanf(LastError, 'ERROR --> AO_GetAlignedData :: Channel %f has no samples');
     if (Results == -3) || (nerr > 0)
         warning(['Removing channel ',num2str(errchan),' due to error code ',num2str(Results)])
-        remchan = (chsel == errchan);
-        chsel = chsel(~remchan);
-        bufferSize = bufferSize(~remchan);
-        doretry = true;
+        if numel(errchan)
+            remchan = (chsel == errchan);
+            chsel = chsel(~remchan);
+            bufferSize = bufferSize(~remchan);
+            doretry = true;
+        else
+            doretry=false;
+        end
     else
     msg = ['Failed to acquire data with error code ',num2str(Results)];
     error(msg); % consider trying again until success 
@@ -183,7 +190,12 @@ end
 W = length(chsel);
 
 time = time/1510; % TO DO: make sure this is correct time in seconds!
-continuousData = continuousData(1:DataCapture); 
+if DataCapture < length(continuousData)
+    continuousData = continuousData(1:DataCapture); 
+else
+    warning('Issue with DataCapture. On Neuro Omega, check options > logging > select channels') % ?
+    DataCapture = length(continuousData); % unsure if this fixes anything
+end
 L = DataCapture/W;
 continuousData = reshape(continuousData, ...
     L, W); % columns = channels 
