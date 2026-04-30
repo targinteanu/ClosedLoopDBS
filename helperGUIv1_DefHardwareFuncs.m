@@ -6,7 +6,7 @@ if nargin < 1
 end
 
 RecOpts = {'Blackrock NSP'; 'Alpha Omega AlphaRS'; 'Neuro Omega'; 'Neuralynx'}; 
-StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'Alpha Omega'; 'None'}; 
+StimOpts = {'CereStim API'; 'CereStim Trigger / Cedrus c-pod'; 'Alpha Omega'; 'c-pod only'; 'None'}; 
 RecSel = listdlg("PromptString", "Recording Hardware Configuration:", ...
     "ListString",RecOpts, "SelectionMode","single");
 if dostim
@@ -88,6 +88,16 @@ elseif StimSel == 3
     HardwareFuncs.PulseStimulator = @stimPulse_AO;
     HardwareFuncs.SetStimTriggerMode = @(~) error('Trigger mode not implemented AO.'); 
     StimLagTime = 0; % ?
+elseif StimSel == 4
+    % c-pod  
+    StimTriggerMode = true;
+    HardwareFuncs.SetupStimulator = @stimSetup_cpod;
+    HardwareFuncs.ShutdownStimulator = @stimShutdown_cpod;
+    HardwareFuncs.CheckConnectionStimulator = @() 0;
+    HardwareFuncs.CalibrateStimulator = @(~,~,~,~,~,~,~,~,~,~) 0;
+    HardwareFuncs.PulseStimulator = @stimPulse_cpod; 
+    HardwareFuncs.SetStimTriggerMode = @(s) s; 
+    StimLagTime = 0.03; % s - not tested 
 else
     % dummy mode / no stimulation 
     StimTriggerMode = false;
