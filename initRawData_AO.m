@@ -1,5 +1,5 @@
 function [emptyData, contData, buffData, chanInfo, startTic] = ...
-    initRawData_AO(chsel, bufferSize, chantype)
+    initRawData_AO(chsel, bufferSize, devicename, chantype)
 % Initialize the multichannel raw data structure using Alpha Omega
 % interface. 
 %
@@ -14,8 +14,11 @@ function [emptyData, contData, buffData, chanInfo, startTic] = ...
 % 
 % chanInfo has fields: SampleRate, Name, Unit, IDnumber
 
-if nargin < 3
+if nargin < 4
     chantype = 'LFP';
+    if nargin < 3
+        error('Device name must be specified for AO.')
+    end
 end
 
 %% hardcode known channel info according to type 
@@ -67,7 +70,7 @@ if Results == 4
     % give it some time and try again 
     disconnect_AO(); 
     pause(1); 
-    connect_AO();
+    connect_AO(devicename);
     pause(1);
     [Results, channelsData] = AO_GetAllChannels();
     if Results
