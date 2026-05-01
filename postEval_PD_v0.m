@@ -33,8 +33,8 @@ olStartEnd = find(olStartEnd);
 olStart = olStartEnd(1:2:end); olEnd = olStartEnd(2:2:end);
 %}
 dataOneChannel = dataOneChannelWithArtifact;
-artExtend = 20; % extend artifact by __ samples 
-artBegin = 5; % begin artifact __ samples before stim detection
+artExtend = 10; % extend artifact by __ samples 
+artBegin = 1; % begin artifact __ samples before stim detection
 io = isoutlier(dataOneChannel, 'mean');
 artIndAll = StimTrainRec;
 %artIndAll = io | StimTrainRec; 
@@ -67,9 +67,17 @@ dataOneChannel = dataOneChannel - DCOS; % correct DC offset
 for ind = artIndAll
     ind0 = ind - ARlen;
     if ind0 > 0
-        dataOneChannel(ind) = myFastForecastAR(ARmdl, dataOneChannel(ind0:(ind-1))', 1);
+        % using AR mdl forecast:
+        %dataOneChannel(ind) = myFastForecastAR(ARmdl, dataOneChannel(ind0:(ind-1))', 1); 
+        % linear interp (non-causal): 
+        dataOneChannel(ind) = nan;
     end
 end
+
+% linear interp (non-causal)
+tRelNoArt = tRel(~isnan(dataOneChannel));
+dataOneChannel = dataOneChannel(~isnan(dataOneChannel));
+[dataOneChannel] = interp1(tRelNoArt, dataOneChannel, tRel, 'linear', 'extrap');
 
 % plot artifact removal 
 figure; 
@@ -294,14 +302,18 @@ winTimes = [...
 winTimes = winTimes + hours(4); % convert EST to GMT
 %}
 
-%%{
+%{
 winTimes = datetime(2026,2,26,18,0,0) + [...
     minutes(16), minutes(20); ...
     minutes(20), minutes(22)+seconds(11); ...
     minutes(22)+seconds(11), minutes(22)+seconds(44); ...
     minutes(22)+seconds(44), minutes(24)];
+%}
+winTimes = datetime(2026,4,16,15,0,0) + [...
+    minutes(47), minutes(49); ...
+    minutes(49), minutes(51)];
 winTimes.TimeZone = t0.TimeZone;
-winNames = {'trough motor', 'peak motor', 'peak rest', 'trough rest'};
+winNames = {'trough motor', 'peak motor'};
 
 figure; 
 for w = 1:height(winTimes)
