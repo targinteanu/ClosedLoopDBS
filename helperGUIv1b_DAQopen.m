@@ -28,7 +28,14 @@ catch ME
     pause(.1);
     handles.HardwareFuncs.SetupRecording();
     pause(.1);
-    handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic));
+    try
+        handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic));
+        % Encountered an issue with the above line that was resolved by
+        % removing the quantity subtracted from datetime
+    catch ME2
+        getReport(ME2)
+        keyboard
+    end
 end
 
 handles.DAQstatus = true;
