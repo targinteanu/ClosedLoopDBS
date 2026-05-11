@@ -213,6 +213,13 @@ BPF = fir1(256, fbnd/(Fs/2), 'bandpass');
 xBPF = filtfilt(BPF,1,x);
 HPF = fir1(256, 5/(Fs/2), 'high');
 xHPF = filtfilt(HPF,1,x); 
+xBPFe = envelope(xBPF);
+
+% downsample envelope signal 
+dsratio = floor(Fs/(2*fbnd(2)));
+xBPFe = movmean(xBPFe, dsratio);
+xBPFeDS = xBPFe(1:dsratio:end);
+tDS = t(1:dsratio:end);
 
 % hilbert transform 
 H = hilbert(xBPF);
@@ -287,7 +294,7 @@ xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
 xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
 %}
 xPDS = nan(size(xBPF)); xPDS(iPDS) = xBPF(iPDS);
-xDBS = nan(size(xHPF)); xDBS(iDBS) = xHPF(iDBS);
+xDBS = nan(size(xHPF)); xDBS(iDBS) = xBPFe(iDBS) .* sign(xHPF(iDBS));
 nPDS = sum(iPDS(1:curwin(2)));
 nDBS = sum(iDBS(1:curwin(2)));
 
@@ -344,8 +351,10 @@ ax(1,2) = gca();
 % DBS time plot 
 ax(2,1) = nexttile([1,2]); 
 %ax(2,1) = subplot(2,1,2);
-plot(t, xHPF, 'LineWidth',1.5, 'Color',colorSig);
+patch([tDS; flipud(tDS)], [xBPFeDS; -flipud(xBPFeDS)], colorSig, ...
+    'EdgeColor','none', 'FaceAlpha',0.3);
 grid on; hold on; 
+plot(t, xHPF, 'LineWidth',1.5, 'Color',colorSig);
 stem(t, xDBS, 's', 'LineWidth',2, 'Color',colorDBS);
 ax(2,1).FontSize = fontSizeTick;
 xlabel('time (s)',         'FontSize',fontSizeLabel); 
