@@ -17,8 +17,11 @@
     playbackspeed = 1; % relative to real time
     displayWin = 1.5; % seconds 
     packetsize = 1; % sample 
-    nbins = 18; % polar histogram (rose) bins
     maxFR = 60; % maximum # frames per second
+    nbins = 32; % polar histogram (rose) bins
+    colorSig = 'k';              % black
+    colorPDS = [.133,.545,.133]; % green
+    colorDBS = [.635,.078,.184]; % red
 
 %% Load data 
 
@@ -277,7 +280,8 @@ xDBS = nan(size(x)); xDBS(iDBS) = x(iDBS);
 nPDS = sum(iPDS(1:curwin(2)));
 nDBS = sum(iDBS(1:curwin(2)));
 
-myfig = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
+myfig = figure('Units','normalized', 'Position',[.05,.05,.9,.9], ...
+    'Color',[1,1,1]);
 tiledlayout(2,3);
 
 % PDS time plot 
@@ -288,9 +292,9 @@ else
 end
 ax(1,1) = nexttile([1,2]); 
 %ax(1,1) = subplot(2,1,1);
-plot(t, x, 'LineWidth',1.5);
+plot(t, x, 'LineWidth',1.5, 'Color',colorSig);
 grid on; hold on; 
-stem(t, xPDS, mkr);
+stem(t, xPDS, mkr, 'LineWidth',2, 'Color',colorPDS);
 xlabel('time (s)'); ylabel(['EPhys',unitname]);
 xlim(t(curwin));
 title_PDS = title({'Phase Dependent Stimulation'; ...
@@ -300,7 +304,7 @@ title_PDS = title({'Phase Dependent Stimulation'; ...
 % PDS rose plot
 bedge = linspace(-pi, pi, nbins);
 ax(1,2) = nexttile; 
-polarhistogram(phnow(iPDSnow), 'BinEdges',bedge);
+polarhistogram(phnow(iPDSnow), 'BinEdges',bedge, 'FaceColor',colorPDS);
 title('Stimulation Phase')
 ax(1,2) = gca();
 %}
@@ -308,9 +312,9 @@ ax(1,2) = gca();
 % DBS time plot 
 ax(2,1) = nexttile([1,2]); 
 %ax(2,1) = subplot(2,1,2);
-plot(t, x, 'LineWidth',1.5);
+plot(t, x, 'LineWidth',1.5, 'Color',colorSig);
 grid on; hold on; 
-stem(t, xDBS, 's');
+stem(t, xDBS, 's', 'LineWidth',2, 'Color',colorDBS);
 xlabel('time (s)'); ylabel(['EPhys',unitname]);
 xlim(t(curwin));
 title_DBS = title({'Existing Closed Loop DBS'; ...
@@ -319,7 +323,7 @@ title_DBS = title({'Existing Closed Loop DBS'; ...
 %%{
 % PDS rose plot
 ax(2,2) = nexttile; 
-polarhistogram(phnow(iDBSnow), 'BinEdges',bedge);
+polarhistogram(phnow(iDBSnow), 'BinEdges',bedge, 'FaceColor',colorDBS);
 title('Stimulation Phase')
 ax(2,2) = gca();
 %}
