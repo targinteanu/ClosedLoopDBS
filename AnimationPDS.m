@@ -300,7 +300,18 @@ xlim(t(curwin));
 title_PDS = title({'Phase Dependent Stimulation'; ...
     ['Total Stim Count = ',num2str(nPDS)]});
 
-%%{
+% both rose plots 
+bedge = linspace(-pi, pi, nbins);
+ax(1,2) = nexttile([2,1]); 
+hold off;
+hpolPDS = polarhistogram(phnow(iPDSnow), 'BinEdges',bedge, 'FaceColor',colorPDS);
+hold on;
+hpolDBS = polarhistogram(phnow(iDBSnow), 'BinEdges',bedge, 'FaceColor',colorDBS);
+hold off;
+title('Stimulation Phase')
+ax(1,2) = gca();
+
+%{
 % PDS rose plot
 bedge = linspace(-pi, pi, nbins);
 ax(1,2) = nexttile; 
@@ -320,7 +331,7 @@ xlim(t(curwin));
 title_DBS = title({'Existing Closed Loop DBS'; ...
     ['Total Stim Count = ',num2str(nDBS)]});
 
-%%{
+%{
 % PDS rose plot
 ax(2,2) = nexttile; 
 polarhistogram(phnow(iDBSnow), 'BinEdges',bedge, 'FaceColor',colorDBS);
@@ -366,10 +377,14 @@ plt_DBS.XData = tnow; plt_DBS.YData = xDBSnow;
 %}
 
 % update rose plots to reflect current display window
+hpolPDS.BinCounts = histcounts(phnow(iPDSnow), bedge);
+hpolDBS.BinCounts = histcounts(phnow(iDBSnow), bedge);
+%{
 polarhistogram(ax(1,2), phnow(iPDSnow), 'BinEdges',bedge);
 title(ax(1,2), 'Stimulation Phase')
 polarhistogram(ax(2,2), phnow(iDBSnow), 'BinEdges',bedge);
 title(ax(2,2), 'Stimulation Phase')
+%}
 
 % advance x axis window 
 ax(1,1).XLim = t(curwin);
