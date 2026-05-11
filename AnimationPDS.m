@@ -15,9 +15,10 @@
 
     % display
     playbackspeed = 1; % relative to real time
-    displaywin = 1.5; % seconds 
+    displayWin = 1.5; % seconds 
     packetsize = 1; % sample 
     nbins = 18; % polar histogram (rose) bins
+    maxFR = 60; % maximum # frames per second
 
 %% Load data 
 
@@ -240,6 +241,15 @@ Vsave = ~isempty(Vfn);
 if Vsave
     Vfn = Vfn{1};
     VW = VideoWriter(Vfn);
+    FR = playbackspeed * Fs / packetsize;
+    if FR > maxFR
+        FR = maxFR; 
+        packetsize = playbackspeed * Fs / FR;
+        packetsize = ceil(packetsize);
+        disp(['Adjusted packet size to ',num2str(packetsize), ...
+            ' to comply with max frame rate.'])
+    end
+    VW.FrameRate = FR;
     open(VW)
 else
     warning('Not saving video.')
@@ -249,7 +259,7 @@ end
 % For time plots, plot the entire signal, but set the x axis limits to the
 % window of interest. 
 
-displaywin = ceil(displaywin * Fs); % samples 
+displaywin = ceil(displayWin * Fs); % samples 
 cursample = 1;
 curwin = [0, displaywin-1] + cursample;
 winidx = curwin(1):curwin(2);
