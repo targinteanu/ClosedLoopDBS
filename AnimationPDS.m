@@ -193,6 +193,8 @@ if isempty(unitname)
         unitname = [' (',unitname,')'];
     catch ME5
         warning(['Could not determine signal units due to error: ',ME5.message])
+        warning('Setting units to uV')
+        unitname = ' (\muV)';
     end
 end
 
@@ -262,6 +264,10 @@ end
 % For time plots, plot the entire signal, but set the x axis limits to the
 % window of interest. 
 
+fontSizeTitle = 24;
+fontSizeLabel = 20;
+fontSizeTick = 16;
+
 displaywin = ceil(displayWin * Fs); % samples 
 cursample = 1;
 curwin = [0, displaywin-1] + cursample;
@@ -295,10 +301,12 @@ ax(1,1) = nexttile([1,2]);
 plot(t, x, 'LineWidth',1.5, 'Color',colorSig);
 grid on; hold on; 
 stem(t, xPDS, mkr, 'LineWidth',2, 'Color',colorPDS);
-xlabel('time (s)'); ylabel(['EPhys',unitname]);
+ax(1,1).FontSize = fontSizeTick;
+xlabel('time (s)',         'FontSize',fontSizeLabel); 
+ylabel(['EPhys',unitname], 'FontSize',fontSizeLabel);
 xlim(t(curwin));
 title_PDS = title({'Phase Dependent Stimulation'; ...
-    ['Total Stim Count = ',num2str(nPDS)]});
+    ['Total Stim Count = ',num2str(nPDS)]}, 'FontSize',fontSizeTitle);
 
 % both rose plots 
 bedge = linspace(-pi, pi, nbins);
@@ -308,8 +316,10 @@ hpolPDS = polarhistogram(phnow(iPDSnow), 'BinEdges',bedge, 'FaceColor',colorPDS)
 hold on;
 hpolDBS = polarhistogram(phnow(iDBSnow), 'BinEdges',bedge, 'FaceColor',colorDBS);
 hold off;
-title('Stimulation Phase')
 ax(1,2) = gca();
+title('Stimulation Phase', 'FontSize',fontSizeTitle)
+ax(1,2).FontSize = fontSizeTick;
+ax(1,2).ThetaTick = [0 90 180 270];
 
 %{
 % PDS rose plot
@@ -326,10 +336,12 @@ ax(2,1) = nexttile([1,2]);
 plot(t, x, 'LineWidth',1.5, 'Color',colorSig);
 grid on; hold on; 
 stem(t, xDBS, 's', 'LineWidth',2, 'Color',colorDBS);
-xlabel('time (s)'); ylabel(['EPhys',unitname]);
+ax(2,1).FontSize = fontSizeTick;
+xlabel('time (s)',         'FontSize',fontSizeLabel); 
+ylabel(['EPhys',unitname], 'FontSize',fontSizeLabel);
 xlim(t(curwin));
 title_DBS = title({'Existing Closed Loop DBS'; ...
-    ['Total Stim Count = ',num2str(nDBS)]});
+    ['Total Stim Count = ',num2str(nDBS)]}, 'FontSize',fontSizeTitle);
 
 %{
 % PDS rose plot
