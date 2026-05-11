@@ -11,6 +11,7 @@
     % signal processing 
     DBSfreq = 130; % Hz
     fbnd = [13, 30]; % frequency bounds [low, high] cutoff (Hz)
+    bandname = '\beta'; % name of freq band
     phtarget = 0; % target phase (Hz) 
 
     % display
@@ -207,11 +208,14 @@ isnoise = clusIdx == noiseIdx;
 %% target phase identification 
 
 % filter 
-BPF = buildFIRBPF(Fs, fbnd(1), fbnd(2), 2, 201);
-x = filtfilt(BPF,1,x);
+BPF = fir1(256, fbnd/(Fs/2), 'bandpass');
+%BPF = buildFIRBPF(Fs, fbnd(1), fbnd(2), 2, 201);
+xBPF = filtfilt(BPF,1,x);
+HPF = fir1(256, 5/(Fs/2), 'high');
+xHPF = filtfilt(HPF,1,x); 
 
 % hilbert transform 
-H = hilbert(x);
+H = hilbert(xBPF);
 ph = angle(H); A = abs(H);
 
 % set amplitude threshold 
@@ -233,7 +237,7 @@ iPDS = iPDS & (A >= Athresh);
 
 % DBS stim timing 
 DBSper = round(Fs/DBSfreq); % period (samples)
-iDBS = false(size(x));
+iDBS = false(size(xBPF));
 iDBS(1:DBSper:end) = true;
 iDBS = iDBS & (A >= Athresh); % make like medtronic closed loop DBS
 
@@ -273,7 +277,7 @@ displaywin = ceil(displayWin * Fs); % samples
 cursample = 1;
 curwin = [0, displaywin-1] + cursample;
 winidx = curwin(1):curwin(2);
-xnow = x(winidx);
+xnow = xBPF(winidx);
 phnow = ph(winidx);
 tnow = t(winidx);
 iPDSnow = iPDS(winidx);
@@ -282,8 +286,8 @@ iDBSnow = iDBS(winidx);
 xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
 xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
 %}
-xPDS = nan(size(x)); xPDS(iPDS) = x(iPDS);
-xDBS = nan(size(x)); xDBS(iDBS) = x(iDBS);
+xPDS = nan(size(xBPF)); xPDS(iPDS) = xBPF(iPDS);
+xDBS = nan(size(xHPF)); xDBS(iDBS) = xHPF(iDBS);
 nPDS = sum(iPDS(1:curwin(2)));
 nDBS = sum(iDBS(1:curwin(2)));
 
@@ -299,12 +303,12 @@ else
 end
 ax(1,1) = nexttile([1,2]); 
 %ax(1,1) = subplot(2,1,1);
-plot(t, x, 'LineWidth',1.5, 'Color',colorSig);
+plot(t, xBPF, 'LineWidth',1.5, 'Color',colorSig);
 grid on; hold on; 
 stem(t, xPDS, mkr, 'LineWidth',2, 'Color',colorPDS);
 ax(1,1).FontSize = fontSizeTick;
 xlabel('time (s)',         'FontSize',fontSizeLabel); 
-ylabel(['EPhys',unitname], 'FontSize',fontSizeLabel);
+ylabel([bandname,' Signal',unitname], 'FontSize',fontSizeLabel);
 xlim(t(curwin));
 [title_PDS, subtitle_PDS] = title('Phase Dependent Stimulation', ...
     ['Total Stim Count = ',emph,num2str(nPDS)], 'FontWeight','normal');
@@ -340,12 +344,12 @@ ax(1,2) = gca();
 % DBS time plot 
 ax(2,1) = nexttile([1,2]); 
 %ax(2,1) = subplot(2,1,2);
-plot(t, x, 'LineWidth',1.5, 'Color',colorSig);
+plot(t, xHPF, 'LineWidth',1.5, 'Color',colorSig);
 grid on; hold on; 
 stem(t, xDBS, 's', 'LineWidth',2, 'Color',colorDBS);
 ax(2,1).FontSize = fontSizeTick;
 xlabel('time (s)',         'FontSize',fontSizeLabel); 
-ylabel(['EPhys',unitname], 'FontSize',fontSizeLabel);
+ylabel(['Raw Signal',unitname], 'FontSize',fontSizeLabel);
 xlim(t(curwin));
 [title_DBS, subtitle_DBS] = title('Existing Closed Loop DBS', ...
     ['Total Stim Count = ',emph,num2str(nDBS)], 'FontWeight','normal');
@@ -375,14 +379,14 @@ pausetime = packetsize * playbackspeed / Fs; % seconds
 
 try
 
-while cursample + packetsize + displaywin <= length(x)
+while cursample + packetsize + displaywin <= length(xBPF)
 
 ticStart = tic;
 
 cursample = cursample + packetsize;
 curwin = [0, displaywin-1] + cursample;
 winidx = curwin(1):curwin(2);
-xnow = x(winidx);
+xnow = xBPF(winidx);
 phnow = ph(winidx);
 tnow = t(winidx);
 iPDSnow = iPDS(winidx);
@@ -452,7 +456,7 @@ catch ME6
         ermsg = ['Error: ',ME6.message];
     end
     warning(['Stopped at sample ',...
-        num2str(cursample + packetsize + displaywin),' of ',num2str(length(x)),...
+        num2str(cursample + packetsize + displaywin),' of ',num2str(length(xBPF)),...
         ' due to ',ermsg]);
 end
 
