@@ -217,7 +217,7 @@ ph = angle(H); A = abs(H);
 % set amplitude threshold 
 %[~,Athresh] = midcross(A); 
 %Athresh = median(A(~isoutlier(x))); 
-Athresh = 0.6*median(A(~isnoise)); 
+Athresh = median(A(~isnoise)); 
 
 % find where phase crosses target 
 phtarget = radfix(phtarget);
@@ -267,6 +267,7 @@ end
 fontSizeTitle = 24;
 fontSizeLabel = 20;
 fontSizeTick = 16;
+emph = ['\bf\it\color{blue}\fontsize{',num2str(fontSizeTitle),'}'];
 
 displaywin = ceil(displayWin * Fs); % samples 
 cursample = 1;
@@ -305,8 +306,14 @@ ax(1,1).FontSize = fontSizeTick;
 xlabel('time (s)',         'FontSize',fontSizeLabel); 
 ylabel(['EPhys',unitname], 'FontSize',fontSizeLabel);
 xlim(t(curwin));
+[title_PDS, subtitle_PDS] = title('Phase Dependent Stimulation', ...
+    ['Total Stim Count = ',emph,num2str(nPDS)], 'FontWeight','normal');
+title_PDS.FontSize    = fontSizeTitle;
+subtitle_PDS.FontSize = fontSizeLabel;
+%{
 title_PDS = title({'Phase Dependent Stimulation'; ...
     ['Total Stim Count = ',num2str(nPDS)]}, 'FontSize',fontSizeTitle);
+%}
 
 % both rose plots 
 bedge = linspace(-pi, pi, nbins);
@@ -340,8 +347,14 @@ ax(2,1).FontSize = fontSizeTick;
 xlabel('time (s)',         'FontSize',fontSizeLabel); 
 ylabel(['EPhys',unitname], 'FontSize',fontSizeLabel);
 xlim(t(curwin));
+[title_DBS, subtitle_DBS] = title('Existing Closed Loop DBS', ...
+    ['Total Stim Count = ',emph,num2str(nDBS)], 'FontWeight','normal');
+title_DBS.FontSize    = fontSizeTitle;
+subtitle_DBS.FontSize = fontSizeLabel;
+%{
 title_DBS = title({'Existing Closed Loop DBS'; ...
     ['Total Stim Count = ',num2str(nDBS)]}, 'FontSize',fontSizeTitle);
+%}
 
 %{
 % PDS rose plot
@@ -378,6 +391,7 @@ iDBSnow = iDBS(winidx);
 xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
 xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
 %}
+nPDSprev = nPDS; nDBSprev = nDBS;
 nPDS = sum(iPDS(1:curwin(2)));
 nDBS = sum(iDBS(1:curwin(2)));
 
@@ -403,8 +417,16 @@ ax(1,1).XLim = t(curwin);
 ax(2,1).XLim = t(curwin);
 
 % update stim count display 
-title_PDS.String{2} = ['Total Stim Count = ',num2str(nPDS)];
-title_DBS.String{2} = ['Total Stim Count = ',num2str(nDBS)];
+if nPDS > nPDSprev
+    subtitle_PDS.String = ['Total Stim Count = ',emph,num2str(nPDS)];
+else
+    subtitle_PDS.String = ['Total Stim Count = ',num2str(nPDS),emph,1];
+end
+if nDBS > nDBSprev
+    subtitle_DBS.String = ['Total Stim Count = ',emph,num2str(nDBS)];
+else
+    subtitle_DBS.String = ['Total Stim Count = ',num2str(nDBS),emph,1];
+end
 
 drawnow;
 
