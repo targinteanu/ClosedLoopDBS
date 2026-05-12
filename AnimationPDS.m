@@ -280,6 +280,18 @@ fontSizeLabel = 20;
 fontSizeTick = 16;
 emph = ['\bf\it\color{blue}\fontsize{',num2str(fontSizeTitle),'}'];
 
+% precalculate max values of axes 
+polmax =  ceil( displayWin * fbnd(2) ); polmax = polmax/2;
+polmin = floor( displayWin * fbnd(1) );
+fltmax = 2*std(xBPF); % max(abs(xBPF));
+rawmax = 2*std(xHPF); % max(abs(xHPF));
+% round to nice values 
+tickinterval = 10; 
+polmax =  ceil(polmax/tickinterval) * tickinterval;
+polmin = floor(polmin/tickinterval) * tickinterval;
+fltmax  = ceil(fltmax/tickinterval) * tickinterval;
+rawmax  = ceil(rawmax/tickinterval) * tickinterval;
+
 displaywin = ceil(displayWin * Fs); % samples 
 cursample = 1;
 curwin = [0, displaywin-1] + cursample;
@@ -311,10 +323,13 @@ end
 ax(1,1) = nexttile([1,2]); 
 %ax(1,1) = subplot(2,1,1);
 plot(t, xBPF, 'LineWidth',1.5, 'Color',colorSig);
-grid on; hold on; 
+%grid on; 
+hold on; 
 stem(t, xPDS, mkr, 'LineWidth',2, 'Color',colorPDS);
 ax(1,1).FontSize = fontSizeTick;
-xlabel('time (s)',         'FontSize',fontSizeLabel); 
+xlabel('   time (s)', 'FontSize',fontSizeLabel, ...
+    'Units','Normalized', 'Position',[1,0.5], ...
+    'HorizontalAlignment','left', 'VerticalAlignment','middle'); 
 ylabel([bandname,' Signal',unitname], 'FontSize',fontSizeLabel);
 xlim(t(curwin));
 [title_PDS, subtitle_PDS] = title('Phase Dependent Stimulation', ...
@@ -325,6 +340,14 @@ subtitle_PDS.FontSize = fontSizeLabel;
 title_PDS = title({'Phase Dependent Stimulation'; ...
     ['Total Stim Count = ',num2str(nPDS)]}, 'FontSize',fontSizeTitle);
 %}
+ax(1,1).Box = false;
+ax(1,1).XAxisLocation = 'origin';
+ax(1,1).XAxis.TickLength = [.1 .2];
+ax(1,1).XTick = 0:1:t(end);
+ax(1,1).XAxis.TickDirection = 'both';
+ax(1,1).YLim = [-fltmax fltmax]; 
+ax(1,1).YTick = [-fltmax fltmax];
+ax(1,1).YAxis.TickDirection = 'both';
 
 % both rose plots 
 bedge = linspace(-pi, pi, nbins);
@@ -337,7 +360,11 @@ hold off;
 ax(1,2) = gca();
 title('Stimulation Phase', 'FontSize',fontSizeTitle)
 ax(1,2).FontSize = fontSizeTick;
-ax(1,2).ThetaTick = [0 90 180 270];
+ax(1,2).ThetaTick = [0]; % 90 180 270];
+ax(1,2).RLim = [0 polmax];
+ax(1,2).RTick = [polmin polmax];
+ax(1,2).ThetaGrid = false;
+ax(1,2).GridAlpha = .25;
 
 %{
 % PDS rose plot
@@ -353,11 +380,14 @@ ax(2,1) = nexttile([1,2]);
 %ax(2,1) = subplot(2,1,2);
 patch([tDS; flipud(tDS)], [xBPFeDS; -flipud(xBPFeDS)], colorSig, ...
     'EdgeColor','none', 'FaceAlpha',0.3);
-grid on; hold on; 
+%grid on; 
+hold on; 
 plot(t, xHPF, 'LineWidth',1.5, 'Color',colorSig);
 stem(t, xDBS, 's', 'LineWidth',2, 'Color',colorDBS);
 ax(2,1).FontSize = fontSizeTick;
-xlabel('time (s)',         'FontSize',fontSizeLabel); 
+xlabel('   time (s)', 'FontSize',fontSizeLabel, ...
+    'Units','Normalized', 'Position',[1,0.5], ...
+    'HorizontalAlignment','left', 'VerticalAlignment','middle'); 
 ylabel(['Raw Signal',unitname], 'FontSize',fontSizeLabel);
 xlim(t(curwin));
 [title_DBS, subtitle_DBS] = title('Existing Closed Loop DBS', ...
@@ -368,6 +398,14 @@ subtitle_DBS.FontSize = fontSizeLabel;
 title_DBS = title({'Existing Closed Loop DBS'; ...
     ['Total Stim Count = ',num2str(nDBS)]}, 'FontSize',fontSizeTitle);
 %}
+ax(2,1).Box = false;
+ax(2,1).XAxisLocation = 'origin';
+ax(2,1).XAxis.TickLength = [.1 .2];
+ax(2,1).XTick = 0:1:t(end);
+ax(2,1).XAxis.TickDirection = 'both';
+ax(2,1).YLim = [-rawmax rawmax]; 
+ax(2,1).YTick = [-rawmax rawmax];
+ax(2,1).YAxis.TickDirection = 'both';
 
 %{
 % PDS rose plot
@@ -428,6 +466,8 @@ title(ax(2,2), 'Stimulation Phase')
 % advance x axis window 
 ax(1,1).XLim = t(curwin);
 ax(2,1).XLim = t(curwin);
+%ax(1,1).XLabel.Position(1) = t(curwin(end));
+%ax(2,1).XLabel.Position(1) = t(curwin(end));
 
 % update stim count display 
 if nPDS > nPDSprev
