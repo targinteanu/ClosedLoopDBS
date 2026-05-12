@@ -12,7 +12,7 @@
     DBSfreq = 130; % Hz
     fbnd = [13, 30]; % frequency bounds [low, high] cutoff (Hz)
     bandname = '\beta'; % name of freq band
-    phtarget = 0; % target phase (Hz) 
+    phtarget = pi; % target phase (rad) 
 
     % display
     playbackspeed = 1; % relative to real time
@@ -238,6 +238,7 @@ sph = sph(2:end) .* sph(1:(end-1));
 dph = diff(ph);
 iPDS = (sph <= 0) & (dph >= 0); % rising zero-cross 
 iPDS = [false; iPDS];
+ph = ph + phtarget; ph = radfix(ph);
 
 % finalize PDS stim timing 
 iPDS = iPDS & (A >= Athresh);
