@@ -12,7 +12,7 @@
     DBSfreq = 130; % Hz
     fbnd = [13, 30]; % frequency bounds [low, high] cutoff (Hz)
     bandname = '\beta'; % name of freq band
-    phtarget = pi; % target phase (rad) 
+    phtarget = 0; % target phase (rad) 
 
     % display
     playbackspeed = 1; % relative to real time
