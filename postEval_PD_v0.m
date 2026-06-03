@@ -125,8 +125,8 @@ end
 tgtInd = tgtInd & indSel;
 
 tgtTimeAbs = t(tgtInd);
-tgtISI = seconds(diff(tgtTimeAbs));
-stimISI = seconds(diff(stimTimeAbs));
+tgtISI = seconds([nan, diff(tgtTimeAbs)]);
+stimISI = seconds([nan,diff(stimTimeAbs)]);
 
 tgtTimeAbs = tgtTimeAbs(tgtTimeAbs >= stimTimeAbs(1)); % after stim began
 tgtTimeAbs = tgtTimeAbs(tgtTimeAbs <= stimTimeAbs(end)); % before stim ended
@@ -303,11 +303,117 @@ figure; histogram(stimISI); hold on; grid on; histogram(tgtISI);
 xlabel('Seconds'); ylabel('Stim Count'); title('Inter-Stim Interval');
 legend('Actual', 'Ideal', 'Location','best');
 
-disp(['Actual: Mean ',num2str(mean(stimISI)),', SD ',num2str(std(stimISI)),' seconds'])
-disp(['Ideal: Mean ',num2str(mean(tgtISI)),', SD ',num2str(std(tgtISI)),' seconds'])
+disp(['Actual: Mean ',num2str(mean(stimISI,'omitnan')), ...
+    ', SD ',num2str(std(stimISI,'omitnan')),' seconds'])
+disp(['Ideal: Mean ',num2str(mean(tgtISI,'omitnan')), ...
+    ', SD ',num2str(std(tgtISI,'omitnan')),' seconds'])
 
 %% cycle-by-cycle analysis 
 
+[dataCycle, numCycle] = analyzeByCycle(...
+    StimTrainRec, tgtInd, dataPhase, stimtgtphase);
+
+% show missing/extra stim 
+numMissing = sum(dataCycle(4,:) < dataCycle(3,:));
+numExtra = sum(dataCycle(4,:) > dataCycle(3,:));
+figure; 
+pie([numMissing, numExtra, numCycle-numMissing-numExtra], ...
+    {['Missing: ',num2str(100*numMissing/numCycle,2),'%'], ...
+     ['Extra: ',num2str(100*numExtra/numCycle,2),'%'], ...
+     ['Correct: ',num2str(100*(1-(numMissing+numExtra)/numCycle),2),'%']});
+title('Num. Stimulations by Cycle')
+
+% show timing error 
+inan = isnan(dataCycle(1,:)) | isnan(dataCycle(2,:));
+terr = tRel(dataCycle(2,~inan))-tRel(dataCycle(1,~inan));
+figure; errHisto(terr);
+title('Stim time error: actual - target');
+xlabel('dur (s)'); ylabel('count'); 
+grid on;
+
+%% polar hist blocks of time 
+% to do: this should pull in data from notes.txt
+%%{
+winTimes = datetime(2026,2,26,18,0,0) + [...
+    minutes(17), minutes(20); ...
+    minutes(20), minutes(22.25); ...
+    minutes(22.25), minutes(22.75); ...
+    minutes(22.75), minutes(24)];
+winTimes.TimeZone = t0.TimeZone;
+winNames = {'trough motor', 'peak motor', 'peak rest', 'trough rest'};
+winTgt = [pi, 0, 0, pi];
+
+figure; 
+for w = 1:height(winTimes)
+
+    % stim sent polar histo
+    subplot(4, height(winTimes), w); 
+    winInd = (t0+seconds(StimTime) >= winTimes(w,1)) & (t0+seconds(StimTime) < winTimes(w,2));
+    errHistoPolar(dataPhase(StimInd(winInd)), winTgt(w), 18);
+    title(['Stim Sent - ',winNames{w}]);
+
+    % stim recd polar histo 
+    subplot(4, height(winTimes), w+height(winTimes));
+    StimIndRec = find(StimTrainRec); StimTimeRec = StimIndRec / SamplingFreq;
+    winInd = (t0+seconds(StimTimeRec) >= winTimes(w,1)) & (t0+seconds(StimTimeRec) < winTimes(w,2));
+    errHistoPolar(dataPhase(StimIndRec(winInd)), winTgt(w), 18);
+    title(['Stim Recd - ',winNames{w}]);
+
+    % missing/extra 
+    subplot(4, height(winTimes), w+2*height(winTimes));
+    win = (t >= winTimes(w,1)) & (t < winTimes(w,2));
+    dc = analyzeByCycle(StimTrainRec&win, tgtInd&win, dataPhase, winTgt(w));
+    numMissing = sum(dc(4,:) < dc(3,:));
+    numExtra = sum(dc(4,:) > dc(3,:));
+    pie([numMissing, numExtra, numCycle-numMissing-numExtra], ...
+        {['Missing: ',num2str(100*numMissing/numCycle,2),'%'], ...
+         ['Extra: ',num2str(100*numExtra/numCycle,2),'%'], ...
+         ['Correct: ',num2str(100*(1-(numMissing+numExtra)/numCycle),2),'%']});
+    title(['Num. Stimulations - ',winNames{1}]);
+
+    % timing histo 
+    subplot(4, height(winTimes), w+3*height(winTimes));
+    inan = isnan(dc(1,:)) | isnan(dc(2,:));
+    terr = tRel(dc(2,~inan))-tRel(dc(1,~inan));
+    errHisto(terr);
+    title(['Stim time error - ',winNames{1}]);
+    xlabel('dur (s)'); ylabel('count'); 
+    grid on;
+
+end
+%}
+
+%% helper functions 
+
+function errHistoPolar(phAct, phTgt, nbin)
+if nargin < 3
+    nbin = [];
+end
+if isempty(nbin)
+    nbin = 18; % default
+end
+x = radfix(phAct-phTgt); % error
+x = x*180/pi; % report in degrees 
+M = mean(x); % mean
+SEM = std(x)/sqrt(length(x)); % standard error
+ts = tinv(0.975,length(x)-1); % 95% t statistic
+CI = ts*SEM; % 95% CI range
+polarhistogram(phAct, nbin);
+subtitle(['Err Avg ',num2str(M),'°; 95% CI ±',num2str(CI),'°']);
+end
+
+function errHisto(err)
+M = mean(err); % mean
+SEM = std(err)/sqrt(length(err)); % standard error
+ts = tinv(0.975,length(err)-1); % 95% t statistic
+CI = ts*SEM; % 95% CI range
+histogram(err);
+subtitle(['Avg ',num2str(M),'; 95% CI ±',num2str(CI)]);
+end
+
+
+function [dataCycle, numCycle] = analyzeByCycle(...
+    StimTrainRec, tgtInd, dataPhase, stimtgtphase)
 phCycleStart = radfix(stimtgtphase+pi); % put tgt in middle of cycle
 phCycleStart = min(phCycleStart, 3); phCycleStart = max(phCycleStart, -3);
 [~,~,iCycleStart] = zerocrossrate(dataPhase - phCycleStart);
@@ -348,116 +454,8 @@ for iCycle = 1:numCycle
         dataCycle(2,iCycle) = stimCycle;
     end
 end
-
-% show missing/extra stim 
-numMissing = sum(dataCycle(4,:) < dataCycle(3,:));
-numExtra = sum(dataCycle(4,:) > dataCycle(3,:));
-figure; 
-pie([numMissing, numExtra, numCycle-numMissing-numExtra], ...
-    {['Missing: ',num2str(100*numMissing/numCycle,2),'%'], ...
-     ['Extra: ',num2str(100*numExtra/numCycle,2),'%'], ...
-     ['Correct: ',num2str(100*(1-(numMissing+numExtra)/numCycle),2),'%']});
-title('Num. Stimulations by Cycle')
-
-% show timing error 
-inan = isnan(dataCycle(1,:)) | isnan(dataCycle(2,:));
-terr = tRel(dataCycle(2,~inan))-tRel(dataCycle(1,~inan));
-figure; errHisto(terr);
-title('Stim time error: actual - target');
-xlabel('dur (s)'); ylabel('count'); 
-grid on;
-
-%% polar hist blocks of time 
-% to do: this should pull in data from notes.txt
-%%{
-%{
-winTimes = [...
-    datetime(2024,10,01,11,15,00), datetime(2024,10,01,11,17,00); ...
-    datetime(2024,10,01,11,18,00), datetime(2024,10,01,11,20,00); ...
-    datetime(2024,10,01,11,21,00), datetime(2024,10,01,11,23,00); ...
-    datetime(2024,10,01,11,24,00), datetime(2024,10,01,11,26,00); ...
-    datetime(2024,10,01,11,28,00), datetime(2024,10,01,11,30,00); ...
-    datetime(2024,10,01,11,31,00), datetime(2024,10,01,11,33,00); ...
-    datetime(2024,10,01,11,34,00), datetime(2024,10,01,11,36,00); ...
-    datetime(2024,10,01,11,37,00), datetime(2024,10,01,11,39,00)];
-winTimes = winTimes + hours(4); % convert EST to GMT
-%}
-
-%{
-winTimes = datetime(2026,2,26,18,0,0) + [...
-    minutes(16), minutes(20); ...
-    minutes(20), minutes(22)+seconds(11); ...
-    minutes(22)+seconds(11), minutes(22)+seconds(44); ...
-    minutes(22)+seconds(44), minutes(24)];
-%}
-winTimes = datetime(2026,4,16,15,0,0) + [...
-    minutes(47), minutes(49); ...
-    minutes(49), minutes(51)];
-winTimes.TimeZone = t0.TimeZone;
-winNames = {'trough motor', 'peak motor'};
-
-figure; 
-for w = 1:height(winTimes)
-    subplot(2, height(winTimes), w); 
-    winInd = (t0+seconds(StimTime) >= winTimes(w,1)) & (t0+seconds(StimTime) <= winTimes(w,2));
-    polarhistogram(dataPhase(StimInd(winInd)), 18);
-    title(['Stim Sent - ',winNames{w}]);
-
-    subplot(2,height(winTimes), w+height(winTimes));
-    StimIndRec = find(StimTrainRec); StimTimeRec = StimIndRec / SamplingFreq;
-    winInd = (t0+seconds(StimTimeRec) >= winTimes(w,1)) & (t0+seconds(StimTimeRec) <= winTimes(w,2));
-    polarhistogram(dataPhase(StimIndRec(winInd)), 18);
-    title(['Stim Recd - ',winNames{w}]);
-end
-%}
-
-%{
-winNames = [20, 13, 15, 18, 23, 25, 27, 30];
-
-[winNames, winInd] = sort(winNames); winTimes = winTimes(winInd,:); 
-winNames = arrayfun(@(x) [num2str(x),' Hz'], winNames, 'UniformOutput',false);
-
-figure;
-for w = 1:height(winTimes)
-    subplot(2,height(winTimes), w);
-    winInd = (t0+seconds(PeakTime) >= winTimes(w,1)) & (t0+seconds(PeakTime) <= winTimes(w,2));
-    polarhistogram(dataPhase(PeakInd(winInd)), 18); 
-    title(['Predicted Peaks ',winNames{w}]);
-
-    subplot(2,height(winTimes), w+height(winTimes));
-    winInd = (t0+seconds(TroughTime) >= winTimes(w,1)) & (t0+seconds(TroughTime) <= winTimes(w,2));
-    polarhistogram(dataPhase(TroughInd(winInd)), 18); 
-    title(['Predicted Troughs ',winNames{w}]);
-end 
-%}
-
-%% helper functions 
-
-function errHistoPolar(phAct, phTgt, nbin)
-if nargin < 3
-    nbin = [];
-end
-if isempty(nbin)
-    nbin = 18; % default
-end
-x = radfix(phAct-phTgt); % error
-x = x*180/pi; % report in degrees 
-M = mean(x); % mean
-SEM = std(x)/sqrt(length(x)); % standard error
-ts = tinv(0.975,length(x)-1); % 95% t statistic
-CI = ts*SEM; % 95% CI range
-polarhistogram(phAct, nbin);
-subtitle(['Err Avg ',num2str(M),'°; 95% CI ±',num2str(CI),'°']);
 end
 
-function errHisto(err)
-M = mean(err); % mean
-SEM = std(err)/sqrt(length(err)); % standard error
-ts = tinv(0.975,length(err)-1); % 95% t statistic
-CI = ts*SEM; % 95% CI range
-histogram(err);
-subtitle(['Avg ',num2str(M),'; 95% CI ±',num2str(CI)]);
-end
 
 function [stateInd, stateStartTime, stateEndTime] = ...
     findExpState(expState, expStates, SrlTimes, tRel)
