@@ -106,7 +106,30 @@ pwrthresh = .75*pwrthresh;
 
 dtgt = radfix(dataPhase-stimtgtphase);
 [~,~,tgtInd] = zerocrossrate(dtgt, "TransitionEdge","rising");
+
+% apply power threshold 
 tgtInd = tgtInd & (envelope(dataOneChannel) > pwrthresh);
+
+% exclude stim off times 
+indSel = true(size(StimTrainRec));
+StimIndRec = find(StimTrainRec); 
+indSel(1:(StimIndRec(1)-1)) = false; % before first stim 
+indSel((StimIndRec(end)+1):end) = false; % after last stim 
+stimTimeAbs = t(StimIndRec);
+iOff = diff(stimTimeAbs) > seconds(5);
+for ind = find(iOff)
+    % stimTimeAbs(ind+1) is more than 5 seconds from stimTimeAbs(ind)
+    ind1 = StimIndRec(ind); ind2 = StimIndRec(ind+1);
+    indSel(ind1:ind2) = false;
+end
+tgtInd = tgtInd & indSel;
+
+tgtTimeAbs = t(tgtInd);
+tgtISI = seconds(diff(tgtTimeAbs));
+stimISI = seconds(diff(stimTimeAbs));
+
+tgtTimeAbs = tgtTimeAbs(tgtTimeAbs >= stimTimeAbs(1)); % after stim began
+tgtTimeAbs = tgtTimeAbs(tgtTimeAbs <= stimTimeAbs(end)); % before stim ended
 
 %% determine red/yellow/green phases of experiment 
 if ~isempty(SerialLog)
@@ -251,14 +274,6 @@ end
 end
 
 %% inter-stim interval
-
-tgtTimeAbs = t(tgtInd);
-StimIndRec = find(StimTrainRec); stimTimeAbs = t(StimIndRec);
-tgtISI = seconds(diff(tgtTimeAbs));
-stimISI = seconds(diff(stimTimeAbs));
-
-tgtTimeAbs = tgtTimeAbs(tgtTimeAbs >= stimTimeAbs(1)); % after stim began
-tgtTimeAbs = tgtTimeAbs(tgtTimeAbs <= stimTimeAbs(end)); % before stim ended
 
 if isempty(expStateIT)
     numStimPeriods = 2; % assume 1 peak, 1 trough, or change this
