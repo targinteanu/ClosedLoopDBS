@@ -202,15 +202,15 @@ legend([lgd; expStatesU])
 
 %% Plot polar histogram 
 figure; 
-subplot(121); polarhistogram(dataPhase(PeakInd),18); 
+subplot(121); errHistoPolar(dataPhase(PeakInd),0,18); 
 title('Predicted Peaks');
-subplot(122); polarhistogram(dataPhase(TroughInd),18); 
+subplot(122); errHistoPolar(dataPhase(TroughInd),pi,18); 
 title('Predicted Troughs');
 
 figure; 
-subplot(121); polarhistogram(dataPhase(StimInd),18); 
+subplot(121); errHistoPolar(dataPhase(StimInd),stimtgtphase,18); 
 title('Stim Sent');
-subplot(122); polarhistogram(dataPhase(StimTrainRec),18); 
+subplot(122); errHistoPolar(dataPhase(StimTrainRec),stimtgtphase,18); 
 title('Stim Received');
 
 %% stim polar histogram
@@ -220,12 +220,12 @@ figure;
 if isempty(expStateIT)
     % there is at most one stimulus cond 
     subplot(1,2,1);
-    polarhistogram(dataPhase(StimInd),18);
+    errHistoPolar(dataPhase(StimInd),stimtgtphase,18);
     %hold on; polarhistogram(dataPhase(tgtind), 18); 
     %legend('Actual', 'Target');
     title('Stim Sent');
     subplot(1,2,2);
-    polarhistogram(dataPhase(StimTrainRec),18);
+    errHistoPolar(dataPhase(StimTrainRec),stimtgtphase,18);
     %hold on; polarhistogram(dataPhase(tgtind), 18); 
     %legend('Actual', 'Target');
     title('Stim Recd');
@@ -236,13 +236,13 @@ for ESi = 1:length(expStatesU)
     ESind = expStateIT{ESi,4};
     %ESind = ESind(t(ESind) > datetime(2024,08,29,17,08,11));
     subplot(H*2,W,ESi);
-    polarhistogram(dataPhase(ESind),18); 
+    errHistoPolar(dataPhase(ESind),stimtgtphase,18); 
     %hold on; polarhistogram(dataPhase(tgtind), 18); 
     %legend('Actual', 'Target');
     title(['Stim Sent during ',expState])
     ESind = expStateIT{ESi,5};
     subplot(H*2,W,ESi + H*W);
-    polarhistogram(dataPhase(ESind),18); 
+    errHistoPolar(dataPhase(ESind),stimtgtphase,18); 
     %hold on; polarhistogram(dataPhase(tgtind), 18); 
     %legend('Actual', 'Target');
     title(['Stim Recd during ',expState])
@@ -347,7 +347,7 @@ title('Num. Stimulations by Cycle')
 % show timing error 
 inan = isnan(dataCycle(1,:)) | isnan(dataCycle(2,:));
 terr = tRel(dataCycle(2,~inan))-tRel(dataCycle(1,~inan));
-figure; histogram(terr);
+figure; errHisto(terr);
 title('Stim time error: actual - target');
 xlabel('dur (s)'); ylabel('count'); 
 grid on;
@@ -417,6 +417,32 @@ end
 %}
 
 %% helper functions 
+
+function errHistoPolar(phAct, phTgt, nbin)
+if nargin < 3
+    nbin = [];
+end
+if isempty(nbin)
+    nbin = 18; % default
+end
+x = radfix(phAct-phTgt); % error
+x = x*180/pi; % report in degrees 
+M = mean(x); % mean
+SEM = std(x)/sqrt(length(x)); % standard error
+ts = tinv(0.975,length(x)-1); % 95% t statistic
+CI = ts*SEM; % 95% CI range
+polarhistogram(phAct, nbin);
+subtitle(['Err Avg ',num2str(M),'°; 95% CI ±',num2str(CI),'°']);
+end
+
+function errHisto(err)
+M = mean(err); % mean
+SEM = std(err)/sqrt(length(err)); % standard error
+ts = tinv(0.975,length(err)-1); % 95% t statistic
+CI = ts*SEM; % 95% CI range
+histogram(err);
+subtitle(['Avg ',num2str(M),'; 95% CI ±',num2str(CI)]);
+end
 
 function [stateInd, stateStartTime, stateEndTime] = ...
     findExpState(expState, expStates, SrlTimes, tRel)
