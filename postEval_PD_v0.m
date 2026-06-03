@@ -96,12 +96,17 @@ end
 myFilt = buildFIRBPF(SamplingFreq,13,30, 8);
 dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
 
+% detect power threshold 
+pwrthresh = sqrt(bandpower(dataBaseline,SamplingFreq,[13,30]));
+pwrthresh = .75*pwrthresh;
+
 %% find ideal stim pattern 
 % Get inst. freq. and phase 
 [dataPhase, dataFreq] = instPhaseFreq(dataOneChannel, SamplingFreq);
 
 dtgt = radfix(dataPhase-stimtgtphase);
 [~,~,tgtInd] = zerocrossrate(dtgt, "TransitionEdge","rising");
+tgtInd = tgtInd & (envelope(dataOneChannel) > pwrthresh);
 
 %% determine red/yellow/green phases of experiment 
 if ~isempty(SerialLog)
@@ -285,6 +290,67 @@ legend('Actual', 'Ideal', 'Location','best');
 
 disp(['Actual: Mean ',num2str(mean(stimISI)),', SD ',num2str(std(stimISI)),' seconds'])
 disp(['Ideal: Mean ',num2str(mean(tgtISI)),', SD ',num2str(std(tgtISI)),' seconds'])
+
+%% cycle-by-cycle analysis 
+
+phCycleStart = radfix(stimtgtphase+pi); % put tgt in middle of cycle
+phCycleStart = min(phCycleStart, 3); phCycleStart = max(phCycleStart, -3);
+[~,~,iCycleStart] = zerocrossrate(dataPhase - phCycleStart);
+iCycleStart = find(iCycleStart);
+iCycleStart = iCycleStart(1:2:end);
+%iCycleStart = sort(iCycleStart); % necessary?
+iCycleEnd = iCycleStart(2:end); iCycleStart = iCycleStart(1:(end-1));
+numCycle = length(iCycleStart); 
+
+% cycle-by-cycle data: 
+%   1: ind of tgt stim 
+%   2: ind of actual stim (nan if none; best if many)
+%   3: # tgt stim (should always be 1 unless subthresh?)
+%   4: # actual stim 
+dataCycle = nan(4, numCycle);
+for iCycle = 1:numCycle
+    iiCycle = iCycleStart(iCycle):iCycleEnd(iCycle);
+    tgtCycle = tgtInd(iiCycle);
+    stimCycle = StimTrainRec(iiCycle);
+    tgtCycle = iiCycle(1) - 1 + find(tgtCycle);
+    stimCycle = iiCycle(1) - 1 + find(stimCycle);
+    dataCycle(3,iCycle) = length(tgtCycle);
+    dataCycle(4,iCycle) = length(stimCycle);
+    if dataCycle(3,iCycle) > 0
+        pherr = abs(radfix(dataPhase(tgtCycle) - stimtgtphase));
+        if dataCycle(3,iCycle) > 1
+            [~,jCycle] = min(pherr);
+            tgtCycle = tgtCycle(jCycle);
+        end
+        dataCycle(1,iCycle) = tgtCycle;
+    end
+    if dataCycle(4,iCycle) > 0
+        pherr = abs(radfix(dataPhase(stimCycle) - stimtgtphase));
+        if dataCycle(4,iCycle) > 1
+            [~,jCycle] = min(pherr);
+            stimCycle = stimCycle(jCycle);
+        end
+        dataCycle(2,iCycle) = stimCycle;
+    end
+end
+
+% show missing/extra stim 
+numMissing = sum(dataCycle(4,:) < dataCycle(3,:));
+numExtra = sum(dataCycle(4,:) > dataCycle(3,:));
+figure; 
+pie([numMissing, numExtra, numCycle-numMissing-numExtra], ...
+    {['Missing: ',num2str(100*numMissing/numCycle,2),'%'], ...
+     ['Extra: ',num2str(100*numExtra/numCycle,2),'%'], ...
+     ['Correct: ',num2str(100*(1-(numMissing+numExtra)/numCycle),2),'%']});
+title('Num. Stimulations by Cycle')
+
+% show timing error 
+inan = isnan(dataCycle(1,:)) | isnan(dataCycle(2,:));
+terr = tRel(dataCycle(2,~inan))-tRel(dataCycle(1,~inan));
+figure; histogram(terr);
+title('Stim time error: actual - target');
+xlabel('dur (s)'); ylabel('count'); 
+grid on;
 
 %% polar hist blocks of time 
 % to do: this should pull in data from notes.txt
