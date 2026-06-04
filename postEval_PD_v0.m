@@ -68,16 +68,18 @@ for ind = artIndAll
     ind0 = ind - ARlen;
     if ind0 > 0
         % using AR mdl forecast:
-        %dataOneChannel(ind) = myFastForecastAR(ARmdl, dataOneChannel(ind0:(ind-1))', 1); 
+        dataOneChannel(ind) = myFastForecastAR(ARmdl, dataOneChannel(ind0:(ind-1))', 1); 
         % linear interp (non-causal): 
-        dataOneChannel(ind) = nan;
+        %dataOneChannel(ind) = nan;
     end
 end
 
 % linear interp (non-causal)
+%{
 tRelNoArt = tRel(~isnan(dataOneChannel));
 dataOneChannel = dataOneChannel(~isnan(dataOneChannel));
 [dataOneChannel] = interp1(tRelNoArt, dataOneChannel, tRel, 'linear', 'extrap');
+%}
 
 % plot artifact removal 
 figure; 
@@ -334,14 +336,25 @@ grid on;
 %% polar hist blocks of time 
 % to do: this should pull in data from notes.txt
 %%{
+
+%{
+% PD26N002: 
 winTimes = datetime(2026,2,26,18,0,0) + [...
     minutes(17), minutes(20); ...
     minutes(20), minutes(22.25); ...
     minutes(22.25), minutes(22.75); ...
     minutes(22.75), minutes(24)];
-winTimes.TimeZone = t0.TimeZone;
 winNames = {'trough motor', 'peak motor', 'peak rest', 'trough rest'};
 winTgt = [pi, 0, 0, pi];
+%}
+% PD26N003: 
+winTimes = datetime(2026,4,16,15,0,0) + [...
+    minutes(47), minutes(49); ...
+    minutes(49), minutes(51)];
+winNames = {'trough motor', 'peak motor'};
+winTgt = [pi, 0];
+
+winTimes.TimeZone = t0.TimeZone;
 
 figure; 
 for w = 1:height(winTimes)
@@ -382,6 +395,20 @@ for w = 1:height(winTimes)
 
 end
 %}
+%% adjust win accordingly ...
+figure; errHistoPolar(dataPhase(StimTrainRec&win), pi, 18);
+dc = analyzeByCycle(StimTrainRec&win, tgtInd&win, dataPhase, pi);
+figure; 
+numMissing = sum(dc(4,:) < dc(3,:));
+numExtra = sum(dc(4,:) > dc(3,:));
+pie([numMissing, numExtra, numCycle-numMissing-numExtra], ...
+    {['Missing: ',num2str(100*numMissing/numCycle,2),'%'], ...
+     ['Extra: ',num2str(100*numExtra/numCycle,2),'%'], ...
+     ['Correct: ',num2str(100*(1-(numMissing+numExtra)/numCycle),2),'%']});
+figure;
+inan = isnan(dc(1,:)) | isnan(dc(2,:));
+terr = tRel(dc(2,~inan))-tRel(dc(1,~inan));
+errHisto(terr);
 
 %% helper functions 
 
