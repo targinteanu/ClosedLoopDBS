@@ -33,8 +33,8 @@ olStartEnd = find(olStartEnd);
 olStart = olStartEnd(1:2:end); olEnd = olStartEnd(2:2:end);
 %}
 dataOneChannel = dataOneChannelWithArtifact;
-artExtend = 10; % extend artifact by __ samples 
-artBegin = 1; % begin artifact __ samples before stim detection
+artExtend = 15; % extend artifact by __ samples 
+artBegin = 5; % begin artifact __ samples before stim detection
 io = isoutlier(dataOneChannel, 'mean');
 artIndAll = StimTrainRec;
 %artIndAll = io | StimTrainRec; 
@@ -334,14 +334,12 @@ grid on;
 %% polar hist blocks of time 
 % to do: this should pull in data from notes.txt
 %%{
-winTimes = datetime(2026,2,26,18,0,0) + [...
-    minutes(17), minutes(20); ...
-    minutes(20), minutes(22.25); ...
-    minutes(22.25), minutes(22.75); ...
-    minutes(22.75), minutes(24)];
+winTimes = datetime(2026,7,16,15,0,0) + [...
+    minutes(47.7), minutes(49); ...
+    minutes(49), minutes(51)];
 winTimes.TimeZone = t0.TimeZone;
-winNames = {'trough motor', 'peak motor', 'peak rest', 'trough rest'};
-winTgt = [pi, 0, 0, pi];
+winNames = {'peak rest', 'trough rest'};
+winTgt = [0, pi];
 
 figure; 
 for w = 1:height(winTimes)
