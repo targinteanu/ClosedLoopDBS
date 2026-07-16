@@ -74,7 +74,8 @@ if Results == 4
     pause(1);
     [Results, channelsData] = AO_GetAllChannels();
     if Results
-        error('tried again and still failed to connect')
+        error(['Tried again and still failed to connect. ' ...
+            'Try restarting MATLAB or this computer.'])
     end
 end
 %}
