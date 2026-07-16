@@ -33,8 +33,8 @@ olStartEnd = find(olStartEnd);
 olStart = olStartEnd(1:2:end); olEnd = olStartEnd(2:2:end);
 %}
 dataOneChannel = dataOneChannelWithArtifact;
-artExtend = 15; % extend artifact by __ samples 
-artBegin = 5; % begin artifact __ samples before stim detection
+artExtend = 11; % extend artifact by __ samples 
+artBegin = 2; % begin artifact __ samples before stim detection
 io = isoutlier(dataOneChannel, 'mean');
 artIndAll = StimTrainRec;
 %artIndAll = io | StimTrainRec; 
@@ -47,6 +47,7 @@ artIndAll = artIndAll(artIndAll < length(dataOneChannel));
 artIndAll = [1, artIndAll, length(dataOneChannel)];
 [~,baselineStartInd] = max(diff(artIndAll));
 baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(baselineStartInd); 
+baselineStartInd = 1e6; baselineEndInd = 1.45e6;
 
 %% set baseline to fit model 
 if ~isempty(artIndAll)
@@ -68,9 +69,9 @@ for ind = artIndAll
     ind0 = ind - ARlen;
     if ind0 > 0
         % using AR mdl forecast:
-        %dataOneChannel(ind) = myFastForecastAR(ARmdl, dataOneChannel(ind0:(ind-1))', 1); 
+        dataOneChannel(ind) = myFastForecastAR(ARmdl, dataOneChannel(ind0:(ind-1))', 1); 
         % linear interp (non-causal): 
-        dataOneChannel(ind) = nan;
+        %dataOneChannel(ind) = nan;
     end
 end
 
@@ -94,7 +95,10 @@ end
 
 %% filter 
 myFilt = buildFIRBPF(SamplingFreq,13,30, 8);
-dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
+%dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
+dataOneChannel = filter(myFilt,1,dataOneChannel);
+myFiltShift = ceil(length(myFilt)/2);
+dataOneChannel = [dataOneChannel(myFiltShift:end), zeros(1,myFiltShift-1)];
 
 % detect power threshold 
 pwrthresh = sqrt(bandpower(dataBaseline,SamplingFreq,[13,30]));
@@ -354,6 +358,7 @@ for w = 1:height(winTimes)
     subplot(4, height(winTimes), w+height(winTimes));
     StimIndRec = find(StimTrainRec); StimTimeRec = StimIndRec / SamplingFreq;
     winInd = (t0+seconds(StimTimeRec) >= winTimes(w,1)) & (t0+seconds(StimTimeRec) < winTimes(w,2));
+    %winInd = find(winInd)-2;
     errHistoPolar(dataPhase(StimIndRec(winInd)), winTgt(w), 18);
     title(['Stim Recd - ',winNames{w}]);
 
@@ -367,14 +372,14 @@ for w = 1:height(winTimes)
         {['Missing: ',num2str(100*numMissing/numCycle,2),'%'], ...
          ['Extra: ',num2str(100*numExtra/numCycle,2),'%'], ...
          ['Correct: ',num2str(100*(1-(numMissing+numExtra)/numCycle),2),'%']});
-    title(['Num. Stimulations - ',winNames{1}]);
+    title(['Num. Stimulations - ',winNames{w}]);
 
     % timing histo 
     subplot(4, height(winTimes), w+3*height(winTimes));
     inan = isnan(dc(1,:)) | isnan(dc(2,:));
     terr = tRel(dc(2,~inan))-tRel(dc(1,~inan));
     errHisto(terr);
-    title(['Stim time error - ',winNames{1}]);
+    title(['Stim time error - ',winNames{w}]);
     xlabel('dur (s)'); ylabel('count'); 
     grid on;
 
