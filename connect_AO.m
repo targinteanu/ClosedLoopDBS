@@ -22,8 +22,13 @@ elseif Result
     error(['Connection to AO failed with code ',num2str(Result)])
 end
 
-if ~AO_IsConnected()
+Result = AO_IsConnected();
+
+if ~Result
     error('Did not connect.')
+elseif Result == 2
+    % what does this mean??
+    warning('AO_IsConnected Result = 2 instead of 1')
 end
 
 end
