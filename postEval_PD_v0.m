@@ -33,7 +33,7 @@ olStartEnd = find(olStartEnd);
 olStart = olStartEnd(1:2:end); olEnd = olStartEnd(2:2:end);
 %}
 dataOneChannel = dataOneChannelWithArtifact;
-artExtend = 11; % extend artifact by __ samples 
+artExtend = 15; % extend artifact by __ samples 
 artBegin = 2; % begin artifact __ samples before stim detection
 io = isoutlier(dataOneChannel, 'mean');
 artIndAll = StimTrainRec;
@@ -81,7 +81,7 @@ dataOneChannel = dataOneChannel(~isnan(dataOneChannel));
 [dataOneChannel] = interp1(tRelNoArt, dataOneChannel, tRel, 'linear', 'extrap');
 
 % plot artifact removal 
-figure; 
+figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
 ax(1) = subplot(211); 
 plot(t, dataOneChannelWithArtifact-DCOS, 'k', 'LineWidth',1.5); 
 grid on; hold on; 
@@ -99,6 +99,7 @@ myFilt = buildFIRBPF(SamplingFreq,13,30, 8);
 dataOneChannel = filter(myFilt,1,dataOneChannel);
 myFiltShift = ceil(length(myFilt)/2);
 dataOneChannel = [dataOneChannel(myFiltShift:end), zeros(1,myFiltShift-1)];
+plot(ax(1), t, dataOneChannel, 'r');
 
 % detect power threshold 
 pwrthresh = sqrt(bandpower(dataBaseline,SamplingFreq,[13,30]));
@@ -345,17 +346,19 @@ winTimes.TimeZone = t0.TimeZone;
 winNames = {'peak rest', 'trough rest'};
 winTgt = [0, pi];
 
-figure; 
+figure('Position',[470 47 770 948]); 
 for w = 1:height(winTimes)
 
+    %{
     % stim sent polar histo
     subplot(4, height(winTimes), w); 
     winInd = (t0+seconds(StimTime) >= winTimes(w,1)) & (t0+seconds(StimTime) < winTimes(w,2));
     errHistoPolar(dataPhase(StimInd(winInd)), winTgt(w), 18);
     title(['Stim Sent - ',winNames{w}]);
+    %}
 
     % stim recd polar histo 
-    subplot(4, height(winTimes), w+height(winTimes));
+    subplot(3, height(winTimes), w); %w+height(winTimes));
     StimIndRec = find(StimTrainRec); StimTimeRec = StimIndRec / SamplingFreq;
     winInd = (t0+seconds(StimTimeRec) >= winTimes(w,1)) & (t0+seconds(StimTimeRec) < winTimes(w,2));
     %winInd = find(winInd)-2;
@@ -363,7 +366,7 @@ for w = 1:height(winTimes)
     title(['Stim Recd - ',winNames{w}]);
 
     % missing/extra 
-    subplot(4, height(winTimes), w+2*height(winTimes));
+    subplot(3, height(winTimes), w+height(winTimes)); %w+2*height(winTimes));
     win = (t >= winTimes(w,1)) & (t < winTimes(w,2));
     dc = analyzeByCycle(StimTrainRec&win, tgtInd&win, dataPhase, winTgt(w));
     numMissing = sum(dc(4,:) < dc(3,:));
@@ -375,7 +378,7 @@ for w = 1:height(winTimes)
     title(['Num. Stimulations - ',winNames{w}]);
 
     % timing histo 
-    subplot(4, height(winTimes), w+3*height(winTimes));
+    subplot(3, height(winTimes), w+2*height(winTimes)); %w+3*height(winTimes));
     inan = isnan(dc(1,:)) | isnan(dc(2,:));
     terr = tRel(dc(2,~inan))-tRel(dc(1,~inan));
     errHisto(terr);
