@@ -43,6 +43,10 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
         stimind = handles.stimind - N; % N samples have passed
         if stimind > 0
             try
+            artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
+            artStart = artStart + stimind + round(handles.StimulatorLagTime*handles.fSample);
+            artDur = ceil(handles.fSample*handles.ArtifactDuration);
+            %{
             artInd = stimind;
             artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
             artEnd = ceil(handles.fSample*handles.ArtifactDuration) - artStart -1;
@@ -66,6 +70,7 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
                 artReplace = artReplace(1:length(artInd));
                 handles.rawDataBuffer(artInd) = artReplace;
             end
+            %}
             catch ME3
                 getReport(ME3)
                 % keyboard
