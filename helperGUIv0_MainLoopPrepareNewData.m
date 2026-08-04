@@ -48,10 +48,9 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
             try
             rawOffset = mean(rawDataBuffer);
             rawDataBuffer = rawDataBuffer - rawOffset;
-            artStart = -ceil(handles.ArtifactStartBefore*handles.fSample) ...
-                + stimind + round(handles.StimulatorLagTime*handles.fSample);
+            artStart = stimind - handles.ArtifactStartOffsetSamples;
                 % rel to start of buffer
-            artDur = ceil(handles.fSample*handles.ArtifactDuration);
+            artDur = handles.ArtifactDurationSamples;
             Mdl = handles.Mdl; 
             wAR = -Mdl(2:end)/Mdl(1); wAR = fliplr(wAR); 
             preL = max(artDur, length(wAR)); % extra length needed for art rem
@@ -66,9 +65,9 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
                 % change endpoint to buffer end to make smoother?
             artStart = artStart - dataStartIdx +1; % rel to replace start
             stepsize = 0.5; % make user set instead? 
-            [rawDataBuffer(artIdx),kalP,wLMS] = iterKalmanLMS(...
+            [rawDataBuffer(artIdx), handles.kalP, handles.wLMS] = iterKalmanLMS(...
                 rawDataBuffer(artIdx), artStart, wAR, ...
-                kalP, handles.MdlErrVar, wLMS, stepsize, true);
+                handles.kalP, handles.MdlErrVar, handles.wLMS, stepsize, true);
             if dataPadded
                 rawDataBuffer = rawDataBuffer((padL+1):end,:);
             end

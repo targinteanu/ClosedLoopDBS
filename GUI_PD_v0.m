@@ -1215,6 +1215,10 @@ function check_artifact_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_artifact
+if get(hObject, 'Value')
+    handles = helperGUIv0_setupArtRemove(handles);
+    guidata(hObject, handles);
+end
 
 
 % --- Executes on selection change in pop_elecgrid.
