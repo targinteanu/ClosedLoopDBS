@@ -19,11 +19,22 @@ end
     end
 
     L = min(length(y), 3*PDSwin) - 1;
+    if L-1-n <= n
+        error(['Not enough data samples for this model order. ' ...
+            'Try increasing phase est window or decreasing model order.'])
+    elseif L-1-2*n <= 10
+        warning(['Model error variance will be calculated with fewer than ' ...
+            '10 data samples.'])
+    end
     y = y((end-L):end);
     y = iddata(y,[],1/handles.fSample);
     ARmdl = ar(y,n,'yw');
+
+    ypred = myFastForecastAR(ARmdl, y(1:n), L+1-n);
+    y = y((n+1):end);
     
     handles.Mdl = ARmdl.A; 
+    handles.MdlErrVar = var(ypred-y);
     handles.MdlSetUp = true;
 
 end
