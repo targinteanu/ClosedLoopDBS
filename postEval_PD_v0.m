@@ -33,8 +33,8 @@ olStartEnd = find(olStartEnd);
 olStart = olStartEnd(1:2:end); olEnd = olStartEnd(2:2:end);
 %}
 dataOneChannel = dataOneChannelWithArtifact;
-artExtend = 10; % extend artifact by __ samples 
-artBegin = 1; % begin artifact __ samples before stim detection
+artExtend = 15; % extend artifact by __ samples 
+artBegin = 2; % begin artifact __ samples before stim detection
 io = isoutlier(dataOneChannel, 'mean');
 artIndAll = StimTrainRec;
 %artIndAll = io | StimTrainRec; 
@@ -47,6 +47,7 @@ artIndAll = artIndAll(artIndAll < length(dataOneChannel));
 artIndAll = [1, artIndAll, length(dataOneChannel)];
 [~,baselineStartInd] = max(diff(artIndAll));
 baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(baselineStartInd); 
+baselineStartInd = 1e6; baselineEndInd = 1.45e6;
 
 %% set baseline to fit model 
 if ~isempty(artIndAll)
@@ -82,7 +83,7 @@ dataOneChannel = dataOneChannel(~isnan(dataOneChannel));
 %}
 
 % plot artifact removal 
-figure; 
+figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
 ax(1) = subplot(211); 
 plot(t, dataOneChannelWithArtifact-DCOS, 'k', 'LineWidth',1.5); 
 grid on; hold on; 
@@ -96,7 +97,11 @@ end
 
 %% filter 
 myFilt = buildFIRBPF(SamplingFreq,13,30, 8);
-dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
+%dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
+dataOneChannel = filter(myFilt,1,dataOneChannel);
+myFiltShift = ceil(length(myFilt)/2);
+dataOneChannel = [dataOneChannel(myFiltShift:end), zeros(1,myFiltShift-1)];
+plot(ax(1), t, dataOneChannel, 'r');
 
 % detect power threshold 
 pwrthresh = sqrt(bandpower(dataBaseline,SamplingFreq,[13,30]));
@@ -336,44 +341,34 @@ grid on;
 %% polar hist blocks of time 
 % to do: this should pull in data from notes.txt
 %%{
-
-%{
-% PD26N002: 
-winTimes = datetime(2026,2,26,18,0,0) + [...
-    minutes(17), minutes(20); ...
-    minutes(20), minutes(22.25); ...
-    minutes(22.25), minutes(22.75); ...
-    minutes(22.75), minutes(24)];
-winNames = {'trough motor', 'peak motor', 'peak rest', 'trough rest'};
-winTgt = [pi, 0, 0, pi];
-%}
-% PD26N003: 
-winTimes = datetime(2026,4,16,15,0,0) + [...
-    minutes(47), minutes(49); ...
+winTimes = datetime(2026,7,16,15,0,0) + [...
+    minutes(47.7), minutes(49); ...
     minutes(49), minutes(51)];
-winNames = {'trough motor', 'peak motor'};
-winTgt = [pi, 0];
-
 winTimes.TimeZone = t0.TimeZone;
+winNames = {'peak rest', 'trough rest'};
+winTgt = [0, pi];
 
-figure; 
+figure('Position',[470 47 770 948]); 
 for w = 1:height(winTimes)
 
+    %{
     % stim sent polar histo
     subplot(4, height(winTimes), w); 
     winInd = (t0+seconds(StimTime) >= winTimes(w,1)) & (t0+seconds(StimTime) < winTimes(w,2));
     errHistoPolar(dataPhase(StimInd(winInd)), winTgt(w), 18);
     title(['Stim Sent - ',winNames{w}]);
+    %}
 
     % stim recd polar histo 
-    subplot(4, height(winTimes), w+height(winTimes));
+    subplot(3, height(winTimes), w); %w+height(winTimes));
     StimIndRec = find(StimTrainRec); StimTimeRec = StimIndRec / SamplingFreq;
     winInd = (t0+seconds(StimTimeRec) >= winTimes(w,1)) & (t0+seconds(StimTimeRec) < winTimes(w,2));
+    %winInd = find(winInd)-2;
     errHistoPolar(dataPhase(StimIndRec(winInd)), winTgt(w), 18);
     title(['Stim Recd - ',winNames{w}]);
 
     % missing/extra 
-    subplot(4, height(winTimes), w+2*height(winTimes));
+    subplot(3, height(winTimes), w+height(winTimes)); %w+2*height(winTimes));
     win = (t >= winTimes(w,1)) & (t < winTimes(w,2));
     dc = analyzeByCycle(StimTrainRec&win, tgtInd&win, dataPhase, winTgt(w));
     numMissing = sum(dc(4,:) < dc(3,:));
@@ -382,14 +377,14 @@ for w = 1:height(winTimes)
         {['Missing: ',num2str(100*numMissing/numCycle,2),'%'], ...
          ['Extra: ',num2str(100*numExtra/numCycle,2),'%'], ...
          ['Correct: ',num2str(100*(1-(numMissing+numExtra)/numCycle),2),'%']});
-    title(['Num. Stimulations - ',winNames{1}]);
+    title(['Num. Stimulations - ',winNames{w}]);
 
     % timing histo 
-    subplot(4, height(winTimes), w+3*height(winTimes));
+    subplot(3, height(winTimes), w+2*height(winTimes)); %w+3*height(winTimes));
     inan = isnan(dc(1,:)) | isnan(dc(2,:));
     terr = tRel(dc(2,~inan))-tRel(dc(1,~inan));
     errHisto(terr);
-    title(['Stim time error - ',winNames{1}]);
+    title(['Stim time error - ',winNames{w}]);
     xlabel('dur (s)'); ylabel('count'); 
     grid on;
 

@@ -5,7 +5,8 @@ if nargin < 1
 end
 
 if strcmp(device, 'aRS')
-    MAC_addr = 'C8:DF:84:F8:9F:E2'; % MAC address of Functional Neuro Lab's AlphaRS 
+    %MAC_addr = 'C8:DF:84:F8:9F:E2'; % MAC address of Functional Neuro Lab's AlphaRS 
+    MAC_addr = '10:FF:E0:66:E5:FB'; % MAC address of aRS pro demo 
 elseif strcmp(device, 'NO')
     MAC_addr = 'bc:6a:29:d3:4a:63'; % MAC address of Zayed 3 Neuro Omega 
 else
@@ -22,8 +23,13 @@ elseif Result
     error(['Connection to AO failed with code ',num2str(Result)])
 end
 
-if ~AO_IsConnected()
+Result = AO_IsConnected();
+
+if ~Result
     error('Did not connect.')
+elseif Result == 2
+    % what does this mean??
+    warning('AO_IsConnected Result = 2 instead of 1')
 end
 
 end

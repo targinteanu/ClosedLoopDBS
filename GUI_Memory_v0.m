@@ -1045,6 +1045,7 @@ if get(hObject, 'Value') == 1
     try
 
     handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
+    % TO DO: MAKE SURE stimMaxFreq WORKS!!!
 
     amp1 = eval(handles.txt_amp1.String); 
     amp2 = eval(handles.txt_amp2.String); 

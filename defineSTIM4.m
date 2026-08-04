@@ -32,7 +32,15 @@ end
 %Select a stimulator
 stimulator.selectDevice(DeviceList(1));
 %Connect to the stimulator
-stimulator.connect;
+try
+    stimulator.connect;
+catch ME
+    if strcmp(ME.message, 'Software Error: Timeout in creating the interface')
+        error('CereStim software timeout error. Try restarting the device.');
+    else
+        rethrow(ME);
+    end
+end
 
 %% check 
 
