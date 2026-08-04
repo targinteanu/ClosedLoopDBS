@@ -27,8 +27,8 @@ end
             '10 data samples.'])
     end
     y = y((end-L):end);
-    y = iddata(y,[],1/handles.fSample);
-    ARmdl = ar(y,n,'yw');
+    Y = iddata(y,[],1/handles.fSample);
+    ARmdl = ar(Y,n,'yw');
 
     ypred = myFastForecastAR(ARmdl, y(1:n), L+1-n);
     y = y((n+1):end);

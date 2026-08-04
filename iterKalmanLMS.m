@@ -57,7 +57,7 @@ for t = (max(N,M)+1):L
     R = diag(noiseLMS.^2); % Kalman observer noise
 
     % Kalman predict 
-    Ppri = [[P(2:end,2:end), P(2:end,:)*a']; [a*P(:,2:end), a*P*a' +q]];
+    Ppri = [[P(2:end,2:end), P(2:end,:)*a']; [a*P(:,2:end), a*P*a'+q]];
     xpri = [xest(2:end,:); a*xest];
 
     % Kalman update 
