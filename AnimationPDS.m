@@ -20,7 +20,7 @@
     packetsize = 1; % sample 
     maxFR = 60; % maximum # frames per second
     nbins = 32; % polar histogram (rose) bins
-    colorSig = 'k';              % black
+    colorSig = 'w';              % black
     colorPDS = [.133,.545,.133]; % green
     colorDBS = [.635,.078,.184]; % red
 
@@ -257,7 +257,8 @@ Vfn = inputdlg('Save Video As: ', 'Save Video', [1,100], ...
 Vsave = ~isempty(Vfn);
 if Vsave
     Vfn = Vfn{1};
-    VW = VideoWriter(Vfn);
+    VW = VideoWriter(Vfn, 'MPEG-4');
+    VW.Quality = 95;
     FR = playbackspeed * Fs / packetsize;
     if FR > maxFR
         FR = maxFR; 
@@ -312,7 +313,7 @@ nPDS = sum(iPDS(1:curwin(2)));
 nDBS = sum(iDBS(1:curwin(2)));
 
 myfig = figure('Units','normalized', 'Position',[.05,.05,.9,.9], ...
-    'Color',[1,1,1]);
+    'Color',[0,0,0], 'Resize','off');
 tiledlayout(2,3);
 
 % PDS time plot 
@@ -349,6 +350,7 @@ ax(1,1).XAxis.TickDirection = 'both';
 ax(1,1).YLim = [-fltmax fltmax]; 
 ax(1,1).YTick = [-fltmax fltmax];
 ax(1,1).YAxis.TickDirection = 'both';
+ax(1,1).Color = [0,0,0];
 
 % both rose plots 
 bedge = linspace(-pi, pi, nbins);
@@ -366,6 +368,7 @@ ax(1,2).RLim = [0 polmax];
 ax(1,2).RTick = [polmin polmax];
 ax(1,2).ThetaGrid = false;
 ax(1,2).GridAlpha = .25;
+ax(1,2).Color = [0,0,0];
 
 %{
 % PDS rose plot
@@ -407,6 +410,7 @@ ax(2,1).XAxis.TickDirection = 'both';
 ax(2,1).YLim = [-rawmax rawmax]; 
 ax(2,1).YTick = [-rawmax rawmax];
 ax(2,1).YAxis.TickDirection = 'both';
+ax(2,1).Color = [0,0,0];
 
 %{
 % PDS rose plot
