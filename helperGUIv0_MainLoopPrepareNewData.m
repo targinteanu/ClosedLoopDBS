@@ -2,6 +2,7 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
 
     N = length(newContinuousData);
 
+    %{
     % artifact removal (1)
     if handles.FilterSetUp
     if handles.MdlSetUp
@@ -24,8 +25,10 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
     end
     end
     end
+    %}
 
-    handles.rawDataBuffer = bufferData(handles.rawDataBuffer, newContinuousData);
+    rawDataBuffer = bufferData(handles.rawDataBuffer, newContinuousData);
+    % new data starts at rawDataBuffer(end-N+1)
     t0 = handles.lastSampleProcTime; 
     handles.lastSampleProcTime = ...
         time + (N-1)/handles.fSample;
@@ -41,11 +44,35 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
     if handles.MdlSetUp
     if handles.check_artifact.Value
         stimind = handles.stimind - N; % N samples have passed
-        if stimind > 0
+        if stimind > 0 % rel to start of buffer
             try
-            artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
-            artStart = artStart + stimind + round(handles.StimulatorLagTime*handles.fSample);
+            rawOffset = mean(rawDataBuffer);
+            rawDataBuffer = rawDataBuffer - rawOffset;
+            artStart = -ceil(handles.ArtifactStartBefore*handles.fSample) ...
+                + stimind + round(handles.StimulatorLagTime*handles.fSample);
+                % rel to start of buffer
             artDur = ceil(handles.fSample*handles.ArtifactDuration);
+            Mdl = handles.Mdl; 
+            wAR = -Mdl(2:end)/Mdl(1); wAR = fliplr(wAR); 
+            preL = max(artDur, length(wAR)); % extra length needed for art rem
+            dataStartIdx = handles.bufferSize-N+1 -preL;
+            dataPadded = dataStartIdx < 1;
+            if dataPadded
+                padL = 1-dataStartIdx;
+                rawDataBuffer = [rawDataBuffer(1,:)*ones(padL,1); rawDataBuffer];
+                dataStartIdx = 1; artStart = artStart+padL;
+            end
+            artIdx = dataStartIdx:(artStart+artDur); % to replace
+                % change endpoint to buffer end to make smoother?
+            artStart = artStart - dataStartIdx +1; % rel to replace start
+            stepsize = 0.5; % make user set instead? 
+            [rawDataBuffer(artIdx),kalP,wLMS] = iterKalmanLMS(...
+                rawDataBuffer(artIdx), artStart, wAR, ...
+                kalP, handles.MdlErrVar, wLMS, stepsize, true);
+            if dataPadded
+                rawDataBuffer = rawDataBuffer((padL+1):end,:);
+            end
+            rawDataBuffer = rawDataBuffer + rawOffset;
             %{
             artInd = stimind;
             artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
@@ -83,4 +110,5 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
     end
     end
 
+    handles.rawDataBuffer = rawDataBuffer;
 end

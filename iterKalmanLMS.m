@@ -1,4 +1,4 @@
-function [Y,P,w] = iterKalmanLMS(Y,artInd,a,P,Q,w,stepsize,nLMS)
+function [Y,P,w] = iterKalmanLMS(Y,artInd,a,P,q,w,stepsize,nLMS)
 % 
 % Use a combination Least Mean Squares (LMS) adaptive filter + Kalman
 % filter technique to remove artifact from a signal. The LMS removes runs
@@ -10,9 +10,9 @@ function [Y,P,w] = iterKalmanLMS(Y,artInd,a,P,Q,w,stepsize,nLMS)
 %   Y: data with time-samples as columns; 
 %      the first <max(N,M)> samples are assumed to already be artifact free
 %   artInd: index of Y where artifact starts 
-%   a: AR model coefficients, order M, ROW vector 
+%   a: AR model coefficients, order M, ROW vector, s.t. a*Y ~ Ynext
 %   P: latest estimate of process (state) covariance 
-%   Q: process noise covariance 
+%   q: process noise variance (scalar)
 %   w: latest weights of LMS filter, order N, COLUMN vector
 %   stepsize: LMS filter learning rate 
 %   nLMS: flag to normalize LMS filter weight update 
@@ -57,7 +57,7 @@ for t = (max(N,M)+1):L
     R = diag(noiseLMS.^2); % Kalman observer noise
 
     % Kalman predict 
-    Ppri = [[P(2:end,2:end), P(2:end,:)*a']; [a*P(:,2:end), a*P*a']] + Q;
+    Ppri = [[P(2:end,2:end), P(2:end,:)*a']; [a*P(:,2:end), a*P*a' +q]];
     xpri = [xest(2:end,:); a*xest];
 
     % Kalman update 
