@@ -54,20 +54,22 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
             Mdl = handles.Mdl; 
             wAR = -Mdl(2:end)/Mdl(1); wAR = fliplr(wAR); 
             preL = max(artDur, length(wAR)); % extra length needed for art rem
-            dataStartIdx = handles.bufferSize-N+1 -preL;
+            dataStartIdx = min(handles.bufferSize-N+1, artStart) -preL;
             dataPadded = dataStartIdx < 1;
             if dataPadded
                 padL = 1-dataStartIdx;
                 rawDataBuffer = [rawDataBuffer(1,:)*ones(padL,1); rawDataBuffer];
                 dataStartIdx = 1; artStart = artStart+padL;
             end
-            artIdx = dataStartIdx:(artStart+artDur); % to replace
+            artIdx = dataStartIdx:min((artStart+artDur), handles.bufferSize); % to replace
                 % change endpoint to buffer end to make smoother?
             artStart = artStart - dataStartIdx +1; % rel to replace start
             stepsize = 0.5; % make user set instead? 
+            if numel(artIdx)
             [rawDataBuffer(artIdx), handles.kalP, handles.wLMS] = iterKalmanLMS(...
                 rawDataBuffer(artIdx), artStart, wAR, ...
                 handles.kalP, handles.MdlErrVar, handles.wLMS, stepsize, true);
+            end
             if dataPadded
                 rawDataBuffer = rawDataBuffer((padL+1):end,:);
             end
