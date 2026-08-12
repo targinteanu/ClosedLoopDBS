@@ -702,14 +702,16 @@ try
             handles.foreArgs.FreqRange = [handles.locutoff, handles.hicutoff];
             handles.foreArgs.PhaseOfInterest = handles.PhaseOfInterest;
             handles.foreArgs.Amp = 0;
-            handles.artRemArgs.SampleRates = Fs(selRaw2Art);
-            handles.artRemArgs.StimTimes = cell(size(handles.artRemArgs.SampleRates));
-            handles.artRemArgs.nOverlap = zeros(size(handles.artRemArgs.SampleRates));
-            handles.artRemArgs.stepsize = 0.1; % make user set instead?
-            handles.artRemArgs.ARmdls = handles.foreArgs.ARmdls;
-            handles.artRemArgs.MdlErrVar = {handles.MdlErrVar};
-            handles.artRemArgs.wLMS = {handles.wLMS};
-            handles.artRemArgs.kalP = {handles.kalP};
+            if handles.check_artifact.Value
+                handles.artRemArgs.SampleRates = Fs(selRaw2Art);
+                handles.artRemArgs.StimTimes = cell(size(handles.artRemArgs.SampleRates));
+                handles.artRemArgs.nOverlap = zeros(size(handles.artRemArgs.SampleRates));
+                handles.artRemArgs.stepsize = 0.1; % make user set instead?
+                handles.artRemArgs.ARmdls = handles.foreArgs.ARmdls;
+                handles.artRemArgs.MdlErrVar = {handles.MdlErrVar};
+                handles.artRemArgs.wLMS = {handles.wLMS};
+                handles.artRemArgs.kalP = {handles.kalP};
+            end
         else
             %handles.foreArgs = [];
             %handles.artRemArgs = [];

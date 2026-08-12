@@ -1,5 +1,12 @@
 function handles = helperGUIv0_setupArtRemove(handles)
 
+% bandaid to make compatible with v1 and v2
+if isfield(handles, 'foreArgs')
+    StimLagTime = handles.foreArgs.StimulatorLagTime;
+else
+    StimLagTime = handles.StimulatorLagTime;
+end
+
 if ~handles.MdlSetUp
     error('Model is needed for artifact removal.')
 end
@@ -10,7 +17,7 @@ handles.ArtifactDurationSamples = ...
 
 handles.ArtifactStartOffsetSamples = ...
     ceil(handles.fSample*(...
-        handles.ArtifactStartBefore - handles.StimulatorLagTime));
+        handles.ArtifactStartBefore - StimLagTime));
 
 % init LMS wts to 0
 handles.wLMS = zeros(handles.ArtifactDurationSamples, 1); 
