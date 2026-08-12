@@ -1031,6 +1031,7 @@ if handles.StimActive
     try
         handles.stimulator.stop();
         handles.stimulator.disconnect;
+        delete(handles.stimulator);
         pause(.1)
     catch ME0
         getReport(ME0)
