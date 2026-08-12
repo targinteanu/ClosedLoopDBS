@@ -63,7 +63,58 @@ handles.recDataStructs.forBuffs = forBuffs;
 % --- PhaseDetect helpers ---
 
 function [artRemTails, artRemArgs] = ...
-        artRemFun(artRemArgs, rawTails, forTails)
+        artRemKalman(artRemArgs, rawTails, forTails, rawHeads)
+artRemTails = cell(size(rawTails));
+FsArt = artRemArgs.SampleRates;
+StimDur = artRemArgs.StimDur; % seconds to remove
+StimLen = ceil(StimDur.*FsArt); % #samples to remove 
+StimTimesTail = artRemArgs.StimTimes; 
+for ch_art = 1:size(rawTails,2)
+    if (~isempty(rawTails{ch_art})) % FIX THIS!
+    Mdl = artRemArgs.ARmdls{ch_art};
+    wAR = -Mdl(2:end)/Mdl(1); wAR = fliplr(wAR); 
+    MdlErrVar = artRemArgs.MdlErrVar{ch_art};
+    wLMS = artRemArgs.wLMS{ch_art}; kalP = artRemArgs.kalP{ch_art}; 
+    tX = rawTails{ch_art}; % [time, data]
+    tXpre = rawHeads{ch_art};
+    [tN, tProc] = get_tProc(tX);
+    N = height(tX); M = height(tXpre);
+    preL = max(StimLen, length(wAR)); % extra length needed for art rem
+    dataStartIdx = M-preL; 
+    dataPadded = dataStartIdx < 1;
+    if dataPadded
+        padL = preL-M;
+        xpad = tXpre(1,2:end).*ones(padL,1);
+        tXpre = [[nan(size(xpad)), xpad]; tXpre]; % pad 
+        dataStartIdx = 1;
+    end
+    tXart = [tXpre(dataStartIdx:end,:); tX]; Xart = tXart(:,2:end);
+    stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
+    stimtimes = stimtimes - tProc; % from last proc
+    stimtimes = stimtimes - artRemArgs.ArtifactStartBefore;
+    stiminds = floor(stimtimes * FsArt(ch_art));
+    stiminds = stiminds + tN; % from tail start
+    stiminds = stiminds + dataStartIdx - height(tXpre) - 1; % from tXart start
+    stiminds = stiminds(stiminds > 0); stiminds = stiminds(stiminds <= height(tXart));
+    [XartRem, kalP, wLMS] = iterKalmanLMS(...
+        Xart, stiminds, wAR, kalP, MdlErrVar, wLMS, ...
+        artRemArgs.stepsize, true);
+    if max(abs(XartRem(:))) < max(abs(Xart(:)))
+        % it is not blowing up, so apply changes
+        tXart(:,2) = XartRem;
+    elseif max(abs(XartRem(:))) > 10*max(abs(Xart(:)))
+        % it has already blown up badly, so reset LMS wts
+        wLMS = zeros(size(wLMS));
+        % consider reverting to original artifact removal in this case
+    end
+    tX = tXart((end-N+1):end,:); artRemTails{ch_art} = tX;
+    artRemArgs.wLMS{ch_art} = wLMS; artRemArgs.kalP{ch_art} = kalP;
+    end
+end
+end
+
+function [artRemTails, artRemArgs] = ...
+        artRemFun(artRemArgs, rawTails, forTails, ~)
 % forTails must be the forecast data starting at the same time as rawTails
 artRemTails = cell(size(rawTails));
 FsArt = artRemArgs.SampleRates;

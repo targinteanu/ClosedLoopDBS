@@ -99,7 +99,7 @@ end
 end
 
 % selection, etc
-rawTails = rawData(3,:); rawAllData = rawData(4,:);
+rawTails = rawData(3,:); rawHeads = rawData(2,:); rawAllData = rawData(4,:);
 try
     rawTails = rawTails([selRaw2Art, selRaw2Flt, selRaw2For]); 
     rawAllData = rawAllData([selRaw2Art, selRaw2Flt, selRaw2For]);
@@ -124,7 +124,7 @@ if doArt
 
 nOverlapOld = artRemArgs.nOverlap;
 [artRemTails, artRemArgs] = artRemFun(artRemArgs, ...
-    rawTails(selRaw2Art), forData(3,selFor2Art));
+    rawTails(selRaw2Art), forData(3,selFor2Art), rawHeads(selRaw2Art));
 nOverlapNew = artRemArgs.nOverlap;
 if ~(size(artRemTails,2) == size(artRemData,2))
     error('Artifact removal channels are inconsistent.');

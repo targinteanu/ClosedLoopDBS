@@ -9,7 +9,7 @@ function [Y,P,w] = iterKalmanLMS(Y,artInd,a,P,q,w,stepsize,nLMS)
 % Inputs: 
 %   Y: data with time-samples as columns; 
 %      the first <max(N,M)> samples are assumed to already be artifact free
-%   artInd: index of Y where artifact starts 
+%   artInd: index(es) of Y where artifact starts 
 %   a: AR model coefficients, order M, ROW vector, s.t. a*Y ~ Ynext
 %   P: latest estimate of process (state) covariance 
 %   q: process noise variance (scalar)
@@ -29,7 +29,7 @@ N = length(w); % LMS filter length (# taps)
 
 % LMS setup 
 noiseRef = zeros(1,L); % noise ref signal = timing of stim
-noiseRef(artInd(1)) = 1;
+noiseRef(artInd) = 1;
 
 for t = (max(N,M)+1):L
 
@@ -52,7 +52,7 @@ for t = (max(N,M)+1):L
         dw = dw./(g*g' + eps);
     end
     w = w + stepsize*dw;
-    gprev = g; eprev = e;
+    %gprev = g; eprev = e;
     y = e'; % subtract LMS estimate of noise -- consider removing 
     R = diag(noiseLMS.^2); % Kalman observer noise
 

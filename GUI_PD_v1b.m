@@ -705,6 +705,11 @@ try
             handles.artRemArgs.SampleRates = Fs(selRaw2Art);
             handles.artRemArgs.StimTimes = cell(size(handles.artRemArgs.SampleRates));
             handles.artRemArgs.nOverlap = zeros(size(handles.artRemArgs.SampleRates));
+            handles.artRemArgs.stepsize = 0.1; % make user set instead?
+            handles.artRemArgs.ARmdls = handles.foreArgs.ARmdls;
+            handles.artRemArgs.MdlErrVar = {handles.MdlErrVar};
+            handles.artRemArgs.wLMS = {handles.wLMS};
+            handles.artRemArgs.kalP = {handles.kalP};
         else
             %handles.foreArgs = [];
             %handles.artRemArgs = [];
@@ -1345,6 +1350,9 @@ function check_artifact_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of check_artifact
 %handles.check_artifact_Value = get(hObject, 'Value'); 
+if get(hObject,'Value')
+    handles = helperGUIv0_setupArtRemove(handles);
+end
 guidata(hObject, handles);
 settingChange(hObject)
 
