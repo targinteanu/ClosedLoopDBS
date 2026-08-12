@@ -64,11 +64,18 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
             artIdx = dataStartIdx:min((artStart+artDur), handles.bufferSize); % to replace
                 % change endpoint to buffer end to make smoother?
             artStart = artStart - dataStartIdx +1; % rel to replace start
-            stepsize = 0.5; % make user set instead? 
+            stepsize = 0.1; % make user set instead? 
             if numel(artIdx)
-            [rawDataBuffer(artIdx), handles.kalP, handles.wLMS] = iterKalmanLMS(...
+            [artRemData, handles.kalP, handles.wLMS] = iterKalmanLMS(...
                 rawDataBuffer(artIdx), artStart, wAR, ...
                 handles.kalP, handles.MdlErrVar, handles.wLMS, stepsize, true);
+            end
+            if max(abs(artRemData)) < max(abs(rawDataBuffer(artIdx)))
+                % it is not blowing up, so apply changes
+                rawDataBuffer(artIdx) = artRemData;
+            elseif max(abs(artRemData)) > 10*max(abs(rawDataBuffer(artIdx)))
+                % it has already blown up badly, so reset LMS wts 
+                handles.wLMS = zeros(size(handles.wLMS));
             end
             if dataPadded
                 rawDataBuffer = rawDataBuffer((padL+1):end,:);

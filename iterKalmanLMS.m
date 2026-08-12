@@ -53,7 +53,7 @@ for t = (max(N,M)+1):L
     end
     w = w + stepsize*dw;
     gprev = g; eprev = e;
-    y = e'; % subtract LMS estimate of noise
+    y = e'; % subtract LMS estimate of noise -- consider removing 
     R = diag(noiseLMS.^2); % Kalman observer noise
 
     % Kalman predict 
