@@ -102,7 +102,7 @@ for ch_art = 1:size(rawTails,2)
         Xart-DCOS, stiminds, wAR, kalP, MdlErrVar, wLMS, ...
         artRemArgs.stepsize, true);
     XartRem = XartRem + DCOS;
-    if max(abs(XartRem(:))) < max(abs(Xart(:)))
+    if max(abs(XartRem(:))) < 2*max(abs(Xart(:)))
         % it is not blowing up, so apply changes
         tXart(:,2) = XartRem;
     elseif max(abs(XartRem(:))) > 10*max(abs(Xart(:)))

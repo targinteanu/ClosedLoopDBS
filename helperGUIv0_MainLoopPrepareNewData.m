@@ -70,7 +70,7 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
                 rawDataBuffer(artIdx), artStart, wAR, ...
                 handles.kalP, handles.MdlErrVar, handles.wLMS, stepsize, true);
             end
-            if max(abs(artRemData)) < max(abs(rawDataBuffer(artIdx)))
+            if max(abs(artRemData)) < 2*max(abs(rawDataBuffer(artIdx)))
                 % it is not blowing up, so apply changes
                 rawDataBuffer(artIdx) = artRemData;
             elseif max(abs(artRemData)) > 10*max(abs(rawDataBuffer(artIdx)))
