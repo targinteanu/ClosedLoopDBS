@@ -91,9 +91,9 @@ handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % initiate other vars ...
 handles.DAQstatus = handles.cbmexStatus; handles = rmfield(handles, 'cbmexStatus');
-handles.artRemArgs.StimDur = .01; 
-handles.artRemArgs.ArtifactStartBefore = .005;
-handles.foreArgs.ARlearnrate = .1;
+handles.artRemArgs.StimDur = .01; handles = rmfield(handles, 'ArtifactDuration');
+handles.artRemArgs.ArtifactStartBefore = .005; handles = rmfield(handles, 'ArtifactStartBefore');
+handles.foreArgs.ARlearnrate = .1; handles = rmfield(handles, 'ARlearnrate');
 handles.foreArgs.Amp = 0;
 handles.foreArgs.StimulatorLagTime = handles.StimulatorLagTime; handles = rmfield(handles, 'StimulatorLagTime');
 handles.bufferSize     = 10; 
@@ -706,11 +706,7 @@ try
                 handles.artRemArgs.SampleRates = Fs(selRaw2Art);
                 handles.artRemArgs.StimTimes = cell(size(handles.artRemArgs.SampleRates));
                 handles.artRemArgs.nOverlap = zeros(size(handles.artRemArgs.SampleRates));
-                handles.artRemArgs.stepsize = 0.1; % make user set instead?
-                handles.artRemArgs.ARmdls = handles.foreArgs.ARmdls;
-                handles.artRemArgs.MdlErrVar = {handles.MdlErrVar};
-                handles.artRemArgs.wLMS = {handles.wLMS};
-                handles.artRemArgs.kalP = {handles.kalP};
+                % the rest are set inside setupArtRemove
             end
         else
             %handles.foreArgs = [];
@@ -1015,6 +1011,7 @@ try
         y = y(:,2);
     end
     handles = helperGUIv0_pushAR(handles, PDSwin, n, y);
+    handles.artRemArgs.MdlErrVar = {handles.MdlErrVar};
     
 % restart timer and plots
 pause(.01);
@@ -1353,7 +1350,7 @@ function check_artifact_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of check_artifact
 %handles.check_artifact_Value = get(hObject, 'Value'); 
 if get(hObject,'Value')
-    handles = helperGUIv0_setupArtRemove(handles);
+    handles = helperGUIv1_setupArtRemove(handles);
 end
 guidata(hObject, handles);
 settingChange(hObject)
