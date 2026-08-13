@@ -27,7 +27,7 @@ else
     forefun = [];
 end
 if handles.check_artifact.Value && handles.MdlSetUp
-    artremfun = @artRemFun;
+    artremfun = @artRemKalman;
 else
     artremfun = [];
 end
@@ -80,7 +80,7 @@ for ch_art = 1:size(rawTails,2)
     [tN, tProc] = get_tProc(tX);
     N = height(tX); M = height(tXpre);
     preL = max(StimLen, length(wAR)); % extra length needed for art rem
-    dataStartIdx = M-preL; 
+    dataStartIdx = M-preL+1; 
     dataPadded = dataStartIdx < 1;
     if dataPadded
         padL = preL-M;
@@ -94,8 +94,9 @@ for ch_art = 1:size(rawTails,2)
     stimtimes = stimtimes - artRemArgs.ArtifactStartBefore;
     stiminds = floor(stimtimes * FsArt(ch_art));
     stiminds = stiminds + tN; % from tail start
-    stiminds = stiminds + dataStartIdx - height(tXpre) - 1; % from tXart start
+    stiminds = stiminds - dataStartIdx + height(tXpre) + 1; % from tXart start; should this be stiminds + preL?
     stiminds = stiminds(stiminds > 0); stiminds = stiminds(stiminds <= height(tXart));
+    if numel(stiminds)
     [XartRem, kalP, wLMS] = iterKalmanLMS(...
         Xart, stiminds, wAR, kalP, MdlErrVar, wLMS, ...
         artRemArgs.stepsize, true);
@@ -107,8 +108,10 @@ for ch_art = 1:size(rawTails,2)
         wLMS = zeros(size(wLMS));
         % consider reverting to original artifact removal in this case
     end
-    tX = tXart((end-N+1):end,:); artRemTails{ch_art} = tX;
+    tX = tXart((end-N+1):end,:); 
     artRemArgs.wLMS{ch_art} = wLMS; artRemArgs.kalP{ch_art} = kalP;
+    end
+    artRemTails{ch_art} = tX;
     end
 end
 end

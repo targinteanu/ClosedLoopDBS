@@ -102,6 +102,7 @@ end
 rawTails = rawData(3,:); rawHeads = rawData(2,:); rawAllData = rawData(4,:);
 try
     rawTails = rawTails([selRaw2Art, selRaw2Flt, selRaw2For]); 
+    rawHeads = rawHeads([selRaw2Art, selRaw2Flt, selRaw2For]); 
     rawAllData = rawAllData([selRaw2Art, selRaw2Flt, selRaw2For]);
 catch ME
     if strcmp(ME.identifier, 'MATLAB:badsubscript')
