@@ -79,6 +79,7 @@ for ch_art = 1:size(rawTails,2)
     tXpre = rawHeads{ch_art};
     [tN, tProc] = get_tProc(tX);
     N = height(tX); M = height(tXpre);
+    DCOS = mean(tXpre); DCOS = DCOS(2:end); % offset correction to mean
     preL = max(StimLen, length(wAR)); % extra length needed for art rem
     dataStartIdx = M-preL+1; 
     dataPadded = dataStartIdx < 1;
@@ -98,8 +99,9 @@ for ch_art = 1:size(rawTails,2)
     stiminds = stiminds(stiminds > 0); stiminds = stiminds(stiminds <= height(tXart));
     if numel(stiminds)
     [XartRem, kalP, wLMS] = iterKalmanLMS(...
-        Xart, stiminds, wAR, kalP, MdlErrVar, wLMS, ...
+        Xart-DCOS, stiminds, wAR, kalP, MdlErrVar, wLMS, ...
         artRemArgs.stepsize, true);
+    XartRem = XartRem + DCOS;
     if max(abs(XartRem(:))) < max(abs(Xart(:)))
         % it is not blowing up, so apply changes
         tXart(:,2) = XartRem;
