@@ -100,7 +100,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
                 error('Artifact removal was not actually set up. Something is wrong in the code.')
             end
             hold on;
-            handles.h_artDataTrace = plot(artPlt.Time - tNow, artPlt.Variables, ':');
+            handles.h_artDataTrace = plot(artPlt.Time - tNow, artPlt.Variables, '--');
         end
     end
 

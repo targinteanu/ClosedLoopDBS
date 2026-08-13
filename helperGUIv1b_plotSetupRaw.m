@@ -107,7 +107,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
                 tArt = tRaw;
             end
             hold on;
-            handles.h_artDataTrace = plot(tArt, artPlt.Variables, ':');
+            handles.h_artDataTrace = plot(tArt, artPlt.Variables, '--');
         end
     end
 
