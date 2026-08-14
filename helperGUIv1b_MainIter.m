@@ -70,13 +70,13 @@ StimDur = artRemArgs.StimDur; % seconds to remove
 StimLen = ceil(StimDur.*FsArt); % #samples to remove 
 StimTimesTail = artRemArgs.StimTimes; 
 for ch_art = 1:size(rawTails,2)
-    if (~isempty(rawTails{ch_art})) % FIX THIS!
     Mdl = artRemArgs.ARmdls{ch_art};
     wAR = -Mdl(2:end)/Mdl(1); wAR = fliplr(wAR); 
     MdlErrVar = artRemArgs.MdlErrVar{ch_art};
     wLMS = artRemArgs.wLMS{ch_art}; kalP = artRemArgs.kalP{ch_art}; 
     tX = rawTails{ch_art}; % [time, data]
     tXpre = rawHeads{ch_art};
+    if (~isempty(tX)) & (~isempty(tXpre)) % FIX THIS!
     [tN, tProc] = get_tProc(tX);
     stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
     stimtimes = stimtimes - tProc; % from last proc
@@ -86,6 +86,7 @@ for ch_art = 1:size(rawTails,2)
     if numel(stiminds)
         stimind = stiminds(1); 
         swapL = 1-stimind;
+        swapL = min(swapL, height(tXpre)-1);
         if swapL > 0
             % ensure past stim has been removed by swapping data to the tail
             tX = [tXpre((end-swapL+1):end,:); tX];
@@ -100,7 +101,12 @@ for ch_art = 1:size(rawTails,2)
     dataPadded = dataStartIdx < 1;
     if dataPadded
         padL = preL-M;
+        padL = min(padL, M);
+        try
         xpad = tXpre(1,2:end).*ones(padL,1);
+        catch ME
+            keyboard
+        end
         tXpre = [[nan(size(xpad)), xpad]; tXpre]; % pad 
         dataStartIdx = 1;
     end
