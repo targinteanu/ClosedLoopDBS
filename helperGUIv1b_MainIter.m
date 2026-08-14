@@ -78,6 +78,21 @@ for ch_art = 1:size(rawTails,2)
     tX = rawTails{ch_art}; % [time, data]
     tXpre = rawHeads{ch_art};
     [tN, tProc] = get_tProc(tX);
+    stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
+    stimtimes = stimtimes - tProc; % from last proc
+    stimtimes = stimtimes - artRemArgs.ArtifactStartBefore;
+    stiminds = floor(stimtimes * FsArt(ch_art));
+    stiminds = stiminds + tN; % from tail start
+    if numel(stiminds)
+        stimind = stiminds(1); 
+        swapL = 1-stimind;
+        if swapL > 0
+            % ensure past stim has been removed by swapping data to the tail
+            tX = [tXpre((end-swapL+1):end,:); tX];
+            tXpre = tXpre(1:(end-swapL), :);
+            stiminds = stiminds + swapL; % from modified tail start
+        end
+    end
     N = height(tX); M = height(tXpre);
     DCOS = mean(tXpre); DCOS = DCOS(2:end); % offset correction to mean
     preL = max(StimLen, length(wAR)); % extra length needed for art rem
@@ -90,11 +105,6 @@ for ch_art = 1:size(rawTails,2)
         dataStartIdx = 1;
     end
     tXart = [tXpre(dataStartIdx:end,:); tX]; Xart = tXart(:,2:end);
-    stimtimes = StimTimesTail{ch_art}; % time to stim FROM STARTUP (sec)
-    stimtimes = stimtimes - tProc; % from last proc
-    stimtimes = stimtimes - artRemArgs.ArtifactStartBefore;
-    stiminds = floor(stimtimes * FsArt(ch_art));
-    stiminds = stiminds + tN; % from tail start
     stiminds = stiminds - dataStartIdx + height(tXpre) + 1; % from tXart start; should this be stiminds + preL?
     stiminds = stiminds(stiminds > 0); stiminds = stiminds(stiminds <= height(tXart));
     if numel(stiminds)
@@ -112,6 +122,9 @@ for ch_art = 1:size(rawTails,2)
     end
     tX = tXart((end-N+1):end,:); 
     artRemArgs.wLMS{ch_art} = wLMS; artRemArgs.kalP{ch_art} = kalP;
+    if swapL > 0
+        tX = tX((swapL+1):end,:); % replace to original size
+    end
     end
     artRemTails{ch_art} = tX;
     end
