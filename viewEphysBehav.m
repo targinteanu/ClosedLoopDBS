@@ -78,6 +78,7 @@ subplot(1,3,3);
 imagesc(pwrDiff); colorbar; title('Power Difference');
 hold on;
 [chlblY, chlblX] = meshgrid(1:gridsize(1), 1:gridsize(2));
+chlblX = chlblX'; chlblY = chlblY';
 chlblY = chlblY(:); chlblX = chlblX(:);
 text(chlblX, chlblY, chlbls(1:prod(gridsize)), ...
     "HorizontalAlignment","center", "VerticalAlignment","middle");
