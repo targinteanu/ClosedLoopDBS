@@ -43,7 +43,8 @@ if ~isempty(NEVtbl)
     NEVlbl = (contains(NEVlbl, "SerialDigitalIO: "));
     NEVtbl = NEVtbl(NEVlbl,:); NEVlbl = NEVtbl.EventLabels;
     if ~isempty(NEVlbl)
-        useBehav = true; % TO DO: allow user to select instead
+        useBehav = questdlg('Define On/Off Using:', 'Behavior/Ephys Selection', 'behavior', 'ephys', 'behavior');
+        useBehav = strcmp(useBehav, 'behavior');
         SrlVal = arrayfun(@(str) sscanf(str, 'SerialDigitalIO: %f'), NEVlbl);
         % find times between 255 and subsequent 253
         SrlStart = SrlVal == 255; SrlEnd = SrlVal == 253;
@@ -61,7 +62,13 @@ end
 
 %%
 if ~useBehav
-    [iOn, pwrThresh] = midcross(pwr);
+    iOn = false(size(pwr)); pwrThresh = zeros(1,width(pwr));
+    for ch = 1:width(pwr)
+        [iOn_, pwrThresh(ch)] = midcross(pwr(:,ch));
+        %iOn_ = round(iOn_);
+        %iOn(iOn_,ch) = true;
+        iOn(:,ch) = pwr(:,ch) >= pwrThresh(ch);
+    end
 end
 pwrOn = maskedAvg(pwr, iOn);
 pwrOff = maskedAvg(pwr, ~iOn);
@@ -86,6 +93,6 @@ text(chlblX, chlblY, chlbls(1:prod(gridsize)), ...
 %% helper(s)
 
 function avg = maskedAvg(data, mask)
-data(mask) = nan;
+data(~mask) = nan;
 avg = median(data,1,'omitnan');
 end
