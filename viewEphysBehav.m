@@ -46,9 +46,9 @@ if ~isempty(NEVtbl)
         useBehav = true; % TO DO: allow user to select instead
         SrlVal = arrayfun(@(str) sscanf(str, 'SerialDigitalIO: %f'), NEVlbl);
         % find times between 255 and subsequent 253
-        SrlStart = SrlVal == 253; SrlEnd = SrlVal == 255;
+        SrlStart = SrlVal == 255; SrlEnd = SrlVal == 253;
         SrlStart = find(SrlStart); SrlEnd = find(SrlEnd);
-        SrlStart = SrlStart(1:2:end); % TO DO: start/end matching should be more robust
+        SrlEnd = SrlEnd(2:2:end); %SrlStart = SrlStart(1:(end-1)); % TO DO: start/end matching should be more robust
         tStart = NEVtbl.Time(SrlStart); tEnd = NEVtbl.Time(SrlEnd);
         tStartEnd = [tStart, tEnd];
         iOn = false(height(NStbl),1);
@@ -75,7 +75,7 @@ figure('Units','normalized', 'Position',[.1,.1,.8,.8]);
 subplot(1,3,1); imagesc(pwrOn); colorbar; title('ON Power');
 subplot(1,3,2); imagesc(pwrOff); colorbar; title('OFF Power');
 subplot(1,3,3);
-imagesc(pwrDiff); colorbar; title('Power Difference');
+imagesc(pwrDiff); colorbar; title('Power Difference (On - Off)');
 hold on;
 [chlblY, chlblX] = meshgrid(1:gridsize(1), 1:gridsize(2));
 chlblX = chlblX'; chlblY = chlblY';
