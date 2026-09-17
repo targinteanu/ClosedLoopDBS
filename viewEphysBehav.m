@@ -60,7 +60,7 @@ if ~isempty(NEVtbl)
     end
 end
 
-%%
+%% view grid of all chans 
 if ~useBehav
     iOn = false(size(pwr)); pwrThresh = zeros(1,width(pwr));
     for ch = 1:width(pwr)
@@ -90,9 +90,85 @@ chlblY = chlblY(:); chlblX = chlblX(:);
 text(chlblX, chlblY, chlbls(1:prod(gridsize)), ...
     "HorizontalAlignment","center", "VerticalAlignment","middle");
 
+%% view channel(s) spectrogram
+
+chsel = listdlg("PromptString","Select Channel(s) to inspect", "SelectionMode","multiple", ...
+    "ListString",chlbls);
+
+for ch = chsel
+    figure('Units','normalized', 'Position',[.1,.1,.8,.8])
+    x = X(:,ch); xf = Xf(:,ch); Th = pwrThresh(ch); 
+    xname = chlbls{ch};
+    iOn_ = iOn(:,ch);
+
+    % extract start/end indexes 
+    iStart = diff(iOn_) > 0; iEnd = diff(iOn_) < 0;
+    iStart = find(iStart); iEnd = find(iEnd);
+
+    % plot unadjusted spectrogram
+    [S,fS,tS] = spectrogram(x,1*Fs,[],[],Fs,"yaxis","power");
+    ax(1) = subplot(3,1,1); 
+    img = imagesc(tS, fS(2:end), 20*log10(abs(S)));
+    img.Parent.YDir = 'normal';
+    title([xname,' spectrogram (dB)']);
+    ylabel('Frequency (Hz)'); xlabel('time (s)');
+
+    % correct pink noise
+    [~,k1,c2] = pinkcorrect(mean(abs(S),2),fS);
+    Anoise = k1*fS.^c2; Anoise(1)=eps;
+    SS = abs(S)./Anoise;
+    
+    % saturate out outliers for better display
+    %SSall = log(SS(:)+eps);
+    SSall = SS(:);
+    [~,~,OLthresh] = isoutlier(SSall, 'median', 'ThresholdFactor',10);
+    OLthresh = max(SSall(SSall<OLthresh));
+    %OLthresh = exp(OLthresh);    
+
+    % plot adjusted spectrogram 
+    ax(2) = subplot(3,1,2);
+    img = imagesc(tS, fS(2:end), (SS(2:end,:)), [0,OLthresh]); %colorbar
+    img.Parent.YDir = 'normal';
+    title([xname,' adjusted spectrogram']);
+    ylabel('Frequency (Hz)'); xlabel('time (s)');
+
+    % plot signal 
+    ax(3) = subplot(3,1,3);
+    yyaxis("left"); plot(tReg, x); 
+    yyaxis("right"); plot(tReg, xf, 'b'); hold on;
+    plot([tReg(1), tReg(end)], Th*ones(1,2), ':k');
+    plot([tReg(1), tReg(end)], -Th*ones(1,2), ':k');
+    yl = ylim(); yl = .75*yl;
+    stem(tReg(iStart), yl(1)*ones(size(iStart)), '.g');
+    stem(tReg(iStart), yl(2)*ones(size(iStart)), '.g');
+    stem(tReg(iEnd), yl(1)*ones(size(iEnd)), '.r');
+    stem(tReg(iEnd), yl(2)*ones(size(iEnd)), '.r');
+
+    linkaxes(ax, 'x');
+
+end
+
 %% helper(s)
 
 function avg = maskedAvg(data, mask)
 data(~mask) = nan;
 avg = median(data,1,'omitnan');
+end
+
+function [A, k1, c2] = pinkcorrect(A,f)
+% correct for noise that obeys Anoise = k1*f^c2
+% i.e. ln(Anoise) = c2*ln(f) + c2*ln(k1)
+if f(1) < 2*eps
+    f0 = 0; f = f(2:end);
+    A0 = A(1,:); A = A(2:end,:);
+else
+    f0 = zeros(0,width(f)); A0 = zeros(0,width(A));
+end
+lnA = log(A); lnf = log(f); F = [ones(size(lnf)), lnf];
+c = F\lnA; 
+% c1 = c2*ln(k1), i.e. k1 = exp(c1/c2)
+c2 = c(2); k1 = exp(c(1)/c(2));
+lnAnoise = F*c;
+lnA = lnA - lnAnoise; A = exp(lnA);
+A = [A0; A];
 end
