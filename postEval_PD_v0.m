@@ -97,7 +97,7 @@ end
 
 %% filter 
 myFilt = buildFIRBPF(SamplingFreq,13,30, 8);
-%dataOneChannel = filtfilt(myFilt,1,dataOneChannel);
+% dataOneChannel_beta = filtfilt(myFilt,1,dataOneChannel);
 dataOneChannel = filter(myFilt,1,dataOneChannel);
 myFiltShift = ceil(length(myFilt)/2);
 dataOneChannel = [dataOneChannel(myFiltShift:end), zeros(1,myFiltShift-1)];
@@ -106,6 +106,8 @@ plot(ax(1), t, dataOneChannel, 'r');
 % detect power threshold 
 pwrthresh = sqrt(bandpower(dataBaseline,SamplingFreq,[13,30]));
 pwrthresh = .75*pwrthresh;
+
+% pwrthresh = 25;
 
 %% find ideal stim pattern 
 % Get inst. freq. and phase 
