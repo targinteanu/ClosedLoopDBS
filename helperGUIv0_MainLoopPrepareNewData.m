@@ -81,6 +81,7 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
                 rawDataBuffer = rawDataBuffer((padL+1):end,:);
             end
             rawDataBuffer = rawDataBuffer + rawOffset;
+            newContinuousData = rawDataBuffer((end-N+1):end);
             %{
             artInd = stimind;
             artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
