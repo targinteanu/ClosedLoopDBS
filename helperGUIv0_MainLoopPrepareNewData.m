@@ -1,8 +1,10 @@
 function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time)
 
+useKalman = true; % specify artifact removal method 
+
     N = length(newContinuousData);
 
-    %{
+if ~useKalman
     % artifact removal (1)
     if handles.FilterSetUp
     if handles.MdlSetUp
@@ -25,7 +27,7 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
     end
     end
     end
-    %}
+end
 
     rawDataBuffer = bufferData(handles.rawDataBuffer, newContinuousData);
     % new data starts at rawDataBuffer(end-N+1)
@@ -45,7 +47,9 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
     if handles.check_artifact.Value
         stimind = handles.stimind - N; % N samples have passed
         if stimind > 0 % rel to start of buffer
-            try
+        try
+
+            if useKalman
             rawOffset = mean(rawDataBuffer);
             rawDataBuffer = rawDataBuffer - rawOffset;
             artStart = stimind - handles.ArtifactStartOffsetSamples;
@@ -82,7 +86,8 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
             end
             rawDataBuffer = rawDataBuffer + rawOffset;
             newContinuousData = rawDataBuffer((end-N+1):end);
-            %{
+
+            else
             artInd = stimind;
             artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
             artEnd = ceil(handles.fSample*handles.ArtifactDuration) - artStart -1;
@@ -106,14 +111,15 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
                 artReplace = artReplace(1:length(artInd));
                 handles.rawDataBuffer(artInd) = artReplace;
             end
-            %}
-            catch ME3
-                getReport(ME3)
-                % keyboard
-                errordlg(ME3.message, 'Artifact Removal Issue');
-                handles.check_artifact.Value = false;
-                pause(.01);
+
             end
+        catch ME3
+            getReport(ME3)
+            % keyboard
+            errordlg(ME3.message, 'Artifact Removal Issue');
+            handles.check_artifact.Value = false;
+            pause(.01);
+        end
         end
     end
     end
