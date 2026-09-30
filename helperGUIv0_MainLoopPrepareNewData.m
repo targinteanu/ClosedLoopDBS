@@ -1,6 +1,6 @@
 function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time)
 
-useKalman = true; % specify artifact removal method 
+useKalman = false; % specify artifact removal method 
 
     N = length(newContinuousData);
 
