@@ -137,7 +137,7 @@ handles.elecGridImg = [];
 % default values 
 PDSwin = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(PDSwin*1000); handles.PDSwin1 = PDSwin;
-handles.PDSwin2 = ceil(.02*PDSwin); 
+handles.PDSwin2 = ceil(.8*PDSwin); 
 handles.bufferSize = str2double(get(handles.txt_display,'String')) * 1000;
 handles.bufferSizeGrid = str2double(get(handles.txt_griddur,'String')) * 1000;
 handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
@@ -1002,7 +1002,7 @@ function push_AR_Callback(hObject, eventdata, handles)
 n = str2double(get(handles.txt_AR,'String'));
 N = str2double(get(handles.txt_PDSwin,'String'));
 PDSwin = ceil(N*handles.fSample); handles.PDSwin1 = PDSwin;
-handles.PDSwin2 = ceil(.02*PDSwin); 
+handles.PDSwin2 = ceil(.8*PDSwin); 
 
 try
 
