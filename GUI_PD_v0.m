@@ -1169,13 +1169,8 @@ if get(hObject, 'Value') == 1
     channel1 = channel(1)
     channel2 = channel(2:end)
 
-    %{
     handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
         width1, width2, interphase, frequency, pulses);
-    %}
-    handles.stimulator.stop = 0;
-    handles.stimulator.disconnect = 0;
-    handles.stimulator.play = 0;
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
