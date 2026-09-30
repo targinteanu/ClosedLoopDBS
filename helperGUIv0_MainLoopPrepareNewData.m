@@ -85,7 +85,6 @@ end
                 rawDataBuffer = rawDataBuffer((padL+1):end,:);
             end
             rawDataBuffer = rawDataBuffer + rawOffset;
-            newContinuousData = rawDataBuffer((end-N+1):end);
 
             else
             artInd = stimind;
@@ -112,6 +111,7 @@ end
                 handles.rawDataBuffer(artInd) = artReplace;
             end
 
+            newContinuousData = rawDataBuffer((end-N+1):end);
             end
         catch ME3
             getReport(ME3)
