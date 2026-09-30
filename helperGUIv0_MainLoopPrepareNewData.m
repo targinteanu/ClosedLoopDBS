@@ -29,6 +29,7 @@ if ~useKalman
     end
 end
 
+    rawOffset = mean(handles.rawDataBuffer);
     rawDataBuffer = bufferData(handles.rawDataBuffer, newContinuousData);
     % new data starts at rawDataBuffer(end-N+1)
     t0 = handles.lastSampleProcTime; 
@@ -50,7 +51,6 @@ end
         try
 
             if useKalman
-            rawOffset = mean(rawDataBuffer);
             rawDataBuffer = rawDataBuffer - rawOffset;
             artStart = stimind - handles.ArtifactStartOffsetSamples;
                 % rel to start of buffer
@@ -99,8 +99,7 @@ end
             if ~isempty(artInd)
                 artPastStart = artInd(1) - handles.PDSwin1;
                 artPastStart = max(1, artPastStart);
-                rawOffset = mean(handles.rawDataBuffer);
-                artPastData1 = handles.rawDataBuffer(artPastStart:(artInd(1)-1),:);
+                artPastData1 = rawDataBuffer(artPastStart:(artInd(1)-1),:);
                 artPastData1 = artPastData1 - rawOffset;
                 artPastN = size(artPastData1,1);
                 artPastData((end-artPastN+1):end,:) = artPastData1;
@@ -108,7 +107,7 @@ end
                 artReplace = artReplace + rawOffset;
                 handles.artReplaceRemaining = artReplace((length(artInd)+1):end); % continue replacing on next loop iter
                 artReplace = artReplace(1:length(artInd));
-                handles.rawDataBuffer(artInd) = artReplace;
+                rawDataBuffer(artInd) = artReplace;
             end
 
             newContinuousData = rawDataBuffer((end-N+1):end);
