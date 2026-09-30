@@ -7,7 +7,7 @@ if nargin < 1
 end
 
 varnames = {'SerialLog','PeakTime','TroughTime','StimTime',...
-    'Phase3Time','Phase4Time','Phase5Time'};
+    'Phase3Time','Phase4Time','Phase5Time','SignalSaved'};
 % init temp vars 
 for V = varnames
     v = V{:};
@@ -36,9 +36,9 @@ for myfile = myfiles'
             if V == 1 % SerialLog
                 eval([v,' = ',v,'(~isnan([',v,'.TimeStamp]));'])
             else
-                eval([v,' = ',v,'(~isnan(',v,'));'])
+                eval([v,' = ',v,'(~isnan(',v,'(:,1)), :);'])
             end
-            % store to temp
+            % store to temp (stack vertically) 
             eval([v,'_temp = [',v,'_temp; ',v,'];'])
         end
     end

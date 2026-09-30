@@ -22,7 +22,7 @@ function varargout = GUI_Memory_v0(varargin)
 
 % Edit the above text to modify the response to help GUI_Memory_v0
 
-% Last Modified by GUIDE v2.5 09-Jul-2025 01:36:04
+% Last Modified by GUIDE v2.5 30-Sep-2026 18:30:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -336,6 +336,14 @@ if numel(StimTime)
         save(svfn,'StimTime');
         handles.SaveFileN = handles.SaveFileN + 1;
     end
+end
+SignalSaved = handles.sigStorage1;
+SignalSaved = SignalSaved(~isnan(SignalSaved(:,1)), :);
+if ~isempty(SignalSaved)
+    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    disp(['Saving Signal to ',svfn])
+    save(svfn,'SignalSaved');
+    handles.SaveFileN = handles.SaveFileN + 1;
 end
 SerialLog = handles.srlStorage1;
 svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
@@ -1400,3 +1408,12 @@ function txt_ARlearnrate_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in check_artifactSave.
+function check_artifactSave_Callback(hObject, eventdata, handles)
+% hObject    handle to check_artifactSave (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of check_artifactSave
