@@ -1039,7 +1039,7 @@ if handles.StimActive
     try
         handles.stimulator.stop();
         handles.stimulator.disconnect;
-        delete(handles.stimulator);
+        %delete(handles.stimulator);
         pause(.1)
     catch ME0
         getReport(ME0)
@@ -1071,8 +1071,13 @@ if get(hObject, 'Value') == 1
     %channel1 = chan1ind; 
     %channel2 = chan2ind;
 
+    %{
     handles.stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
         width1, width2, interphase, frequency, pulses);
+    %}
+    handles.stimulator.stop = 0;
+    handles.stimulator.disconnect = 0;
+    handles.stimulator.play = 0;
 
     handles.StimActive = true;
     set(hObject, 'String', 'Stim On'); 
