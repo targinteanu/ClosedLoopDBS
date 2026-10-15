@@ -1,8 +1,10 @@
 function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time)
 
+useKalman = true; % specify artifact removal method 
+
     N = length(newContinuousData);
 
-    %{
+if ~useKalman
     % artifact removal (1)
     if handles.FilterSetUp
     if handles.MdlSetUp
@@ -25,9 +27,10 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
     end
     end
     end
-    %}
+end
 
-    rawDataBuffer = bufferData(handles.rawDataBuffer, newContinuousData);
+    rawOffset = mean(handles.rawDataBuffer);
+    [rawDataBuffer, rawDataBufferedOut] = bufferData(handles.rawDataBuffer, newContinuousData);
     % new data starts at rawDataBuffer(end-N+1)
     t0 = handles.lastSampleProcTime; 
     handles.lastSampleProcTime = ...
@@ -39,14 +42,51 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
     diffSampleProcTime = nan(size(newContinuousData)); diffSampleProcTime(end) = T;
     handles.diffSampleProcTime = bufferData(handles.diffSampleProcTime, diffSampleProcTime);
 
+    if handles.check_artifactSave.Value
+    % store buffered-out data for saving 
+    tOutEnd = handles.lastSampleProcTime - (handles.bufferSize/handles.fSample); % ?
+    tOutEnd = single(tOutEnd); rawDataBufferedOut = single(rawDataBufferedOut);
+    % perform specialized 'cycleStorage' as in helperGUIv0_MainProcessAndPlot
+    L = length(rawDataBufferedOut); H = size(handles.sigStorage2,1);
+    sigNeedToSave = handles.sigP1 + L - 1 > H;
+    if sigNeedToSave
+        % storage 1 is now full 
+        if L > H
+            warning('Data overloaded save buffer; some data may not be saved.')
+            L = H;
+            rawDataBufferedOut = rawDataBufferedOut(1:L);
+        end
+        handles.sigP1 = 0;
+        handles.sigStorage2(1:L,1) = rawDataBufferedOut;
+        handles.sigStorage2(L,2) = tOutEnd;
+        P2 = L+1;
+    else
+        handles.sigStorage1(handles.sigP1:(handles.sigP1+L-1),1) = rawDataBufferedOut;
+        handles.sigStorage1((handles.sigP1+L-1),2) = tOutEnd;
+        handles.sigP1 = handles.sigP1 + L;
+        P2 = [];
+    end
+    if sigNeedToSave
+        SignalSaved = handles.sigStorage1;
+        svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+        disp("Saving Signal to "+svfn)
+        save(svfn, 'SignalSaved');
+        handles.SaveFileN = handles.SaveFileN + 1;
+        handles.sigStorage1 = handles.sigStorage2; 
+        handles.sigStorage2 = single(nan(size(handles.sigStorage2)));
+        handles.sigP1 = P2;
+    end
+    end
+
     % artifact removal (2) 
     if handles.FilterSetUp
     if handles.MdlSetUp
     if handles.check_artifact.Value
         stimind = handles.stimind - N; % N samples have passed
         if stimind > 0 % rel to start of buffer
-            try
-            rawOffset = mean(rawDataBuffer);
+        try
+
+            if useKalman
             rawDataBuffer = rawDataBuffer - rawOffset;
             artStart = stimind - handles.ArtifactStartOffsetSamples;
                 % rel to start of buffer
@@ -81,7 +121,8 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
                 rawDataBuffer = rawDataBuffer((padL+1):end,:);
             end
             rawDataBuffer = rawDataBuffer + rawOffset;
-            %{
+
+            else
             artInd = stimind;
             artStart = -ceil(handles.ArtifactStartBefore*handles.fSample);
             artEnd = ceil(handles.fSample*handles.ArtifactDuration) - artStart -1;
@@ -94,8 +135,7 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
             if ~isempty(artInd)
                 artPastStart = artInd(1) - handles.PDSwin1;
                 artPastStart = max(1, artPastStart);
-                rawOffset = mean(handles.rawDataBuffer);
-                artPastData1 = handles.rawDataBuffer(artPastStart:(artInd(1)-1),:);
+                artPastData1 = rawDataBuffer(artPastStart:(artInd(1)-1),:);
                 artPastData1 = artPastData1 - rawOffset;
                 artPastN = size(artPastData1,1);
                 artPastData((end-artPastN+1):end,:) = artPastData1;
@@ -103,16 +143,18 @@ function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handl
                 artReplace = artReplace + rawOffset;
                 handles.artReplaceRemaining = artReplace((length(artInd)+1):end); % continue replacing on next loop iter
                 artReplace = artReplace(1:length(artInd));
-                handles.rawDataBuffer(artInd) = artReplace;
+                rawDataBuffer(artInd) = artReplace;
             end
-            %}
-            catch ME3
-                getReport(ME3)
-                % keyboard
-                errordlg(ME3.message, 'Artifact Removal Issue');
-                handles.check_artifact.Value = false;
-                pause(.01);
+
+            newContinuousData = rawDataBuffer((end-N+1):end);
             end
+        catch ME3
+            getReport(ME3)
+            % keyboard
+            errordlg(ME3.message, 'Artifact Removal Issue');
+            handles.check_artifact.Value = false;
+            pause(.01);
+        end
         end
     end
     end

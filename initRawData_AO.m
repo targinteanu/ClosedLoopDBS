@@ -88,7 +88,8 @@ chnum = [channelsData.channelID]; chnum = double(chnum);
 catch ME
     if ~isstruct(channelsData)
         if isnan(channelsData)
-            error('Did not receive channel info from AO. Try restarting Neuro Omega.')
+            error(['Did not receive channel info from AO. ' ...
+                'Try closing HaGuide or restarting Neuro Omega.'])
         end
     else
         rethrow(ME);

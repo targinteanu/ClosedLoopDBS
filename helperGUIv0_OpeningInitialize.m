@@ -59,17 +59,22 @@ handles.PhaseOfInterest = [0, pi, nan, nan, nan, nan];
 handles.PhaseOfInterestName = ["Peak", "Trough", "Phase3", "Phase4", "Phase5", "Phase6"];
 handles.ARlearnrate = 0;
 
-% serial log storage
+% phase/stim tracking storage
 emptyStorage = nan(100000,1);
 handles.pkStorage1 = emptyStorage; handles.pkP1 = 1;
 handles.pkStorage2 = emptyStorage; 
 handles.trStorage1 = emptyStorage; handles.trP1 = 1;
 handles.trStorage2 = emptyStorage; 
 handles.stStorage1 = emptyStorage; handles.stP1 = 1;
+% serial log storage
 ud.TimeStamp = nan;
 handles.udBlank = ud;
 handles.srlStorage1 = repmat(ud,[1000,1]);
 handles.srlP1 = 1; 
+% streamed signal storage
+emptyStorage = single(nan(10000000,2)); % [data, timestamp]; duration may be excessive
+handles.sigStorage1 = emptyStorage; handles.sigP1 = 1;
+handles.sigStorage2 = emptyStorage;
 
 % empty objects that will be filled in later 
 handles.peakDataBuffer = [];
