@@ -28,9 +28,21 @@ f_inst = f_block(N);
 T=1/f_inst;
 
 % examine the next full phase cycle
-imin = ceil(tmin*fs); phi_future = phi_block((N+imin):end,:);
+imin = ceil(tmin*fs); 
+if imin < M
+    warning('Not enough forecast data provided to satisfy minimum horizon.')
+end
+phi_future = phi_block((N+imin):end,:);
 phi_fut_1 = phi_future(1); phi_fut_ = unwrap(phi_future);
-[~,phi_fut_end] = min(abs(phi_fut_-(2*pi + phi_fut_1))); % !!!!! CHANGE THIS to something like findpeaks to avoid getting more than one cycle
+phi_fut_end_diff = phi_fut_-(2*pi + phi_fut_1);
+%[~,phi_fut_end] = min(abs(phi_fut_end_diff)); % !!!!! CHANGE THIS to something like findpeaks to avoid getting more than one cycle
+phi_fut_end = find(phi_fut_end_diff > 0);
+if isempty(phi_fut_end)
+    warning('Forecast duration may be too short to find target phase.')
+    [~,phi_fut_end] = min(abs(phi_fut_end_diff));
+else
+    phi_fut_end = phi_fut_end(1)-1;
+end
 phi_fut_end = min(length(phi_future), phi_fut_end+1);
 phi_future = phi_future(1:phi_fut_end);
 
@@ -45,7 +57,7 @@ for p = 1:length(phi)
 
     % accurate & full-cycle AR model assumption 
     [~,i] = min(abs(radfix(phi_future-phi_)));
-    i = i + imin;
+    i = i + imin - 1;
     i2phi(p) = i; 
     t2phi(p) = i/fs;
 
