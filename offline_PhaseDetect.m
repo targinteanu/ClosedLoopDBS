@@ -164,7 +164,6 @@ end
 
 filtwts = fir1(filtord, [loco, hico]./(SamplingFreq/2));
 dataBaseline = filtfilt(filtwts,1,dataBaseline);
-%[dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
 filtord = length(filtwts);
 filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
 filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
@@ -235,7 +234,10 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             % actionable future. 
             if i2nextStim_prev >= filtdelay
                 % still actionable 
-                toStim(tind-1+i2nextStim_prev) = true;
+                iToStim = tind-1+i2nextStim_prev;
+                if iToStim <= length(toStim)
+                    toStim(iToStim) = true;
+                end
             end
         end
         i2nextStim_prev = i2nextStim;
