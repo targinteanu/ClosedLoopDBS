@@ -566,6 +566,7 @@ handles = guidata(hFigure);
 stimulator = handles.stimulator;
 % Most of the following is equivalent to stimPulse_cerestim(stimulator) ;
 % should it be replaced??
+%{
 if ~stimulator.isConnected()
     warning('Stimulator is not connected.')
 end
@@ -576,6 +577,7 @@ stimstatus = stimulator.getSequenceStatus();
 if stimstatus == 2
     warning('Stimulator is already playing.')
 end
+%}
 stimtime1 = cbmex('time');
 stimulator.play(1);
 stimtime2 = cbmex('time');

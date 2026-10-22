@@ -27,7 +27,8 @@ else
     forefun = [];
 end
 if handles.check_artifact.Value && handles.MdlSetUp
-    artremfun = @artRemKalman;
+    %artremfun = @artRemKalman;
+    artremfun = @artRemFun;
 else
     artremfun = [];
 end
@@ -120,6 +121,7 @@ for ch_art = 1:size(rawTails,2)
     XartRem = XartRem + DCOS;
     if max(abs(XartRem(:))) < 2*max(abs(Xart(:)))
         % it is not blowing up, so apply changes
+        % !!! is this cond the reason why it sometimes doesn't do anything??
         tXart(:,2) = XartRem;
     elseif max(abs(XartRem(:))) > 10*max(abs(Xart(:)))
         % it has already blown up badly, so reset LMS wts

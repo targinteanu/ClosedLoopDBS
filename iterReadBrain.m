@@ -133,8 +133,17 @@ end
 for CH = 1:size(artRemData, 2)
     oldHead = artRemData{2,CH}; oldTail = artRemData{3,CH}; newTail = artRemTails{CH};
     oldTime = nOverlapOld(CH); %newTime = nOverlapNew(CH); % # samples NOT to buffer 
+    %TailLen = size(newTail,1);
     if oldTime > 0
         newTail = newTail(oldTime+1:end,:);
+        %{
+        % rebalance tail lengths 
+        OldNewTail = [oldTail; newTail];
+        if TailLen < size(OldNewTail,1)
+            newTail = OldNewTail((end-TailLen+1):end,:);
+            oldTail = OldNewTail(1:(end-TailLen),:);
+        end
+        %}
     end
     %oldTime = height(oldTail)-oldTime; newTime = height(newTail)-newTime; % # NEW samples
     %newHead = bufferDataOverwrite(oldHead, oldTail, oldTime); 

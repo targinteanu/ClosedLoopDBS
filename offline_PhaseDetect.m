@@ -164,7 +164,6 @@ end
 
 filtwts = fir1(filtord, [loco, hico]./(SamplingFreq/2));
 dataBaseline = filtfilt(filtwts,1,dataBaseline);
-%[dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
 filtord = length(filtwts);
 filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
 filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
@@ -184,6 +183,7 @@ progTick = .05; prog = 0; % track progress
 
 for tind = packetLength:packetLength:length(dataOneChannel)
     tinds = (tind-packetLength+1):tind;
+    % tinds(1) := start index of current packet
 
     % track progress
     prog = prog + packetLength/length(dataOneChannel);
@@ -228,10 +228,19 @@ for tind = packetLength:packetLength:length(dataOneChannel)
 
         % Step 5: Send a stimulus pulse when appropriate 
         i2nextStim_prev = i2nextStim_prev - packetLength; % one packet passed
-        if i2nextStim_prev < packetLength
-            toStim(tinds(1)-1+i2nextStim_prev) = true;
+        i2nextStim_prev = min(i2nextStim_prev, i2nextStim);
+        if i2nextStim_prev <= filtdelay + packetLength
+            % at next update, i2nextStim_prev will no longer be in the
+            % actionable future. 
+            if i2nextStim_prev >= filtdelay
+                % still actionable 
+                iToStim = tind-1+i2nextStim_prev;
+                if iToStim <= length(toStim)
+                    toStim(iToStim) = true;
+                end
+            end
         end
-        i2nextStim_prev = i2nextStim - filtdelay;
+        i2nextStim_prev = i2nextStim;
     end
 end
 
