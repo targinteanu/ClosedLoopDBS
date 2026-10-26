@@ -16,7 +16,7 @@
         "br_win",       [1800 2500], ...
         "no_win",       [1700 2400], ...
         "frontCut",    60, ...
-        "backCut",     3800, ... %3820
+        "backCut",     3800, ... %3820 or 3800
         "electrode_data_name", "electrode_data(Sheet1).csv", ...
         "badChannel",        [] ...
     );
@@ -64,7 +64,7 @@
     % Choose patient here
     % =========================
     Patient_Folder_Path = 'C:\Users\cours\Downloads\AndersonLabDataAndPackages\Patient Data';
-    whichPatient = 'PD24N009';
+    whichPatient = 'PD25N006';
     
     P = presets.(whichPatient);
     
