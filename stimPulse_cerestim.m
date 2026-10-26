@@ -1,4 +1,4 @@
-function stimulator = stimPulse_cerestim(stimulator, ~)
+function stimulator = stimPulse_cerestim(stimulator)
 % Send a single stimulation pulse to the cerestim that was predefined in
 % the stimSetup function. Adapted from myPULSE in verson 0
 

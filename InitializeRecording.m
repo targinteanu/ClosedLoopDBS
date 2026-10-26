@@ -1,8 +1,8 @@
 function [rawD, artD, fltD, forD, timeBuffs, startTic] = ...
-    InitializeRecording_cbmex(buffSize, filtorder, forecastwin, ...
+    InitializeRecording(initRawData, buffSize, filtorder, forecastwin, ...
     selRawID, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For)
 % Initialize the multichannel data structures used in ClosedLoopDBS using
-% BlackRock hardware with the cbmex function.
+% hardware specified by initRawData argument.
 % Return structures for raw, filtered, and forecast data, as well as timing
 % buffers.
 % 
@@ -23,11 +23,11 @@ selFor = [selRaw2For, selFlt2For];
 emptyOut = {[]; []; []; []};
 
 try
-    [rawH, rawT, rawB, rawN, startTic] = initRawData_cbmex(selRawID, buffSize);
+    [rawH, rawT, rawB, rawN, startTic] = initRawData(selRawID, buffSize);
 catch ME
     warning(['Error on first attempt: ',ME.message]);
     pause(1);
-    [rawH, rawT, rawB, rawN, startTic] = initRawData_cbmex(selRawID, buffSize);
+    [rawH, rawT, rawB, rawN, startTic] = initRawData(selRawID, buffSize);
 end
 rawD = [rawN; rawH; rawT; rawB]; 
 
@@ -40,9 +40,10 @@ end
 if numel(IndShiftFIR) && numel(selRaw2Flt)
     fltH = initFilteredData(rawH(selRaw2Flt), IndShiftFIR); 
     fltT = cellfun(@(D) [1,0].*D, rawT(selRaw2Flt), 'UniformOutput',false);
-    fltB = cellfun(@(D) [1,0].*D(1:(end-IndShiftFIR),:), rawB(selRaw2Flt), 'UniformOutput',false);
+    %fltB = cellfun(@(D) [1,0].*D, rawB(selRaw2Flt), 'UniformOutput',false);
     fltN = rawN(selRaw2Flt);
-    fltD = [fltN; fltH; fltT; fltB];
+    %fltD = [fltN; fltH; fltT; fltB];
+    fltD = [fltN; fltH; fltT; fltH];
 else
     fltD = emptyOut;
 end
@@ -50,7 +51,8 @@ end
 if numel(forecastwin) && numel(selFor)
     [forH, forT, forB] = initForecastData(...
         [rawH(selRaw2For), fltH(selFlt2For)], forecastwin);
-    forD = [[rawN(selRaw2For), fltN(selFlt2For)]; forH; forT; forB];
+    %forD = [[rawN(selRaw2For), fltN(selFlt2For)]; forH; forT; forB];
+    forD = [[rawN(selRaw2For), fltN(selFlt2For)]; forB; forT; forB];
 else
     forD = emptyOut;
 end

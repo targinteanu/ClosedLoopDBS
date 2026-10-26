@@ -1,7 +1,23 @@
 function stimulator = defineSTIM4(channel1, channel2, amp1, amp2, ...
         width1, width2, interphase, frequency, pulses)
-% channel1 = Cathode; choose the correct channel combination on one of the headboxes 
-% channel2 = Anode
+% 
+% Setup biphasic current-controlled stimulation pulses on Blackrock CereStim96. 
+% 
+% Inputs: 
+%    channel1 = Cathode; choose the correct channel combination on one of the headboxes 
+%    channel2 = Anode
+%       If either is passed as array, the channels will be stimulated simultaneously with 
+%       total current adding to amp1 and amp2
+%    amp1, amp2: current amplitude (uA) of positive and negative pulse phases, e.g. 2000
+%    width1, width2: duration (us) of positive and negative pulse phases, e.g. 100
+%    interphase: duration between start of positive and negative pulse phases, i.e. set 
+%       equal to width1 for no delay between positive and negative phase 
+%    frequency (Hz) of biphasic stim pulses if pulses > 1 specified 
+%    pulses: number of pulses when stimulator.play(1) is used 
+% 
+% Outputs: 
+%    stimulator: object that can be called as follows: >> stimulator.play(1)
+% 
 
 %% connect 
 
@@ -16,7 +32,15 @@ end
 %Select a stimulator
 stimulator.selectDevice(DeviceList(1));
 %Connect to the stimulator
-stimulator.connect;
+try
+    stimulator.connect;
+catch ME
+    if strcmp(ME.message, 'Software Error: Timeout in creating the interface')
+        error('CereStim software timeout error. Try restarting the device.');
+    else
+        rethrow(ME);
+    end
+end
 
 %% check 
 
@@ -50,6 +74,16 @@ if (sum(channel1 < 1) || sum(channel1 > 96)) || ...
         (sum(channel2 < 1) || sum(channel2 > 96))
     warning('Selected channel is not available for this device.')
 end
+
+%% set safety limits 
+
+nENsafety = stimulator.isSafetyDisabled();
+if nENsafety
+    error('Stimulator safety limits are not enabled.')
+end
+
+x = stimulator.maxOutputVoltage(15); % 9.5V
+%stimulator.stimulusMaxValue(...)
 
 %% define 
 

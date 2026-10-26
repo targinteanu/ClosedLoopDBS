@@ -1,0 +1,519 @@
+%% Phase-Dependent Stimulation Animation 
+% This program animates an idealized phase-dependent stimulation (PDS)
+% compared with traditional therapeutic deep brain stimulation (DBS). 
+% Input signal will be specified by the user, and the program will load a
+% specified spreadsheet, matlab .mat, or blackrock .nsX . 
+% In a future version, this program may be made into a function that
+% accepts the desired signal as input. 
+
+% set these parameters: 
+
+    % signal processing 
+    DBSfreq = 130; % Hz
+    fbnd = [13, 30]; % frequency bounds [low, high] cutoff (Hz)
+    bandname = '\beta'; % name of freq band
+    phtarget = 0; % target phase (rad) 
+
+    % display
+    playbackspeed = 1; % relative to real time
+    displayWin = 1.5; % seconds 
+    packetsize = 1; % sample 
+    maxFR = 60; % maximum # frames per second
+    nbins = 32; % polar histogram (rose) bins
+    colorSig = 'w';              % black
+    colorPDS = [.133,.545,.133]; % green
+    colorDBS = [.635,.078,.184]; % red
+
+%% Load data 
+
+[fnfe, fp] = uigetfile('*.*'); 
+[fp, fn, fe] = fileparts(fullfile(fp,fnfe));
+fe = lower(fe);
+
+Fs = nan; % sample rate 
+unitname = '';
+
+if contains(fe, '.ns')
+    % load blackrock file 
+    NS = openNSx(fullfile(fp,fnfe), 'uV');
+    T = ns2timetable(NS);
+    unitname = ' (\muV)';
+
+elseif strcmp(fe, '.mat')
+    % load mat file
+    M = load(fullfile(fp,fnfe));
+    Mn = fieldnames(M); Mn = lower(Mn);
+    MFs = contains(Mn, 'samplerate') | contains(Mn, 'samplingfreq');
+    MFs = find(MFs);
+    if ~isempty(MFs)
+        Fs = M.(Mn{MFs(1)});
+    end
+
+    Mtbls = contains(Mn, 'tbl');
+    M = struct2cell(M);
+    if any(Mtbls)
+        % there is at least one variable labeled as table(s)
+        M = M(Mtbls); Mn = Mn(Mtbls);
+        Msel = cellfun(@(v) iscell(v)|istable(v)|istimetable(v), M);
+        M = M(Msel); Mn = Mn(Msel);
+        [Msel, selmade] = listdlg("SelectionMode","single", ...
+            "PromptString","Select Variable of Interest", ...
+            "ListString",Mn);
+        if ~selmade
+            error('Selection must be made.')
+        end
+        M = M{Msel}; Mn = Mn{Msel};
+        if iscell(M)
+            M = M{1}; 
+        end
+        T = M;
+
+    else
+        % first: check for timetables 
+        Msel = cellfun(@istimetable, M);
+        if ~any(Msel)
+            % second: check for any tables 
+            Msel = cellfun(@istable, M);
+        end
+        if ~any(Msel)
+            % third: check for any numeric arrays 
+            Msel = cellfun(@isnumeric, M);
+        end
+        if any(Msel)
+            M = M(Msel); Mn = Mn(Msel);
+            [Msel, selmade] = listdlg("SelectionMode","single", ...
+                "PromptString","Select Variable of Interest", ...
+                "ListString",Mn);
+            if ~selmade
+                error('Selection must be made.')
+            end
+            T = M{Msel};
+        else
+            error('No suitable variables found in file.')
+        end
+    end
+
+else
+    % load spreadsheet, txt, etc. 
+    try
+       T = readtimetable(fullfile(fp,fnfe));
+    catch ME1
+        warning(['Could not load as timetable due to error: ',ME1.message, ...
+            '. Loading as table instead.'])
+        try
+            T = readtable(fullfile(fp,fnfe));
+        catch ME2
+            warning(['Could not load as table due to error: ',ME2.message, ...
+                '. Loading as matrix instead.'])
+            try
+                X = readmatrix(fullfile(fp,fnfe));
+                T = X;
+            catch ME3
+                rethrow(ME3);
+            end
+        end
+    end
+end
+
+%% identify timing of data 
+
+% try to interpret loaded data as timetable: 
+if istable(T)
+    varnames = T.Properties.VariableNames;
+    varnames = string(varnames);
+    varnames = lower(varnames);
+    timevar = contains(varnames, 'time');
+    timevar = find(timevar);
+    if ~isempty(timevar)
+        timevar = timevar(1);
+        timevar = varnames(timevar);
+        try
+            t = T.(timevar); 
+            t = seconds(t);
+            T = removevars(T, timevar);
+            T = table2timetable(T, 'RowTimes', t);
+        catch ME4
+            warning("Could not interpret column "+varnames(timevar)+ ...
+                " as time due to error: "+ME4.message)
+        end
+    end
+end
+
+% determine original sample rate 
+if istimetable(T)
+    if isnan(Fs)
+        Fs = T.Properties.SampleRate; % Attempt to extract sample rate from timetable
+        if isnan(Fs)
+            Fs = median(seconds(diff(T.Time)));
+        end
+    end
+else
+    Fs = inputdlg('Specify Data Original Sample Rate (Hz):', ...
+        'Original Sample Rate', 1, {Fs});
+    if isempty(Fs)
+        error('Sampling rate must be specified.')
+    end
+    Fs = str2double(Fs{1});
+    if isnan(Fs)
+        error('Numeric sampling rate must be specified.')
+    end
+    t = (1:height(T))/Fs; t = seconds(t)';
+    if istable(T)
+        T = table2timetable(T, 'RowTimes', t);
+    else
+        T = array2timetable(T, 'RowTimes', t);
+    end
+end
+
+% downsample? 
+
+%% Choose channel of interest 
+
+if width(T) > 1
+% Prompt user to select the channel of interest
+channelNames = T.Properties.VariableNames;
+[channelIdx, selMade] = listdlg("SelectionMode","single", ...
+    "PromptString","Select Channel of Interest", ...
+    "ListString", channelNames);
+if ~selMade
+    error('Channel must be selected.')
+end
+else
+    channelIdx = 1;
+end
+
+channelName = channelNames{channelIdx};
+x = T{:,channelIdx};
+t = T.Time; 
+t = seconds(t - t(1));
+
+if isempty(unitname)
+    unitnames = string(T.Properties.VariableUnits);
+    try 
+        unitname = char(unitnames(channelIdx));
+        unitname = [' (',unitname,')'];
+    catch ME5
+        warning(['Could not determine signal units due to error: ',ME5.message])
+        warning('Setting units to uV')
+        unitname = ' (\muV)';
+    end
+end
+
+%% identify outliers 
+y = log10(movmean((x-mean(x)).^2, 201) + eps); % power estimate 
+[clusIdx, clusC] = kmeans(y, 3); 
+[~,noiseIdx] = max(clusC);
+isnoise = clusIdx == noiseIdx;
+
+%% target phase identification 
+
+% filter 
+BPF = fir1(256, fbnd/(Fs/2), 'bandpass');
+%BPF = buildFIRBPF(Fs, fbnd(1), fbnd(2), 2, 201);
+xBPF = filtfilt(BPF,1,x);
+HPF = fir1(256, 5/(Fs/2), 'high');
+xHPF = filtfilt(HPF,1,x); 
+xBPFe = envelope(xBPF);
+
+% downsample envelope signal 
+dsratio = floor(Fs/(2*fbnd(2)));
+xBPFe = movmean(xBPFe, dsratio);
+xBPFeDS = xBPFe(1:dsratio:end);
+tDS = t(1:dsratio:end);
+
+% hilbert transform 
+H = hilbert(xBPF);
+ph = angle(H); A = abs(H);
+
+% set amplitude threshold 
+%[~,Athresh] = midcross(A); 
+%Athresh = median(A(~isoutlier(x))); 
+Athresh = median(A(~isnoise)); 
+
+% find where phase crosses target 
+phtarget = radfix(phtarget);
+ph = ph - phtarget; ph = radfix(ph);
+sph = sign(ph);
+sph = sph(2:end) .* sph(1:(end-1)); 
+dph = diff(ph);
+iPDS = (sph <= 0) & (dph >= 0); % rising zero-cross 
+iPDS = [false; iPDS];
+ph = ph + phtarget; ph = radfix(ph);
+
+% finalize PDS stim timing 
+iPDS = iPDS & (A >= Athresh);
+
+% DBS stim timing 
+DBSper = round(Fs/DBSfreq); % period (samples)
+iDBS = false(size(xBPF));
+iDBS(1:DBSper:end) = true;
+iDBS = iDBS & (A >= Athresh); % make like medtronic closed loop DBS
+
+%% prepare to save video
+
+Vfn = inputdlg('Save Video As: ', 'Save Video', [1,100], ...
+    {fullfile(fp,[fn,'_',channelName,'_AnimationPDS'])});
+
+Vsave = ~isempty(Vfn);
+if Vsave
+    Vfn = Vfn{1};
+    VW = VideoWriter(Vfn, 'MPEG-4');
+    VW.Quality = 95;
+    FR = playbackspeed * Fs / packetsize;
+    if FR > maxFR
+        FR = maxFR; 
+        packetsize = playbackspeed * Fs / FR;
+        packetsize = ceil(packetsize);
+        disp(['Adjusted packet size to ',num2str(packetsize), ...
+            ' to comply with max frame rate.'])
+    end
+    VW.FrameRate = FR;
+    open(VW)
+else
+    warning('Not saving video.')
+end
+
+%% setup display 
+% For time plots, plot the entire signal, but set the x axis limits to the
+% window of interest. 
+
+fontSizeTitle = 24;
+fontSizeLabel = 20;
+fontSizeTick = 16;
+emph = ['\bf\it\color{blue}\fontsize{',num2str(fontSizeTitle),'}'];
+
+% precalculate max values of axes 
+polmax =  ceil( displayWin * fbnd(2) ); polmax = polmax/2;
+polmin = floor( displayWin * fbnd(1) );
+fltmax = 2*std(xBPF); % max(abs(xBPF));
+rawmax = 2*std(xHPF); % max(abs(xHPF));
+% round to nice values 
+tickinterval = 10; 
+polmax =  ceil(polmax/tickinterval) * tickinterval;
+polmin = floor(polmin/tickinterval) * tickinterval;
+fltmax  = ceil(fltmax/tickinterval) * tickinterval;
+rawmax  = ceil(rawmax/tickinterval) * tickinterval;
+
+displaywin = ceil(displayWin * Fs); % samples 
+cursample = 1;
+curwin = [0, displaywin-1] + cursample;
+winidx = curwin(1):curwin(2);
+xnow = xBPF(winidx);
+phnow = ph(winidx);
+tnow = t(winidx);
+iPDSnow = iPDS(winidx);
+iDBSnow = iDBS(winidx);
+%{
+xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
+xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
+%}
+xPDS = nan(size(xBPF)); xPDS(iPDS) = xBPF(iPDS);
+xDBS = nan(size(xHPF)); xDBS(iDBS) = xBPFe(iDBS) .* sign(xHPF(iDBS));
+nPDS = sum(iPDS(1:curwin(2)));
+nDBS = sum(iDBS(1:curwin(2)));
+
+myfig = figure('Units','normalized', 'Position',[.05,.05,.9,.9], ...
+    'Color',[0,0,0], 'Resize','off');
+tiledlayout(2,3);
+
+% PDS time plot 
+if (phtarget > -pi/2) && (phtarget < pi/2)
+    mkr = '^';
+else
+    mkr = 'v';
+end
+ax(1,1) = nexttile([1,2]); 
+%ax(1,1) = subplot(2,1,1);
+plot(t, xBPF, 'LineWidth',1.5, 'Color',colorSig);
+%grid on; 
+hold on; 
+stem(t, xPDS, mkr, 'LineWidth',2, 'Color',colorPDS);
+ax(1,1).FontSize = fontSizeTick;
+xlabel('   time (s)', 'FontSize',fontSizeLabel, ...
+    'Units','Normalized', 'Position',[1,0.5], ...
+    'HorizontalAlignment','left', 'VerticalAlignment','middle'); 
+ylabel([bandname,' Signal',unitname], 'FontSize',fontSizeLabel);
+xlim(t(curwin));
+[title_PDS, subtitle_PDS] = title('Phase Dependent Stimulation', ...
+    ['Total Stim Count = ',emph,num2str(nPDS)], 'FontWeight','normal');
+title_PDS.FontSize    = fontSizeTitle;
+subtitle_PDS.FontSize = fontSizeLabel;
+%{
+title_PDS = title({'Phase Dependent Stimulation'; ...
+    ['Total Stim Count = ',num2str(nPDS)]}, 'FontSize',fontSizeTitle);
+%}
+ax(1,1).Box = false;
+ax(1,1).XAxisLocation = 'origin';
+ax(1,1).XAxis.TickLength = [.1 .2];
+ax(1,1).XTick = 0:1:t(end);
+ax(1,1).XAxis.TickDirection = 'both';
+ax(1,1).YLim = [-fltmax fltmax]; 
+ax(1,1).YTick = [-fltmax fltmax];
+ax(1,1).YAxis.TickDirection = 'both';
+ax(1,1).Color = [0,0,0];
+
+% both rose plots 
+bedge = linspace(-pi, pi, nbins);
+ax(1,2) = nexttile([2,1]); 
+hold off;
+hpolPDS = polarhistogram(phnow(iPDSnow), 'BinEdges',bedge, 'FaceColor',colorPDS);
+hold on;
+hpolDBS = polarhistogram(phnow(iDBSnow), 'BinEdges',bedge, 'FaceColor',colorDBS);
+hold off;
+ax(1,2) = gca();
+title('Stimulation Phase', 'FontSize',fontSizeTitle)
+ax(1,2).FontSize = fontSizeTick;
+ax(1,2).ThetaTick = [0]; % 90 180 270];
+ax(1,2).RLim = [0 polmax];
+ax(1,2).RTick = [polmin polmax];
+ax(1,2).ThetaGrid = false;
+ax(1,2).GridAlpha = .25;
+ax(1,2).Color = [0,0,0];
+
+%{
+% PDS rose plot
+bedge = linspace(-pi, pi, nbins);
+ax(1,2) = nexttile; 
+polarhistogram(phnow(iPDSnow), 'BinEdges',bedge, 'FaceColor',colorPDS);
+title('Stimulation Phase')
+ax(1,2) = gca();
+%}
+
+% DBS time plot 
+ax(2,1) = nexttile([1,2]); 
+%ax(2,1) = subplot(2,1,2);
+patch([tDS; flipud(tDS)], [xBPFeDS; -flipud(xBPFeDS)], colorSig, ...
+    'EdgeColor','none', 'FaceAlpha',0.3);
+%grid on; 
+hold on; 
+plot(t, xHPF, 'LineWidth',1.5, 'Color',colorSig);
+stem(t, xDBS, 's', 'LineWidth',2, 'Color',colorDBS);
+ax(2,1).FontSize = fontSizeTick;
+xlabel('   time (s)', 'FontSize',fontSizeLabel, ...
+    'Units','Normalized', 'Position',[1,0.5], ...
+    'HorizontalAlignment','left', 'VerticalAlignment','middle'); 
+ylabel(['Raw Signal',unitname], 'FontSize',fontSizeLabel);
+xlim(t(curwin));
+[title_DBS, subtitle_DBS] = title('Existing Closed Loop DBS', ...
+    ['Total Stim Count = ',emph,num2str(nDBS)], 'FontWeight','normal');
+title_DBS.FontSize    = fontSizeTitle;
+subtitle_DBS.FontSize = fontSizeLabel;
+%{
+title_DBS = title({'Existing Closed Loop DBS'; ...
+    ['Total Stim Count = ',num2str(nDBS)]}, 'FontSize',fontSizeTitle);
+%}
+ax(2,1).Box = false;
+ax(2,1).XAxisLocation = 'origin';
+ax(2,1).XAxis.TickLength = [.1 .2];
+ax(2,1).XTick = 0:1:t(end);
+ax(2,1).XAxis.TickDirection = 'both';
+ax(2,1).YLim = [-rawmax rawmax]; 
+ax(2,1).YTick = [-rawmax rawmax];
+ax(2,1).YAxis.TickDirection = 'both';
+ax(2,1).Color = [0,0,0];
+
+%{
+% PDS rose plot
+ax(2,2) = nexttile; 
+polarhistogram(phnow(iDBSnow), 'BinEdges',bedge, 'FaceColor',colorDBS);
+title('Stimulation Phase')
+ax(2,2) = gca();
+%}
+
+if Vsave
+    Vframe = getframe(myfig);
+    writeVideo(VW, Vframe);
+end
+
+%% loop through remaining samples 
+
+pausetime = packetsize * playbackspeed / Fs; % seconds 
+
+try
+
+while cursample + packetsize + displaywin <= length(xBPF)
+
+ticStart = tic;
+
+cursample = cursample + packetsize;
+curwin = [0, displaywin-1] + cursample;
+winidx = curwin(1):curwin(2);
+xnow = xBPF(winidx);
+phnow = ph(winidx);
+tnow = t(winidx);
+iPDSnow = iPDS(winidx);
+iDBSnow = iDBS(winidx);
+%{
+xPDSnow = nan(size(xnow)); xPDSnow(iPDSnow) = xnow(iPDSnow);
+xDBSnow = nan(size(xnow)); xDBSnow(iDBSnow) = xnow(iDBSnow);
+%}
+nPDSprev = nPDS; nDBSprev = nDBS;
+nPDS = sum(iPDS(1:curwin(2)));
+nDBS = sum(iDBS(1:curwin(2)));
+
+%{
+plt_X_PDS.XData = tnow; plt_X_PDS.YData = xnow; 
+plt_X_DBS.XData = tnow; plt_X_DBS.YData = xnow; 
+plt_PDS.XData = tnow; plt_PDS.YData = xPDSnow;
+plt_DBS.XData = tnow; plt_DBS.YData = xDBSnow;
+%}
+
+% update rose plots to reflect current display window
+hpolPDS.BinCounts = histcounts(phnow(iPDSnow), bedge);
+hpolDBS.BinCounts = histcounts(phnow(iDBSnow), bedge);
+%{
+polarhistogram(ax(1,2), phnow(iPDSnow), 'BinEdges',bedge);
+title(ax(1,2), 'Stimulation Phase')
+polarhistogram(ax(2,2), phnow(iDBSnow), 'BinEdges',bedge);
+title(ax(2,2), 'Stimulation Phase')
+%}
+
+% advance x axis window 
+ax(1,1).XLim = t(curwin);
+ax(2,1).XLim = t(curwin);
+%ax(1,1).XLabel.Position(1) = t(curwin(end));
+%ax(2,1).XLabel.Position(1) = t(curwin(end));
+
+% update stim count display 
+if nPDS > nPDSprev
+    subtitle_PDS.String = ['Total Stim Count = ',emph,num2str(nPDS)];
+else
+    subtitle_PDS.String = ['Total Stim Count = ',num2str(nPDS),emph,1];
+end
+if nDBS > nDBSprev
+    subtitle_DBS.String = ['Total Stim Count = ',emph,num2str(nDBS)];
+else
+    subtitle_DBS.String = ['Total Stim Count = ',num2str(nDBS),emph,1];
+end
+
+drawnow;
+
+if Vsave
+    Vframe = getframe(myfig);
+    writeVideo(VW, Vframe);
+end
+
+ticDur = toc(ticStart);
+if ticDur < pausetime
+    pause(pausetime - ticDur);
+    %drawnow;
+end
+
+toc(ticStart)
+
+end
+
+catch ME6
+    if contains(ME6.identifier, 'DeletedAxes') || ~isvalid(myfig)
+        ermsg = 'Figure Closed.';
+    else
+        ermsg = ['Error: ',ME6.message];
+    end
+    warning(['Stopped at sample ',...
+        num2str(cursample + packetsize + displaywin),' of ',num2str(length(xBPF)),...
+        ' due to ',ermsg]);
+end
+
+if Vsave
+    close(VW)
+end

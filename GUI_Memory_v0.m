@@ -22,7 +22,7 @@ function varargout = GUI_Memory_v0(varargin)
 
 % Edit the above text to modify the response to help GUI_Memory_v0
 
-% Last Modified by GUIDE v2.5 09-Jul-2025 01:36:04
+% Last Modified by GUIDE v2.5 30-Sep-2026 18:30:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -80,6 +80,8 @@ ud = struct('ReceivedData', '', ...
             ...'ParadigmPhase', 'WAIT', ...
             'ParadigmPhase', 'HOLD', ...
             'ImageVisible', false);
+RecSrlCallback = @(hsrl,evt) CharSerialCallbackReceiver_Memory_v0(hsrl,evt, ...
+                    handles.textSrl, handles.ParadigmInfoTable);
 
 % save location
 svloc = ['Saved Data Memory',filesep,'Saved Data ',...
@@ -87,7 +89,7 @@ svloc = ['Saved Data Memory',filesep,'Saved Data ',...
 pause(1)
 mkdir(svloc); 
 
-handles = helperGUIv0_OpeningInitialize(handles, ud, svloc);
+handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % additional phase tracking buffers & objects
 emptyStorage = nan(100000,1);
@@ -227,8 +229,9 @@ end
 
 
 function tgl_StartStop_ButtonDownFcn(hObject, eventdata, handles)
-keyboard
-% This has been added for debugging. Does the code ever get here?
+%keyboard
+% This has been added for debugging. Most likely occurs when right click
+% instead of left. 
 
 
 % --- Executes on button press in tgl_StartStop.
@@ -309,7 +312,7 @@ end
 try
 % save stored data 
 phStorage = {handles.pkStorage1, handles.trStorage1, ...
-    handles.encStorage1, handles.decStorage1, handles.holdStorage1};
+    handles.encStorage1, handles.decStorage1, handles.holdStorage1, nan};
 for iph = 1:length(handles.PhaseOfInterest)
     phname = handles.PhaseOfInterestName(iph);
     phname = phname+"Time";
@@ -333,6 +336,14 @@ if numel(StimTime)
         save(svfn,'StimTime');
         handles.SaveFileN = handles.SaveFileN + 1;
     end
+end
+SignalSaved = handles.sigStorage1;
+SignalSaved = SignalSaved(~isnan(SignalSaved(:,1)), :);
+if ~isempty(SignalSaved)
+    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    disp(['Saving Signal to ',svfn])
+    save(svfn,'SignalSaved');
+    handles.SaveFileN = handles.SaveFileN + 1;
 end
 SerialLog = handles.srlStorage1;
 svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
@@ -530,10 +541,14 @@ function  StopMainLoop(hObject, eventdata, handles)
 % Command Window
 
 try
-    if handles.StimActive
-        stop(handles.QueuedStim)
+    if isfield(handles, 'StimActive')
+        if handles.StimActive
+            stop(handles.QueuedStim)
+        end
     end
-    handles.RunMainLoop = false;
+    if isfield(handles, 'RunMainLoop')
+        handles.RunMainLoop = false;
+    end
     guidata(hObject, handles)
 catch ME
     getReport(ME)
@@ -549,6 +564,9 @@ end
 function myPULSE(hTimer,eventdata,hFigure)
 handles = guidata(hFigure);
 stimulator = handles.stimulator;
+% Most of the following is equivalent to stimPulse_cerestim(stimulator) ;
+% should it be replaced??
+%{
 if ~stimulator.isConnected()
     warning('Stimulator is not connected.')
 end
@@ -559,6 +577,7 @@ stimstatus = stimulator.getSequenceStatus();
 if stimstatus == 2
     warning('Stimulator is already playing.')
 end
+%}
 stimtime1 = cbmex('time');
 stimulator.play(1);
 stimtime2 = cbmex('time');
@@ -1022,6 +1041,7 @@ if handles.StimActive
     try
         handles.stimulator.stop();
         handles.stimulator.disconnect;
+        delete(handles.stimulator);
         pause(.1)
     catch ME0
         getReport(ME0)
@@ -1036,6 +1056,7 @@ if get(hObject, 'Value') == 1
     try
 
     handles.stimMaxFreq = eval(get(handles.txt_MaxStimFreq, 'String'));
+    % TO DO: MAKE SURE stimMaxFreq WORKS!!!
 
     amp1 = eval(handles.txt_amp1.String); 
     amp2 = eval(handles.txt_amp2.String); 
@@ -1099,6 +1120,10 @@ function check_artifact_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_artifact
+if get(hObject, 'Value')
+    handles = helperGUIv0_setupArtRemove(handles);
+    guidata(hObject, handles);
+end
 
 
 % --- Executes on selection change in pop_elecgrid.
@@ -1385,3 +1410,12 @@ function txt_ARlearnrate_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in check_artifactSave.
+function check_artifactSave_Callback(hObject, eventdata, handles)
+% hObject    handle to check_artifactSave (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of check_artifactSave

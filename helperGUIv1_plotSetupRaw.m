@@ -37,8 +37,9 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
         filtOrds = [];
     end
     [rawD, artD, fltD, forD, timeBuffs, initTic] = ...
-        handles.HardwareFuncs.InitRecording(buffSize, filtOrds, handles.PDSwin1, ...
-        handles.allChannelIDs, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
+        InitializeRecording(handles.HardwareFuncs.InitRawData, ...
+            buffSize, filtOrds, handles.PDSwin1, ...
+            handles.allChannelIDs, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For);
     rawD1 = rawD(1,:); rawD4 = rawD(4,:);
     artD1 = artD(1,:); artD4 = artD(4,:);
     fltD1 = fltD(1,:); fltD4 = fltD(4,:);
@@ -46,7 +47,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     timeBuff = timeBuffs{chInd};
     buffSize2 = (handles.bufferSize / rawD1{chInd}.SampleRate) * .5 * handles.stimMaxFreq;
     buffSize2 = ceil(buffSize2);
-    forBuff = nan(buffSize2,2);
+    forBuff = nan(buffSize2, length(handles.PhaseOfInterest));
     tSt = nan(buffSize2,1);
     handles.allChannelInfo = rawD1;
     rawPlt = data2timetable(rawD4(chInd),rawD1(chInd),handles.time0); rawPlt = rawPlt{1};
@@ -99,7 +100,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
                 error('Artifact removal was not actually set up. Something is wrong in the code.')
             end
             hold on;
-            handles.h_artDataTrace = plot(artPlt.Time - tNow, artPlt.Variables, ':');
+            handles.h_artDataTrace = plot(artPlt.Time - tNow, artPlt.Variables, '--');
         end
     end
 

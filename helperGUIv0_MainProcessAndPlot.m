@@ -40,6 +40,9 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
             % use AR model to get some future data 
             StimulatorLagInd = round(handles.fSample*handles.StimulatorLagTime);
             dataPast = handles.filtDataBuffer; 
+            if length(dataPast) < handles.PDSwin1
+                error('Display window is not long enough for phase prediction window.')
+            end
             dataPast = dataPast((end-handles.PDSwin1+1):end);
             dataFutu = myFastForecastAR(Mdl, dataPast, handles.PDSwin1);
             if ARupdated
@@ -58,10 +61,10 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
             end
 
             % find the time to next peak, trough and plot 
-            bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate 
+            %bp = norm(dataPast,2)^2/numel(dataPast); % band power surrogate 
             M = handles.PDSwin1 - handles.IndShiftFIR;
             dataPh = false(M,1); oldPh = cell(size(phaseBuffers));
-            [t2,i2,phi_inst,f_inst] = ...
+            [t2,i2,phi_inst,f_inst,bp] = ...
                 blockPDS(dataPast,dataFutu2, handles.fSample, handles.PhaseOfInterest, ...
                 handles.TimeShiftFIR + handles.StimulatorLagTime, ...
                 handles.locutoff, handles.hicutoff);
@@ -90,7 +93,9 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
             handles.stimind = stimind - N;
             handles.stimNewTime = -inf;
             if stimind > 0
-                handles.stimDataBuffer(stimind) = true;
+                if stimind <= length(handles.stimDataBuffer)
+                    handles.stimDataBuffer(stimind) = true;
+                end
             end
             else
                 handles.stimind = -1;
@@ -134,7 +139,8 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
                             if strcmp(handles.QueuedStim.Running, 'on')
                                 stop(handles.QueuedStim);
                             end
-                            handles.QueuedStim.StartDelay = t2Q;
+                            %disp(datestr(datetime + seconds(t2Q),'HH:MM:SS.FFF'))
+                            handles.QueuedStim.StartDelay = t2Q; 
                             handles.QueuedStim.UserData = t2Qabs;
                             start(handles.QueuedStim);
                         end

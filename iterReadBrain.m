@@ -2,13 +2,14 @@ function [...
     timeBuffs, rawData, ...
     artRemData, artRemArgs, ...
     fltData, fltArgs, ...
-    forBuffs, forData, forArgs] = ...
+    forBuffs, forData, forArgs, ...
+    setup_time, DAQ_time, artifact_time, filter_time, update_time, forecast_time] = ...
     iterReadBrain(...
         timeBuffs, rawData, daqFun, ...
         selRaw2Art, selFor2Art, selRaw2Flt, selRaw2For, selFlt2For, ...
         artRemData, artRemFun, artRemArgs, ...
         fltData, fltFun, fltArgs, ...
-        forBuffs, forData, forFun, forArgs)
+        forBuffs, forData, forFun, forArgs, MdlUpdFun)
 % One iteration of brain reading, to be used as a main loop or timer
 % function. 
 % 
@@ -33,6 +34,7 @@ doDAQ = (~isempty(rawData)) && (~isempty(daqFun));
 doArt = doDAQ && (~isempty(artRemData)) && (~isempty(artRemFun));
 doFlt = doDAQ && (~isempty(fltFun)); 
 doFor = doDAQ && (~isempty(forFun));
+doUpd = doFor && (~isempty(MdlUpdFun));
 
 if (~doFlt) && (~isempty(selFlt2For))
     error('Filter required to forecast, but filter is not specified.');
@@ -43,7 +45,7 @@ if numel(selFlt2For)
     end
 end
 
-setup_time = toc; disp(['Setup Time = ',num2str(setup_time)])
+setup_time = toc; %disp(['Setup Time = ',num2str(setup_time)])
 %% DAQ 
 tic
 if doDAQ 
@@ -64,9 +66,11 @@ if width(rawData) == width(newTails)
         [rawData{2,CH}, rawData{3,CH}, rawData{4,CH}] = ...
             bufferjuggle(rawData{2,CH},rawData{3,CH},newTail,@bufferData);
         fs = chInfo{CH}.SampleRate;
+        if ~isempty(newTail) % FIX THIS!!
         tailProcTime = newTail(1,1) + (height(newTail)-1)/fs; 
         curTime(CH) = tailProcTime;
         timeBuffs{1,CH} = bufferData(timeBuffs{1,CH}, tailProcTime);
+        end
     end
 else
 % assign manually using channel ID
@@ -95,9 +99,10 @@ end
 end
 
 % selection, etc
-rawTails = rawData(3,:); rawAllData = rawData(4,:);
+rawTails = rawData(3,:); rawHeads = rawData(2,:); rawAllData = rawData(4,:);
 try
     rawTails = rawTails([selRaw2Art, selRaw2Flt, selRaw2For]); 
+    rawHeads = rawHeads([selRaw2Art, selRaw2Flt, selRaw2For]); 
     rawAllData = rawAllData([selRaw2Art, selRaw2Flt, selRaw2For]);
 catch ME
     if strcmp(ME.identifier, 'MATLAB:badsubscript')
@@ -113,31 +118,49 @@ lenRaw = cellfun(@height, rawTails); lenFlt = lenRaw(selRaw2Flt);
 
 end
 
-DAQ_time = toc; disp(['DAQ time = ',num2str(DAQ_time)])
+DAQ_time = toc; %disp(['DAQ time = ',num2str(DAQ_time)])
 %% Artifact Removal 
 tic
 if doArt
 
 nOverlapOld = artRemArgs.nOverlap;
 [artRemTails, artRemArgs] = artRemFun(artRemArgs, ...
-    rawTails(selRaw2Art), forData(3,selFor2Art));
+    rawTails(selRaw2Art), forData(3,selFor2Art), rawHeads(selRaw2Art));
+nOverlapNew = artRemArgs.nOverlap;
 if ~(size(artRemTails,2) == size(artRemData,2))
     error('Artifact removal channels are inconsistent.');
 end
 for CH = 1:size(artRemData, 2)
     oldHead = artRemData{2,CH}; oldTail = artRemData{3,CH}; newTail = artRemTails{CH};
-    oldTime = nOverlapOld(CH); newTime = artRemArgs.nOverlap(CH); % overwrite times 
-    newHead =       bufferDataOverwrite(oldHead, oldTail, oldTime); 
+    oldTime = nOverlapOld(CH); %newTime = nOverlapNew(CH); % # samples NOT to buffer 
+    %TailLen = size(newTail,1);
+    if oldTime > 0
+        newTail = newTail(oldTime+1:end,:);
+        %{
+        % rebalance tail lengths 
+        OldNewTail = [oldTail; newTail];
+        if TailLen < size(OldNewTail,1)
+            newTail = OldNewTail((end-TailLen+1):end,:);
+            oldTail = OldNewTail(1:(end-TailLen),:);
+        end
+        %}
+    end
+    %oldTime = height(oldTail)-oldTime; newTime = height(newTail)-newTime; % # NEW samples
+    %newHead = bufferDataOverwrite(oldHead, oldTail, oldTime); 
+    newHead = bufferData(oldHead, oldTail);
     artRemData{2,CH} = newHead;
     artRemData{3,CH} = newTail; 
-    artRemData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
+    %artRemData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
+    newTail = newTail(1:(end-nOverlapNew(CH)),:);
+    artRemData{4,CH} = bufferData(newHead, newTail);
+    %artRemData{4,CH} = [newHead; newTail];
 end
 % overwrite raw data - internally only - ???
-rawTails(selRaw2Art) = artRemData(3,:); rawAllData(selRaw2Art) = artRemData(4,:);
+rawTails(selRaw2Flt) = artRemData(3,:); rawAllData(selRaw2Flt) = artRemData(4,:); % !!! NEED to clarify selraw2art vs selraw2flt
 
 end
 
-artifact_time = toc; disp(['Artifact time = ',num2str(artifact_time)])
+artifact_time = toc; %disp(['Artifact time = ',num2str(artifact_time)])
 %% Filter
 tic
 if doFlt
@@ -159,7 +182,19 @@ else
     fltTails = {}; fltAllData = {};
 end
 
-filter_time = toc; disp(['Filter time = ',num2str(filter_time)])
+filter_time = toc; %disp(['Filter time = ',num2str(filter_time)])
+
+%% Update mdl coeffs 
+tic 
+
+if doUpd
+
+forArgs = MdlUpdFun(forArgs, [rawAllData(selRaw2For), fltAllData(selFlt2For)]);
+
+end
+
+update_time = toc; %disp(['Model update time = ',num2str(update_time)])
+
 %% Forecast 
 tic
 
@@ -195,7 +230,7 @@ end
 
 end
 
-forecast_time = toc; disp(['Forecast time = ',num2str(forecast_time)])
+forecast_time = toc; %disp(['Forecast time = ',num2str(forecast_time)])
 
 %% helper 
     function [newBuffer, newTail, newAll] = ...

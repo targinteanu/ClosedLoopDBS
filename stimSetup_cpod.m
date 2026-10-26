@@ -8,7 +8,7 @@
 
 %clear device
 
-function device = srlSetup_cpod(~)
+function device = stimSetup_cpod(~)
 
 device_found = 0;
 ports = serialportlist("available");

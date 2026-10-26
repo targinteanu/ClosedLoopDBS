@@ -14,10 +14,12 @@ function [emptyData, contData, buffData, chanInfo, startTic] = ...
 
 %% access cbmex 
 
-connect_cbmex(); startTic = tic;
+% cbmex should have been connected already
+startTic = tic;
 pause(1);
 
 [spikeEvents, time, continuousData] = cbmex('trialdata',1);
+% TO DO: the time units may be different (microseconds?) on the gemini!
 
 if isempty(continuousData)
     error('No continuous data; ensure that data acquisition has been enabled.')
@@ -52,6 +54,8 @@ end
 
 %% assign data to the structure 
 
+% Does this loop work with removing channels? See differences in
+% initRawData_AO
 for ch = 1:length(chsel)
     chInd = find(chnum == chsel(ch)); 
 

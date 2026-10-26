@@ -1,10 +1,12 @@
 function [emptyData, contData, buffData, chanInfo, startTic] = ...
-    initRawData_AO(chsel, bufferSize)
+    initRawData_AO(chsel, bufferSize, devicename, chantype)
 % Initialize the multichannel raw data structure using Alpha Omega
 % interface. 
 %
 % Inputs: chsel is horizontal selected channel ID numbers output from AO.
 % bufferSize is the size(s) of each corresponding channel buffer (samples). 
+% chantype is e.g. 'LFP', 'AI' (analog in), 'SPK', 'RAW', 'SEG'. Currently,
+% only one type at a time is supported. 
 % 
 % Output data structure is a cell array with columns to each channel. Each
 % channel is represented by the matrix [time column, data column]. Time
@@ -12,11 +14,55 @@ function [emptyData, contData, buffData, chanInfo, startTic] = ...
 % 
 % chanInfo has fields: SampleRate, Name, Unit, IDnumber
 
-%% connect to hardware 
-connect_AO(); startTic = tic; 
-pause(1);
+if nargin < 4
+    chantype = 'LFP';
+    if nargin < 3
+        error('Device name must be specified for AO.')
+    end
+end
+
+%% hardcode known channel info according to type 
+% There does not seem to be a way to extract this info automatically.
+%
+% currently excluding FE/RM Audio, RM AO, UD, InPort,
+% StimMarker, Internal Detection, TTL, DOUT, TS Sync, ACC_X/Y/Z
+% (acceleration?)
+%
+% Channel names on Neuro Omega need to be included here!!! (unsure if they
+% are the same)
+% 
+if strcmpi(chantype, 'LFP')
+    % filtered/downsampled LFP
+    fs = 1875;
+    channelselector = @(n) (n < 97) && (n >= 33);
+elseif strcmpi(chantype, 'AI')
+    % analog in
+    fs = 3750;
+    channelselector = @(n) n < 9;
+elseif strcmpi(chantype, 'SEG')
+    % timestamp of threshold crossing (spike sorting)
+    fs = 30000;
+    channelselector = @(n) n < 97;
+elseif strcmpi(chantype, 'SPK')
+    % filtered spike
+    fs = 30000;
+    channelselector = @(n) false;
+elseif strcmpi(chantype, 'RAW')
+    % unprocessed (no filering/downsampling) ver of other signals
+    fs = 30000;
+    channelselector = @(n) n < 11;
+else
+    fs = nan; 
+    channelselector = @(n) false;
+end
 
 %% setup
+
+% hardware should be connected already
+startTic = tic; 
+pause(1);
+
+chnamefspec = [chantype,' %f'];
 
 [Results, channelsData] = AO_GetAllChannels();
 %%{
@@ -24,11 +70,12 @@ if Results == 4
     % give it some time and try again 
     disconnect_AO(); 
     pause(1); 
-    connect_AO();
+    connect_AO(devicename);
     pause(1);
     [Results, channelsData] = AO_GetAllChannels();
     if Results
-        error('tried again and still failed to connect')
+        error(['Tried again and still failed to connect. ' ...
+            'Try restarting MATLAB or this computer.'])
     end
 end
 %}
@@ -36,51 +83,29 @@ if Results
     error(['Failed to obtain channel info with error code ',num2str(Results)])
 end
 
+try
 chnum = [channelsData.channelID]; chnum = double(chnum);
+catch ME
+    if ~isstruct(channelsData)
+        if isnan(channelsData)
+            error(['Did not receive channel info from AO. ' ...
+                'Try closing HaGuide or restarting Neuro Omega.'])
+        end
+    else
+        rethrow(ME);
+    end
+end
+
 chname = {channelsData.channelName};
 
 % limit to only desired continuous data channels
 chincl = false(size(chnum)); Fs = nan(size(chnum));
-for ch = 1:length(chnum)
-    chname_ch = chname{ch};
-    % 
-    % Currently including only LFP channels because they have the same
-    % sample rate. TO DO: include other channels with their sample rates 
-    %
-    % currently excluding FE/RM Audio, RM AO, UD, InPort,
-    % StimMarker, Internal Detection, TTL, DOUT, TS Sync, ACC_X/Y/Z
-    % (acceleration?)
-    %
-    % Channel names on Neuro Omega need to be included here!!! (unsure if they
-    % are the same)
-    % 
-    if contains(chname_ch, 'LFP')
-        n = sscanf(chname_ch, 'LFP %f'); 
-        chincl(ch) = (n < 97) && (n >= 33);
-        Fs(ch) = 1875;
-        %{
-        %{
-    elseif contains(chname_ch, 'SEG')
-        % timestamp of threshold crossing (spike sorting)
-        n = sscanf(chname_ch, 'SEG %f'); 
-        chincl(ch) = n < 97;
-        Fs(ch) = 30000;
-        %}
-    elseif contains(chname_ch, 'RAW')
-        % unprocessed (no filering/downsampling) ver of other signals 
-        n = sscanf(chname_ch, 'RAW %f'); 
-        chincl(ch) = n < 11;
-        Fs(ch) = 30000;
-    elseif contains(chname_ch, 'AI')
-        % Analog In (?)
-        n = sscanf(chname_ch, 'AI %f'); 
-        chincl(ch) = n < 9;
-        % what is the sampling rate??
-    elseif contains(chname_ch, 'SPK')
-        n = sscanf(chname_ch, 'SPK %f');
-        chincl(ch) = false;
-        Fs(ch) = 30000;
-        %}
+for chInd = 1:length(chnum)
+    chname_ch = chname{chInd};
+    if contains(chname_ch, chantype)
+        n = sscanf(chname_ch, chnamefspec);
+        chincl(chInd) = true; % alternatively, use chanselector(n)
+        Fs(chInd) = fs;
     end
     % 
     % TO DO: can above chan inclusion be automated, i.e. try 
@@ -88,13 +113,7 @@ for ch = 1:length(chnum)
     % exclude channels with nonzero error / nan DataCapture? 
     % 
 end
-%{
-chincl = ...
-    contains(chname, 'LFP') | ...
-    contains(chname, 'SEG') | ... SEEG (?)
-    contains(chname, 'RAW') | ... ?
-    contains(chname, 'AI') ; % Analog In (?)
-%}
+
 chnum = chnum(chincl); chname = chname(chincl); Fs = Fs(chincl);
 
 if isempty(chsel)
@@ -102,11 +121,6 @@ if isempty(chsel)
     chsel = chnum;
 end
 chsel = double(chsel);
-
-emptyData = cell(1,length(chsel)); 
-contData = emptyData; 
-buffData = emptyData;
-chanInfo = emptyData;
 
 %% handle/check inputs 
 if length(bufferSize) < length(chsel)
@@ -129,8 +143,8 @@ BitResolution = 2500000/(2^16*ChannelGain);
 
 % add buffering channels 
 W = length(chsel);
-for ch = 1:W
-    chnum_ch = chsel(ch); chname_ch = chname{ch};
+for chInd = 1:W
+    chnum_ch = chsel(chInd); chname_ch = chname{chInd};
     Results = AO_AddBufferingChannel(chnum_ch, bufferSizeAO);
     if Results
         msg = [...
@@ -145,18 +159,48 @@ AO_ClearChannelData();
 pause(1);
 
 % get initial data 
+doretry = true;
+while doretry
 [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel); 
 if Results == -3
     % no samples; give it more time 
-    pause(1); 
+    pause(.1); 
     [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);
 end
+if isnan(DataCapture)
+    error('Issue with DataCapture. On Neuro Omega, check options > logging > select channels')
+end
 if Results
+    [~,~,LastError] = AO_GetError();
+    [errchan, nerr] = sscanf(LastError, 'ERROR --> AO_GetAlignedData :: Channel %f has no samples');
+    if (Results == -3) || (nerr > 0)
+        warning(['Removing channel ',num2str(errchan),' due to error code ',num2str(Results)])
+        if numel(errchan)
+            remchan = (chsel == errchan);
+            chsel = chsel(~remchan);
+            bufferSize = bufferSize(~remchan);
+            doretry = true;
+        else
+            doretry=false;
+        end
+    else
     msg = ['Failed to acquire data with error code ',num2str(Results)];
     error(msg); % consider trying again until success 
+    end
+else
+    doretry = false;
 end
+end
+
+W = length(chsel);
+
 time = time/1510; % TO DO: make sure this is correct time in seconds!
-continuousData = continuousData(1:DataCapture); 
+if DataCapture < length(continuousData)
+    continuousData = continuousData(1:DataCapture); 
+else
+    warning('Issue with DataCapture. On Neuro Omega, check options > logging > select channels') % ?
+    DataCapture = length(continuousData); % unsure if this fixes anything
+end
 L = DataCapture/W;
 continuousData = reshape(continuousData, ...
     L, W); % columns = channels 
@@ -164,25 +208,30 @@ continuousData = double(continuousData);
 
 %% assign data to the structure 
 
-for ch = 1:length(chsel)
-    chInd = find(chnum == chsel(ch));
+emptyData = cell(1,length(chsel)); 
+contData = emptyData; 
+buffData = emptyData;
+chanInfo = emptyData;
+
+for ch = 1:length(chnum)
+    chnum_ch = chnum(ch);
+    chInd = find(chsel == chnum_ch);
 
     if ~isempty(chInd)
         if length(chInd) > 1
             error('Non-unique channel ID(s).')
         end
-        chnum_ch = chsel(ch);
-        chname_ch = chname{chInd};
-        fs = Fs(chInd);
+        chname_ch = chname{ch};
+        fs = Fs(ch);
 
         % Create raw data buffer of zeros of the correct length
-        emptyData{ch} = [nan(bufferSize(ch),1), zeros(bufferSize(ch),1)];
-        if ~isempty(emptyData{ch})
+        emptyData{chInd} = [nan(bufferSize(chInd),1), zeros(bufferSize(chInd),1)];
+        if ~isempty(emptyData{chInd})
             %emptyData{ch}(1,1) = time - (bufferSize)/fs(chInd);
-            emptyData{ch}(end,1) = time - 1/fs; % ??
+            emptyData{chInd}(end,1) = time - 1/fs; % ??
         end
-        contData{ch} = [nan(L,1), continuousData(:,chInd)];
-        contData{ch}(1,1) = time;
+        contData{chInd} = [nan(L,1), continuousData(:,chInd)];
+        contData{chInd}(1,1) = time;
 
         % channel info 
         ud.SampleRate = fs; 
@@ -192,9 +241,9 @@ for ch = 1:length(chsel)
         ud.MinAnalog = 0;  % to negate offset calculation
         ud.Resolution = BitResolution;
         ud.IDnumber = chnum_ch;
-        chanInfo{ch} = ud; 
+        chanInfo{chInd} = ud; 
 
-        buffData{ch} = bufferData(emptyData{ch}, contData{ch});
+        buffData{chInd} = bufferData(emptyData{chInd}, contData{chInd});
 
     end
 

@@ -1,4 +1,4 @@
-function [t2phi, i2phi, phi_inst, f_inst] = ...
+function [t2phi, i2phi, phi_inst, f_inst, A_avg] = ...
     blockPDS(pastData, futureData, fs, phi, tmin, fmin, fmax)
 % Determine the time (s) and # samples to next desired phase phi from a
 % block of data sampled at a constant rate fs (Hz). Also return the current
@@ -13,7 +13,8 @@ function [t2phi, i2phi, phi_inst, f_inst] = ...
 N = size(pastData,1); M = size(futureData,1);
 blockData = [pastData; futureData];
 
-[phi_block, f_block] = instPhaseFreq(blockData, fs);
+[phi_block, f_block, A_block] = instPhaseFreq(blockData, fs);
+A_avg = mean(A_block);
 phi_inst = phi_block(N,:);
 f_block = max(f_block, fmin); 
 f_block = min(f_block, fmax);
@@ -27,9 +28,21 @@ f_inst = f_block(N);
 T=1/f_inst;
 
 % examine the next full phase cycle
-imin = ceil(tmin*fs); phi_future = phi_block((N+imin):end,:);
+imin = ceil(tmin*fs); 
+if imin > M
+    warning('Not enough forecast data provided to satisfy minimum horizon.')
+end
+phi_future = phi_block((N+imin):end,:);
 phi_fut_1 = phi_future(1); phi_fut_ = unwrap(phi_future);
-[~,phi_fut_end] = min(abs(phi_fut_-(2*pi + phi_fut_1)));
+phi_fut_end_diff = phi_fut_-(2*pi + phi_fut_1);
+%[~,phi_fut_end] = min(abs(phi_fut_end_diff)); % !!!!! CHANGE THIS to something like findpeaks to avoid getting more than one cycle
+phi_fut_end = find(phi_fut_end_diff > 0);
+if isempty(phi_fut_end)
+    warning('Forecast duration may be too short to find target phase.')
+    [~,phi_fut_end] = min(abs(phi_fut_end_diff));
+else
+    phi_fut_end = phi_fut_end(1)-1;
+end
 phi_fut_end = min(length(phi_future), phi_fut_end+1);
 phi_future = phi_future(1:phi_fut_end);
 
@@ -44,7 +57,7 @@ for p = 1:length(phi)
 
     % accurate & full-cycle AR model assumption 
     [~,i] = min(abs(radfix(phi_future-phi_)));
-    i = i + imin;
+    i = i + imin - 1;
     i2phi(p) = i; 
     t2phi(p) = i/fs;
 

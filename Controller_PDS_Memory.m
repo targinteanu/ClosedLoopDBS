@@ -8,8 +8,10 @@ if nargin < 4
 end
 
 if numel(bpData) == 1
+    % this is a pre-calculated bandpower value
     bp = bpData;
 else
+    % this is filtered data from which bandpower should be calculated 
     bp = norm(bpData,2)^2/numel(bpData); % band power surrogate
 end
 
