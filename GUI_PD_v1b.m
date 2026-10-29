@@ -22,7 +22,7 @@ function varargout = GUI_PD_v1b(varargin)
 
 % Edit the above text to modify the response to help GUI_PD_v1b
 
-% Last Modified by GUIDE v2.5 15-Jan-2026 03:20:34
+% Last Modified by GUIDE v2.5 29-Oct-2026 00:52:30
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -346,6 +346,14 @@ if numel(StimTime)
         handles.SaveFileN = handles.SaveFileN + 1;
     end
 end
+SignalSaved = handles.sigStorage1;
+SignalSaved = SignalSaved(~isnan(SignalSaved(:,1)), :);
+if ~isempty(SignalSaved)
+    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    disp(['Saving Signal to ',svfn])
+    save(svfn,'SignalSaved');
+    handles.SaveFileN = handles.SaveFileN + 1;
+end
 SerialLog = handles.srlStorage1;
 svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
 disp(['Saving Serial to ',svfn])
@@ -440,7 +448,48 @@ try
         forPlt = forPlt(:,2);
     end
     forPlt = forPlt(2:end,:);
-    forBuff = handles.recDataStructs.forBuffs{1}; 
+    forBuff = handles.recDataStructs.forBuffs{1,1}; 
+
+    forBuffOld = handles.recDataStructs.forBuffs{2,1}; 
+    phStorage = ...
+        {handles.pkStorage1, handles.trStorage1, handles.redStorage1, handles.yelStorage1, handles.grnStorage1, handles.stpStorage1; ...
+         handles.pkP1,       handles.trP1,       handles.redP1,       handles.yelP1,       handles.grnP1,       handles.stpP1; ...
+         handles.pkStorage2, handles.trStorage2, handles.redStorage2, handles.yelStorage2, handles.grnStorage2, handles.stpStorage2};
+    for iph = 1:length(handles.PhaseOfInterest)
+        tOld = forBuffOld(:,iph);
+        if numel(tOld)
+        [phStorage{1,iph},phStorage{2,iph},phStorage{3,iph},p2] = ...
+            cycleStorage(phStorage{1,iph},phStorage{2,iph},phStorage{3,iph},...
+            tOld);
+        if ~phStorage{2,iph}
+            % storage full; save
+            phname = handles.PhaseOfInterestName(iph);
+            phname = phname+"Time";
+            %assignin("base",phname,phaseStorage{1,iph});
+            %eval(phname+" = phaseStorage{1,iph};");
+            dataNeedsName = phStorage{1,iph}; dataName = phname;
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+            disp("Saving "+phname+" to "+svfn)
+            save(svfn,'dataNeedsName','dataName');
+            handles.SaveFileN = handles.SaveFileN + 1;
+            phStorage{1,iph} = phStorage{3,iph};
+            phStorage{2,iph} = p2;
+            phStorage{3,iph} = nan(size(phStorage{3,iph}));
+        end
+        end
+    end
+    handles.pkStorage1   = phStorage{1,1}; handles.pkP1   = phStorage{2,1}; 
+    handles.pkStorage2   = phStorage{3,1}; 
+    handles.trStorage1   = phStorage{1,2}; handles.trP1   = phStorage{2,2}; 
+    handles.trStorage2   = phStorage{3,2}; 
+    handles.redStorage1   = phStorage{1,3}; handles.redP1   = phStorage{2,3}; 
+    handles.redStorage2   = phStorage{3,3}; 
+    handles.yelStorage1   = phStorage{1,4}; handles.yelP1   = phStorage{2,4}; 
+    handles.yelStorage2   = phStorage{3,4}; 
+    handles.grnStorage1   = phStorage{1,5}; handles.grnP1   = phStorage{2,5}; 
+    handles.grnStorage2   = phStorage{3,5}; 
+    handles.stpStorage1   = phStorage{1,6}; handles.stpP1   = phStorage{2,6}; 
+    handles.stpStorage2   = phStorage{3,6}; 
 
     % stimulation ===================================================
     handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, @Controller_PDS_PD);
@@ -823,6 +872,26 @@ end
 if handles.RunMainLoop
     StopMainLoop(hObject,[],handles)
     StartMainLoop(hObject,[],handles)
+end
+
+
+function [storage1, p1, storage2, p2] = ...
+    cycleStorage(storage1, p1, storage2, newData)
+L = length(newData); 
+if p1+L-1 > length(storage1)
+    % storage 1 is now full 
+    if L > length(storage2)
+        warning('Data overloaded save buffer; some data may not be saved.')
+        L = length(storage2);
+        newData = newData(1:L);
+    end
+    p1 = 0; 
+    storage2(1:L) = newData; 
+    p2 = L+1;
+else
+    storage1(p1:(p1+L-1)) = newData;
+    p1 = p1+L;
+    p2 = [];
 end
 
 
@@ -1854,3 +1923,12 @@ function txt_PowerThresh_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in check_artifactSave.
+function check_artifactSave_Callback(hObject, eventdata, handles)
+% hObject    handle to check_artifactSave (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of check_artifactSave
