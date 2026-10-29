@@ -27,8 +27,8 @@ else
     forefun = [];
 end
 if handles.check_artifact.Value && handles.MdlSetUp
-    %artremfun = @artRemKalman;
-    artremfun = @artRemFun;
+    artremfun = @artRemKalman;
+    %artremfun = @artRemFun;
 else
     artremfun = [];
 end
