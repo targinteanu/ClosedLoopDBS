@@ -1,28 +1,60 @@
 %% params 
 
 fbnd = [13,30]; % hz (beta)
-gridsize = [21,3]; % 21x3 ECoG grid 
 
 %% load data 
-disp('locate .ns* file')
-[fn,fp] = uigetfile('*.ns*');
-NS = openNSx(fullfile(fp,fn), 'uV');
+disp('locate data file')
+[fn,fp] = uigetfile('*.*');
 [~,fn,fe] = fileparts(fn);
-NEV = openNEV(fullfile(fp,[fn,'.nev']));
+EVtbl = [];
+if contains(lower(fe), '.ns')
+    NS = openNSx(fullfile(fp,[fn,fe]), 'uV');
+    NEV = openNEV(fullfile(fp,[fn,'.nev']));
+    gridsize = [21,3]; % 21x3 ECoG grid 
+    Tbl = ns2timetable(NS); EVtbl = nev2table(NEV);
+elseif contains(lower(fe),'.mat')
+    load(fullfile(fp,[fn,fe]), 'tblsBaseline');
+    Tbl = tblsBaseline{1}; EVtbl = Tbl.Properties.Events;
+    gridsize = [21,3]; % 21x3 ECoG grid 
+elseif contains(lower(fe),'.xls') || strcmpi(fe, '.csv')
+    opts = detectImportOptions(fullfile(fp,[fn,fe]));
+    out = readmatrix(fullfile(fp,[fn,fe]),opts);
+    sigin = out(:,2);
+    timein = out(:,1);
+    Fs = 1000; % Hz
+    times_secs = timein/Fs;
+    gridsize = [1,1];
+    Tbl = array2timetable(sigin, "RowTimes",seconds(times_secs));
+else
+    error(['Unrecognized file type: ',fe])
+end
 
 %%
-NStbl = ns2timetable(NS); NEVtbl = nev2table(NEV);
-chlbls = NStbl.Properties.VariableNames;
+chlbls = Tbl.Properties.VariableNames;
 
-Fs = NStbl.Properties.SampleRate;
+Fs = Tbl.Properties.SampleRate;
 if isnan(Fs)
-    Fs = 1/median(seconds(diff(NStbl.Time)));
+    Fs = 1/median(seconds(diff(Tbl.Time)));
 end
 
 BPF = fir1(1023, fbnd/(Fs/2)); 
-X = NStbl{:,1:prod(gridsize)}; 
-tRel = seconds(NStbl.Time - NStbl.Time(1));
-tReg = tRel(1):(1/Fs):tRel(end);
+X = Tbl.Variables; 
+if width(X) > prod(gridsize)
+    warning("Limiting to first "+prod(gridsize)+" channels.")
+    X = X(:,1:prod(gridsize));
+elseif width(X) < prod(gridsize)
+    warning("Attempting to fill missing channels.")
+    chlblnum = cellfun(@(str) str((str>=48)&(str<=57)), chlbls, 'UniformOutput',false);
+    chlblnum = cellfun(@str2num, chlblnum);
+    X_ = zeros(height(X), prod(gridsize));
+    X_(:, chlblnum) = X;
+    X = X_;
+    chlbls_ = convertStringsToChars(repmat("x", 1, width(X)));
+    chlbls_(chlblnum) = chlbls;
+    chlbls = chlbls_;
+end
+tRel = seconds(Tbl.Time - Tbl.Time(1));
+tReg = tRel(1):(1/Fs):tRel(end); tReg = tReg';
 
 % regularize 
 X = interp1(tRel,X,tReg, "nearest","extrap");
@@ -38,10 +70,10 @@ pwr = movmean(Xe, 1000);
 
 %%
 useBehav = false;
-if ~isempty(NEVtbl)
-    NEVlbl = NEVtbl.EventLabels;
+if ~isempty(EVtbl)
+    NEVlbl = EVtbl.EventLabels;
     NEVlbl = (contains(NEVlbl, "SerialDigitalIO: "));
-    NEVtbl = NEVtbl(NEVlbl,:); NEVlbl = NEVtbl.EventLabels;
+    EVtbl = EVtbl(NEVlbl,:); NEVlbl = EVtbl.EventLabels;
     if ~isempty(NEVlbl)
         useBehav = questdlg('Define On/Off Using:', 'Behavior/Ephys Selection', 'behavior', 'ephys', 'behavior');
         useBehav = strcmp(useBehav, 'behavior');
@@ -50,11 +82,11 @@ if ~isempty(NEVtbl)
         SrlStart = SrlVal == 255; SrlEnd = SrlVal == 253;
         SrlStart = find(SrlStart); SrlEnd = find(SrlEnd);
         SrlEnd = SrlEnd(2:2:end); %SrlStart = SrlStart(1:(end-1)); % TO DO: start/end matching should be more robust
-        tStart = NEVtbl.Time(SrlStart); tEnd = NEVtbl.Time(SrlEnd);
+        tStart = EVtbl.Time(SrlStart); tEnd = EVtbl.Time(SrlEnd);
         tStartEnd = [tStart, tEnd];
-        iOn = false(height(NStbl),1);
+        iOn = false(height(Tbl),1);
         for ti = 1:height(tStartEnd)
-            iOn = iOn | ( NStbl.Time>=tStartEnd(ti,1) & (NStbl.Time<=tStartEnd(ti,2)) );
+            iOn = iOn | ( Tbl.Time>=tStartEnd(ti,1) & (Tbl.Time<=tStartEnd(ti,2)) );
         end
         iOn = repmat(iOn,1,width(X));
     end
