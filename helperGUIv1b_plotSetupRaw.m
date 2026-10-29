@@ -55,7 +55,7 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     fltPlt = data2timetable(fltD4,fltD1,handles.time0); fltPlt = fltPlt{1};
     forPlt = data2timetable(forD4,forD1,handles.time0); forPlt = forPlt{1};
     artPlt = data2timetable(artD4,artD1,handles.time0); artPlt = artPlt{1};
-    recDataStructs.forBuffs = {forBuff}; recDataStructs.stimBuff = tSt;
+    recDataStructs.forBuffs = {forBuff; forBuff}; recDataStructs.stimBuff = tSt;
     for v = ["rawD", "artD", "fltD", "forD", "timeBuffs", "initTic"]
         eval("recDataStructs."+v+" = "+v+";");
     end

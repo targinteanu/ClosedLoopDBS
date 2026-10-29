@@ -1,6 +1,6 @@
 function [...
     timeBuffs, rawData, ...
-    artRemData, artRemArgs, ...
+    artRemData, artRemArgs, artRemOldData, ...
     fltData, fltArgs, ...
     forBuffs, forData, forArgs, ...
     setup_time, DAQ_time, artifact_time, filter_time, update_time, forecast_time] = ...
@@ -44,6 +44,8 @@ if numel(selFlt2For)
         error('Improper selection of filtered channels.');
     end
 end
+
+artRemOldData = cell(1,size(artRemData,2));
 
 setup_time = toc; %disp(['Setup Time = ',num2str(setup_time)])
 %% DAQ 
@@ -130,6 +132,7 @@ nOverlapNew = artRemArgs.nOverlap;
 if ~(size(artRemTails,2) == size(artRemData,2))
     error('Artifact removal channels are inconsistent.');
 end
+artRemOldData = cell(size(artRemTails));
 for CH = 1:size(artRemData, 2)
     oldHead = artRemData{2,CH}; oldTail = artRemData{3,CH}; newTail = artRemTails{CH};
     oldTime = nOverlapOld(CH); %newTime = nOverlapNew(CH); % # samples NOT to buffer 
@@ -147,7 +150,8 @@ for CH = 1:size(artRemData, 2)
     end
     %oldTime = height(oldTail)-oldTime; newTime = height(newTail)-newTime; % # NEW samples
     %newHead = bufferDataOverwrite(oldHead, oldTail, oldTime); 
-    newHead = bufferData(oldHead, oldTail);
+    [newHead, oldHead] = bufferData(oldHead, oldTail);
+    artRemOldData{CH} = oldHead;
     artRemData{2,CH} = newHead;
     artRemData{3,CH} = newTail; 
     %artRemData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
@@ -216,16 +220,17 @@ for CH = 1:size(forData,2)
     forData{3,CH} = newTail; 
     forData{4,CH} = bufferDataOverwrite(newHead, newTail, newTime);
     forBuffCH = forBuffs{1,CH}; forBuffAddCH = forBuffsAdd{1,CH} + curTimeFor(CH);
+    forBuffCHold = nan(min(size(forBuffCH,1), size(forBuffAddCH,1)), size(forBuffCH,2));
     for p = 1:width(forBuffCH)
         if forBuffCH(end,p) > curTimeFor(CH) + forArgs.StimulatorLagTime
             % prev point is still in the accessible future; replace it
             forBuffCH(end,p) = forBuffAddCH(end,p);
         else
             % prev point passed; add new point to buffer 
-            forBuffCH(:,p) = bufferData(forBuffCH(:,p), forBuffAddCH(end,p));
+            [forBuffCH(:,p), forBuffCHold(:,p)] = bufferData(forBuffCH(:,p), forBuffAddCH(end,p));
         end
     end
-    forBuffs{1,CH} = forBuffCH;
+    forBuffs{1,CH} = forBuffCH; forBuffs{2,CH} = forBuffCHold;
 end
 
 end

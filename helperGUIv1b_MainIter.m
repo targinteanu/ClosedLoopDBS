@@ -42,7 +42,7 @@ end
 
 [...
 timeBuffs, rawData, ...
-artRemData, handles.artRemArgs, ...
+artRemData, handles.artRemArgs, artRemOldData, ...
 fltData, handles.filtArgs, ...
 forBuffs, forData, handles.foreArgs] = ...
 iterReadBrain(...
@@ -59,6 +59,43 @@ handles.recDataStructs.fltD = fltData;
 handles.recDataStructs.forD = forData;
 handles.recDataStructs.timeBuffs = timeBuffs;
 handles.recDataStructs.forBuffs = forBuffs;
+
+if handles.check_artifactSave.Value
+% store buffered-out data for saving 
+rawDataBufferedOut = artRemOldData{1};
+rawDataBufferedOut = fliplr(rawDataBufferedOut); % [t,X] -> [X,t]
+rawDataBufferedOut = single(rawDataBufferedOut);
+if numel(rawDataBufferedOut)
+    % perform specialized 'cycleStorage' as in helperGUIv0_MainProcessAndPlot
+    L = size(rawDataBufferedOut,1); H = size(handles.sigStorage2,1);
+    sigNeedToSave = handles.sigP1 + L - 1 > H;
+    if sigNeedToSave
+        % storage 1 is now full 
+        if L > H
+            warning('Data overloaded save buffer; some data may not be saved.')
+            L = H;
+            rawDataBufferedOut = rawDataBufferedOut(1:L,:);
+        end
+        handles.sigP1 = 0;
+        handles.sigStorage2(1:L,:) = rawDataBufferedOut;
+        P2 = L+1;
+    else
+        handles.sigStorage1(handles.sigP1:(handles.sigP1+L-1),:) = rawDataBufferedOut;
+        handles.sigP1 = handles.sigP1 + L;
+        P2 = [];
+    end
+    if sigNeedToSave
+        SignalSaved = handles.sigStorage1;
+        svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+        disp("Saving Signal to "+svfn)
+        save(svfn, 'SignalSaved');
+        handles.SaveFileN = handles.SaveFileN + 1;
+        handles.sigStorage1 = handles.sigStorage2; 
+        handles.sigStorage2 = single(nan(size(handles.sigStorage2)));
+        handles.sigP1 = P2;
+    end
+end
+end
 
 
 % --- PhaseDetect helpers ---
