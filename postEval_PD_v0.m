@@ -93,6 +93,49 @@ ax(2) = subplot(212);
 plot(t, dataAllChannels(channelIndexStim,:)); 
 ylabel('ainp1');
 grid on; linkaxes(ax, 'x'); 
+
+%% view real-time artifact removal results 
+if exist('SignalSaved', 'var')
+
+% extract saved signal (art removed in real time)
+chinfo.Unit = '';
+chinfo.Resolution = nan;
+chinfo.SampleRate = SamplingFreq;
+chinfo.Name = channelName;
+sigsaved = data2timetable({fliplr(SignalSaved)}, {chinfo}, t0);
+sigsaved = sigsaved{1};
+
+% align signal versions in time 
+sigtimesel = (t >= sigsaved.Time(1)) & (t <= sigsaved.Time(end));
+sigorig = dataOneChannelWithArtifact(sigtimesel);
+sigoffln = dataOneChannel(sigtimesel);
+sigtimesel_t = t(sigtimesel);
+artsel = StimTrainRec; artsel(StimInd) = true;
+artsel = movsum(artsel, artExtend) > 0;
+artsel = artsel(sigtimesel);
+sigsaved = interp1(sigsaved.Time, sigsaved{:,1}, sigtimesel_t, 'nearest','extrap');
+
+% normalize scales 
+Z = @(sig, valid) (sig - mean(sig(valid)))./std(sig(valid));
+sigsaved = Z(sigsaved, ~artsel); 
+sigorig  = Z(sigorig,  ~artsel);
+sigoffln = Z(sigoffln, ~artsel);
+maxval = max([sigsaved sigoffln sigorig]); maxval = 1.1*maxval;
+
+% make plot
+figure; plot(sigtimesel_t, sigorig, 'k', 'LineWidth',1); 
+hold on; grid on; 
+plot(sigtimesel_t, sigoffln, 'b');
+plot(sigtimesel_t, sigsaved, '--r');
+plot(t(StimInd), maxval*ones(size(StimInd)), '>m');
+plot(t(find(StimTrainRec)), maxval(ones(size(find(StimTrainRec)))), '<m');
+ylabel('signal (normalized)');
+legend('original', 'art. rem. offline', 'art. rem. real time', ...
+    'stim sent', 'stim recd');
+title('Artifact Removal: real time recorded results vs offline');
+
+end
+
 end
 
 %% filter 
@@ -101,7 +144,9 @@ myFilt = buildFIRBPF(SamplingFreq,13,30, 8);
 dataOneChannel = filter(myFilt,1,dataOneChannel);
 myFiltShift = ceil(length(myFilt)/2);
 dataOneChannel = [dataOneChannel(myFiltShift:end), zeros(1,myFiltShift-1)];
-plot(ax(1), t, dataOneChannel, 'r');
+if ~isempty(artIndAll)
+    plot(ax(1), t, dataOneChannel, 'r');
+end
 
 % detect power threshold 
 pwrthresh = sqrt(bandpower(dataBaseline,SamplingFreq,[13,30]));
@@ -343,12 +388,12 @@ grid on;
 %% polar hist blocks of time 
 % to do: this should pull in data from notes.txt
 %%{
-winTimes = datetime(2026,9,17,16,0,0) + [...
-    minutes(4), minutes(12); ...
-    minutes(12), minutes(14)];
+winTimes = datetime(2026,10,29,15,0,0) + [...
+    minutes(46), minutes(48.5); ...
+    minutes(48.5), minutes(60)];
 winTimes.TimeZone = t0.TimeZone;
-winNames = {'peak', 'trough'};
-winTgt = [0, pi];
+winNames = {'trough', 'peak'};
+winTgt = [pi, 0];
 
 figure('Position',[470 47 770 948]); 
 for w = 1:height(winTimes)

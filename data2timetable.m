@@ -5,6 +5,14 @@ function TTs = data2timetable(datas, chaninfos, initTime)
 % channel info has fields SampleRate, Name, Unit
 % initTime must be a datetime 
 
+if nargin < 3
+    initTime = [];
+end
+
+if isempty(initTime)
+    initTime = seconds(0);
+end
+
 TTs = cell(size(datas));
 
 for ch = 1:size(datas,2)
