@@ -1,4 +1,4 @@
-function [newContData, chname, chnum] = getNewRawData_Nlx(selChanInfo)
+function [newContData, chname, chnum] = getNewRawData_Nlx(selChanInfo, ~)
 
 W = length(selChanInfo);
 newContData = cell(1,W);

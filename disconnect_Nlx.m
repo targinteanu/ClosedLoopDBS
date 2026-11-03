@@ -1,4 +1,4 @@
-function disconnect_Nlx()
+function disconnect_Nlx(~)
 
 [succeeded, ~] = NlxSendCommand('-StopAcquisition');
 if succeeded == 0

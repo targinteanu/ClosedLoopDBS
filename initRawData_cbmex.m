@@ -1,5 +1,5 @@
 function [emptyData, contData, buffData, chanInfo, startTic] = ...
-    initRawData_cbmex(chsel, bufferSize)
+    initRawData_cbmex(chsel, bufferSize, ~)
 % Initialize the multichannel raw data structure using BlackRock cbmex
 % interface. 
 %

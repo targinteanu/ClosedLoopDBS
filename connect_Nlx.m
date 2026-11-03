@@ -1,4 +1,6 @@
-function connect_Nlx()
+function DAQobj = connect_Nlx()
+
+DAQobj = []; % compatibility 
 
 %Load NetCom into MATLAB, and connect to the NetCom server
 %If you are running MATLAB on a PC other than the one with the NetCom

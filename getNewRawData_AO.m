@@ -1,4 +1,4 @@
-function [newContData, chname, chnum] = getNewRawData_AO(selChanInfo)
+function [newContData, chname, chnum] = getNewRawData_AO(selChanInfo, ~)
 % chsel (IDs, NOT indexes) must not be empty; it will set the channels in
 % order 
 

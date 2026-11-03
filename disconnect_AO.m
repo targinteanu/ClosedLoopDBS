@@ -1,4 +1,4 @@
-function disconnect_AO()
+function disconnect_AO(~)
 
 Results = AO_CloseConnection();
 if (Results == 0)

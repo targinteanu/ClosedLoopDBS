@@ -1,4 +1,4 @@
-function [newContData, chname, chnum] = getNewRawData_cbmex(selChanInfo)
+function [newContData, chname, chnum] = getNewRawData_cbmex(selChanInfo, ~)
 
 % TO DO: to make compatible with Nlx version, this should take selChanInfo,
 % and chsel is chanInfo.IDnumber 

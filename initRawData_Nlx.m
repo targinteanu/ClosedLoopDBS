@@ -1,5 +1,5 @@
 function [emptyData, contData, buffData, chanInfo, startTic] = ...
-    initRawData_Nlx(chsel, bufferSize)
+    initRawData_Nlx(chsel, bufferSize, ~)
 % Initialize the multichannel raw data structure using Neuralynx NetCom
 % interface. 
 %

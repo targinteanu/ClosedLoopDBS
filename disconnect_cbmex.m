@@ -1,4 +1,4 @@
-function disconnect_cbmex()
+function disconnect_cbmex(~)
 
 cbmex('close'); 
 

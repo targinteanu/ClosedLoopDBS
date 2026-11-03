@@ -1,4 +1,6 @@
-function connect_AO(device)
+function DAQobj = connect_AO(device)
+
+DAQobj = []; % compatibility 
 
 if nargin < 1
     error('Device name must be specified for AO.')

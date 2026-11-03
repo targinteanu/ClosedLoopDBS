@@ -1,4 +1,6 @@
-function connect_cbmex()
+function DAQobj = connect_cbmex()
+
+DAQobj = []; % compatibility 
 
 try
     cbmex('open');
