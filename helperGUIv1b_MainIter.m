@@ -27,8 +27,8 @@ else
     forefun = [];
 end
 if handles.check_artifact.Value && handles.MdlSetUp
-    artremfun = @artRemKalman;
-    %artremfun = @artRemFun;
+    %artremfun = @artRemKalman;
+    artremfun = @artRemFun;
 else
     artremfun = [];
 end
@@ -53,6 +53,44 @@ iterReadBrain(...
     fltData, filtfun, handles.filtArgs, ...
     forBuffs, forData, forefun, handles.foreArgs, ...
     @(args,data) ARmdlUpdate(args,data,noRecentStim));
+
+% EXTERNAL TRIG - needs to be cleaned up!
+chtrig = 64;
+tXtrig = rawData{3,chtrig};
+triginds = find(diff(tXtrig(:,2))>5e3);
+if ~isempty(triginds)
+    triginds = triginds([true; diff(triginds)>1]); % ignore back-to-back
+    trigtimeinds = find(~isnan(tXtrig(:,1)));
+    if ~isempty(trigtimeinds)
+        for trigind = triginds'
+            [~,trigtimeindsel] = min(abs(trigtimeinds-trigind));
+            trigtimeind = trigtimeinds(trigtimeindsel);
+            timeinddiff = trigind - trigtimeind;
+            stimtime = timeinddiff/handles.fSamples(chtrig) + tXtrig(trigtimeind,1);
+
+% record stim timing in the GUI 
+handles.stimLastTime = stimtime; handles.stimNewTime = stimtime; 
+if handles.stP1 <= length(handles.stStorage1)
+    handles.stStorage1(handles.stP1) = stimtime; 
+    handles.stP1 = handles.stP1 + 1;
+else
+    % storage full; save
+    StimTime = handles.stStorage1;
+    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    disp(['Saving Stimulus to ',svfn])
+    save(svfn,'StimTime');
+    handles.SaveFileN = handles.SaveFileN + 1;
+    handles.stP1 = 1;
+    handles.stStorage1 = nan(size(handles.stStorage1));
+end
+
+% note stim timing for artifact removal
+handles.artRemArgs.StimTimes = {stimtime + handles.foreArgs.StimulatorLagTime};
+
+        end
+    end
+
+end
 
 handles.recDataStructs.rawD = rawData;
 handles.recDataStructs.artD = artRemData;
