@@ -1,5 +1,8 @@
 function bgArgOut = bg_PhaseDetect_BlackRock(UserArgs, DQ, StimController)
 % 
+% NOTE: this has not been tested after several rounds of changes and may no
+% longer work
+% 
 % Run brain recording with phase detection/prediction for PDS and
 % stimulation using BlackRock hardware (cbmex for recording, cerestim for
 % stimulation). 
