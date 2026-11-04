@@ -4,6 +4,8 @@ if nargin < 1
     device = 'USB-6212 (BNC)';
 end
 
+% consider adding daqreset
+
 DL = daqlist("ni");
 
 if isempty(DL)
