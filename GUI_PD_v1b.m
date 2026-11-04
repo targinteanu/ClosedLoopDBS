@@ -91,6 +91,7 @@ handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
 
 % initiate other vars ...
 handles.DAQstatus = handles.cbmexStatus; handles = rmfield(handles, 'cbmexStatus');
+handles.DAQobj = [];
 handles.artRemArgs.StimDur = .01; handles = rmfield(handles, 'ArtifactDuration');
 handles.artRemArgs.ArtifactStartBefore = .005; handles = rmfield(handles, 'ArtifactStartBefore');
 handles.foreArgs.ARlearnrate = .1; handles = rmfield(handles, 'ARlearnrate');
@@ -210,7 +211,7 @@ function cmd_cbmexClose_Callback(hObject, eventdata, handles)
 % hObject    handle to cmd_cbmexClose (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.HardwareFuncs.ShutdownRecording();
+handles.HardwareFuncs.ShutdownRecording(handles.DAQobj);
 handles.DAQstatus = false;
 guidata(hObject,handles)
 
@@ -365,7 +366,7 @@ catch ME2
 end
 
 try
-handles.HardwareFuncs.ShutdownRecording();
+handles.HardwareFuncs.ShutdownRecording(handles.DAQobj);
 handles.DAQstatus = false;
 guidata(hObject, handles)
 %stop(handles.timer)

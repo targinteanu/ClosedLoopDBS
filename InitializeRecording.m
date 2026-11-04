@@ -1,5 +1,5 @@
 function [rawD, artD, fltD, forD, timeBuffs, startTic] = ...
-    InitializeRecording(initRawData, buffSize, filtorder, forecastwin, ...
+    InitializeRecording(initRawData, buffSize, DAQobj, filtorder, forecastwin, ...
     selRawID, selRaw2Art, selRaw2Flt, selRaw2For, selFlt2For)
 % Initialize the multichannel data structures used in ClosedLoopDBS using
 % hardware specified by initRawData argument.
@@ -23,11 +23,11 @@ selFor = [selRaw2For, selFlt2For];
 emptyOut = {[]; []; []; []};
 
 try
-    [rawH, rawT, rawB, rawN, startTic] = initRawData(selRawID, buffSize);
+    [rawH, rawT, rawB, rawN, startTic] = initRawData(selRawID, buffSize, DAQobj);
 catch ME
     warning(['Error on first attempt: ',ME.message]);
     pause(1);
-    [rawH, rawT, rawB, rawN, startTic] = initRawData(selRawID, buffSize);
+    [rawH, rawT, rawB, rawN, startTic] = initRawData(selRawID, buffSize, DAQobj);
 end
 rawD = [rawN; rawH; rawT; rawB]; 
 

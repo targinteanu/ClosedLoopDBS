@@ -17,17 +17,18 @@ if handles.DAQstatus
     error('DSP already connected. Please disconnect first.')
 end
 
-handles.HardwareFuncs.SetupRecording();
+handles.DAQobj = handles.HardwareFuncs.SetupRecording();
 handles.time0 = datetime - seconds(handles.HardwareFuncs.GetTime(handles.initTic));
 
 handles.DAQstatus = true;
 
 % Acquire some data to get channel information. Determine which channels
 % are enabled
-[~,~,~,allChannelInfo] = handles.HardwareFuncs.InitRawData(handles.allChannelIDs, handles.bufferSizeGrid);
+[~,~,~,allChannelInfo] = handles.HardwareFuncs.InitRawData(...
+    handles.allChannelIDs, handles.bufferSizeGrid, handles.DAQobj);
 handles.allChannelInfo = allChannelInfo;
 
-handles.HardwareFuncs.ShutdownRecording();
+handles.HardwareFuncs.ShutdownRecording(handles.DAQobj);
 
 % set channel popup menu to hold channels
 handles.fSamples = cellfun(@(ch) ch.SampleRate, allChannelInfo);
