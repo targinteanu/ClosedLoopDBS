@@ -64,6 +64,7 @@ for pop_ = [handles.pop_channel1, ...
             handles.pop_channel5]
     set(pop_, 'String', chL);
 end
+set(handles.pop_channel6, 'String', ['None', handles.channelList]);
 
 % electrode grid 
 gridmaxval = eval(handles.txt_gridmax.String);

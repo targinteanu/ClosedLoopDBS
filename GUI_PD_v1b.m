@@ -22,7 +22,7 @@ function varargout = GUI_PD_v1b(varargin)
 
 % Edit the above text to modify the response to help GUI_PD_v1b
 
-% Last Modified by GUIDE v2.5 29-Oct-2026 00:52:30
+% Last Modified by GUIDE v2.5 05-Nov-2026 02:31:04
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1933,3 +1933,26 @@ function check_artifactSave_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_artifactSave
+
+
+% --- Executes on selection change in pop_channel6.
+function pop_channel6_Callback(hObject, eventdata, handles)
+% hObject    handle to pop_channel6 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns pop_channel6 contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from pop_channel6
+
+
+% --- Executes during object creation, after setting all properties.
+function pop_channel6_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pop_channel6 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

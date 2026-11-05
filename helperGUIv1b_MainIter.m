@@ -54,8 +54,11 @@ iterReadBrain(...
     forBuffs, forData, forefun, handles.foreArgs, ...
     @(args,data) ARmdlUpdate(args,data,noRecentStim));
 
-% EXTERNAL TRIG - needs to be cleaned up!
-chtrig = 64;
+
+% EXTERNAL TRIG 
+chtrig = handles.pop_channel6.Value - 1;
+if chtrig > 0
+
 tXtrig = rawData{3,chtrig};
 triginds = find(diff(tXtrig(:,2))>5e3);
 if ~isempty(triginds)
@@ -89,8 +92,9 @@ handles.artRemArgs.StimTimes = {stimtime + handles.foreArgs.StimulatorLagTime};
 
         end
     end
-
 end
+end
+
 
 handles.recDataStructs.rawD = rawData;
 handles.recDataStructs.artD = artRemData;
