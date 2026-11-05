@@ -31,6 +31,10 @@ function [handles, fltPlt, forPlt, forBuff, tSt, common_xlim, unitname] = ...
     % (re-)init data structs
     buffSize = handles.bufferSizeGrid .* ones(size(handles.allChannelInfo)); % samples
     buffSize(chInd) = handles.bufferSize;
+    chtrig = handles.pop_channel6.Value - 1;
+    if chtrig > 0
+        buffSize(chtrig) = handles.bufferSize;
+    end
     if handles.FilterSetUp
         filtOrds = [handles.FilterOrder]; % array with chans as cols
     else

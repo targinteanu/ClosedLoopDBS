@@ -1943,6 +1943,7 @@ function pop_channel6_Callback(hObject, eventdata, handles)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns pop_channel6 contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from pop_channel6
+settingChange(hObject);
 
 
 % --- Executes during object creation, after setting all properties.
