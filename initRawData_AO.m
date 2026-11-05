@@ -33,7 +33,7 @@ end
 % 
 if strcmpi(chantype, 'LFP')
     % filtered/downsampled LFP
-    fs = 1875;
+    fs = 1375;
     channelselector = @(n) (n < 97) && (n >= 33);
 elseif strcmpi(chantype, 'AI')
     % analog in
