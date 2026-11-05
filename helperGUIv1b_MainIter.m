@@ -88,7 +88,7 @@ else
 end
 
 % note stim timing for artifact removal
-handles.artRemArgs.StimTimes = {stimtime + handles.foreArgs.StimulatorLagTime};
+handles.artRemArgs.StimTimes = {stimtime};
 
         end
     end
