@@ -87,7 +87,10 @@ svloc = ['Saved Data PD',filesep,'Saved Data ',...
 pause(1)
 mkdir(svloc); 
 
-handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
+[handles, stimtracker] = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
+
+% stimulation tracking - sep from handles
+hObject.UserData = stimtracker;
 
 % initiate other vars ...
 handles.DAQstatus = handles.cbmexStatus; handles = rmfield(handles, 'cbmexStatus');
@@ -338,7 +341,7 @@ for iph = 1:length(handles.PhaseOfInterest)
         end
     end
 end
-StimTime = handles.stStorage1;
+StimTime = hObject.UserData.stStorage1;
 if numel(StimTime)
     if sum(~isnan(StimTime))
         svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
@@ -410,7 +413,7 @@ try
     dT = 0.001; % mandatory pause (twice) between loop iterations 
 
     % main iteration ================================================
-    handles = helperGUIv1b_MainIter(handles);
+    handles = helperGUIv1b_MainIter(handles, hObject);
     
     % plot and buffer extraction ====================================
 
@@ -493,7 +496,8 @@ try
     handles.stpStorage2   = phStorage{3,6}; 
 
     % stimulation ===================================================
-    handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, @Controller_PDS_PD);
+    handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, ...
+        hObject.UserData.stimLastTime, @Controller_PDS_PD);
     
     if handles.check_polar.Value
     % x axes alignment 
@@ -605,13 +609,13 @@ try
                     keyboard; % if this happens, fix the code
                 end
                 %}
-                xStim = handles.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
+                xStim = hObject.UserData.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
                 maxNstim = handles.stimMaxFreq * xDurSec; % max to show 
                 maxNstim = ceil(maxNstim);
                 if maxNstim < length(xStim)
-                    iOldestStim = handles.stP1 - maxNstim;
+                    iOldestStim = hObject.UserData.stP1 - maxNstim;
                     iOldestStim = max(1, iOldestStim);
-                    xStim = xStim(iOldestStim : handles.stP1);
+                    xStim = xStim(iOldestStim : hObject.UserData.stP1);
                 end
                 xStim = xStim(xStim >= lastSampleProcTime - xDurSec);
                 if handles.check_polar.Value
@@ -830,7 +834,7 @@ keyboard
 
 function myPULSE(hTimer,eventdata,hFigure)
 handles = guidata(hFigure);
-handles = helperGUIv1b_myPULSE(hTimer, eventdata, handles);
+handles = helperGUIv1b_myPULSE(hTimer, eventdata, handles, hFigure);
 guidata(hFigure,handles);
 
 function schedulePULSE(hTimer,eventdata,hFigure)

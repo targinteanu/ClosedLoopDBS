@@ -1,4 +1,4 @@
-function handles = helperGUIv1b_MainIter(handles)
+function handles = helperGUIv1b_MainIter(handles, hFigure)
 % wrap and run iterReadBrain on the main CPU process for GUI version 1b
 
 selRaw2Flt = handles.selInds.selRaw2Flt;
@@ -34,7 +34,7 @@ else
 end
 if handles.StimActive && handles.MdlSetUp
     noRecentStim = ...
-        handles.stimLastTime + handles.artRemArgs.StimDur - handles.artRemArgs.ArtifactStartBefore ...
+        hFigure.UserData.stimLastTime + handles.artRemArgs.StimDur - handles.artRemArgs.ArtifactStartBefore ...
         < handles.lastSampleProcTime;
 else
     noRecentStim = true;
@@ -72,19 +72,19 @@ if ~isempty(triginds)
             stimtime = timeinddiff/handles.fSamples(chtrig) + tXtrig(trigtimeind,1);
 
 % record stim timing in the GUI 
-handles.stimLastTime = stimtime; handles.stimNewTime = stimtime; 
-if handles.stP1 <= length(handles.stStorage1)
-    handles.stStorage1(handles.stP1) = stimtime; 
-    handles.stP1 = handles.stP1 + 1;
+hFigure.UserData.stimLastTime = stimtime; hFigure.UserData.stimNewTime = stimtime; 
+if hFigure.UserData.stP1 <= length(hFigure.UserData.stStorage1)
+    hFigure.UserData.stStorage1(hFigure.UserData.stP1) = stimtime; 
+    hFigure.UserData.stP1 = hFigure.UserData.stP1 + 1;
 else
     % storage full; save
-    StimTime = handles.stStorage1;
+    StimTime = hFigure.UserData.stStorage1;
     svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
     disp(['Saving Stimulus to ',svfn])
     save(svfn,'StimTime');
     handles.SaveFileN = handles.SaveFileN + 1;
-    handles.stP1 = 1;
-    handles.stStorage1 = nan(size(handles.stStorage1));
+    hFigure.UserData.stP1 = 1;
+    hFigure.UserData.stStorage1 = nan(size(hFigure.UserData.stStorage1));
 end
 
 % note stim timing for artifact removal

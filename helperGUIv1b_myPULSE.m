@@ -1,4 +1,4 @@
-function handles = helperGUIv1b_myPULSE(hTimer, eventdata, handles)
+function handles = helperGUIv1b_myPULSE(hTimer, eventdata, handles, hFigure)
 
 % perform the pulse and measure the time 
 initTic = handles.initTic;
@@ -17,19 +17,19 @@ disp(['Stimulus pulsed at ',eventTime,' within ',num2str(dstimtime),'s, ',...
 %}
 
 % record stim timing in the GUI 
-handles.stimLastTime = stimtime; handles.stimNewTime = stimtime; 
-if handles.stP1 <= length(handles.stStorage1)
-    handles.stStorage1(handles.stP1) = stimtime; 
-    handles.stP1 = handles.stP1 + 1;
+hFigure.UserData.stimLastTime = stimtime; hFigure.UserData.stimNewTime = stimtime; 
+if hFigure.UserData.stP1 <= length(hFigure.UserData.stStorage1)
+    hFigure.UserData.stStorage1(hFigure.UserData.stP1) = stimtime; 
+    hFigure.UserData.stP1 = hFigure.UserData.stP1 + 1;
 else
     % storage full; save
-    StimTime = handles.stStorage1;
+    StimTime = hFigure.UserData.stStorage1;
     svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
     disp(['Saving Stimulus to ',svfn])
     save(svfn,'StimTime');
     handles.SaveFileN = handles.SaveFileN + 1;
-    handles.stP1 = 1;
-    handles.stStorage1 = nan(size(handles.stStorage1));
+    hFigure.UserData.stP1 = 1;
+    hFigure.UserData.stStorage1 = nan(size(hFigure.UserData.stStorage1));
 end
 
 % note stim timing for artifact removal
