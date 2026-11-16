@@ -395,6 +395,8 @@ handles = guidata(hObject);
 while handles.RunMainLoop
 
 try
+
+    hFigure = helperGUIv0_getFigureHandle(hObject);
     
     handles = guidata(hObject);
     if ~handles.cbmexStatus
@@ -424,7 +426,7 @@ try
 
     [handles, newContinuousData] = ...
         helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time, ...
-        hObject.UserData.stimind);
+        hFigure.UserData.stimind);
 
     guidata(hObject,handles)
 
@@ -450,7 +452,7 @@ try
     end
 
     [handles, ~, phBuffers, phStorage] = ...
-        helperGUIv0_MainProcessAndPlot(handles, hObject, ...
+        helperGUIv0_MainProcessAndPlot(handles, hFigure, ...
         newContinuousData, @Controller_PDS_PD, ...
         {handles.h_peakTrace, handles.h_trouTrace, ...
          handles.h_redTrace, handles.h_yelTrace, handles.h_grnTrace, handles.h_stpTrace}, ...

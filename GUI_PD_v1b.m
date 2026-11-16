@@ -398,6 +398,8 @@ while handles.RunMainLoop
 
 try
 
+    hFigure = helperGUIv0_getFigureHandle(hObject);
+
     % ensure connection with hardware 
     handles = guidata(hObject);
     if ~handles.DAQstatus
@@ -413,7 +415,7 @@ try
     dT = 0.001; % mandatory pause (twice) between loop iterations 
 
     % main iteration ================================================
-    handles = helperGUIv1b_MainIter(handles, hObject);
+    handles = helperGUIv1b_MainIter(handles, hFigure);
     
     % plot and buffer extraction ====================================
 
@@ -472,10 +474,10 @@ try
             %assignin("base",phname,phaseStorage{1,iph});
             %eval(phname+" = phaseStorage{1,iph};");
             dataNeedsName = phStorage{1,iph}; dataName = phname;
-            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hFigure.UserData.SaveFileN),'.mat'];
             disp("Saving "+phname+" to "+svfn)
             save(svfn,'dataNeedsName','dataName');
-            hObject.UserData.SaveFileN = hObject.UserData.SaveFileN + 1;
+            hFigure.UserData.SaveFileN = hFigure.UserData.SaveFileN + 1;
             phStorage{1,iph} = phStorage{3,iph};
             phStorage{2,iph} = p2;
             phStorage{3,iph} = nan(size(phStorage{3,iph}));
@@ -497,7 +499,7 @@ try
 
     % stimulation ===================================================
     handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, ...
-        hObject.UserData.stimLastTime, @Controller_PDS_PD);
+        hFigure.UserData.stimLastTime, @Controller_PDS_PD);
     
     if handles.check_polar.Value
     % x axes alignment 
@@ -609,13 +611,13 @@ try
                     keyboard; % if this happens, fix the code
                 end
                 %}
-                xStim = hObject.UserData.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
+                xStim = hFigure.UserData.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
                 maxNstim = handles.stimMaxFreq * xDurSec; % max to show 
                 maxNstim = ceil(maxNstim);
                 if maxNstim < length(xStim)
-                    iOldestStim = hObject.UserData.stP1 - maxNstim;
+                    iOldestStim = hFigure.UserData.stP1 - maxNstim;
                     iOldestStim = max(1, iOldestStim);
-                    xStim = xStim(iOldestStim : hObject.UserData.stP1);
+                    xStim = xStim(iOldestStim : hFigure.UserData.stP1);
                 end
                 xStim = xStim(xStim >= lastSampleProcTime - xDurSec);
                 if handles.check_polar.Value
