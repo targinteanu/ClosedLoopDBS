@@ -334,32 +334,32 @@ for iph = 1:length(handles.PhaseOfInterest)
         if sum(~isnan(phStorage1))
             %assignin("caller",phname,phStorage1);
             eval(phname+" = phStorage1;");
-            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
             disp("Saving "+phname+" to "+svfn)
             save(svfn,phname);
-            handles.SaveFileN = handles.SaveFileN + 1;
+            hObject.UserData.SaveFileN = hObject.UserData.SaveFileN + 1;
         end
     end
 end
 StimTime = hObject.UserData.stStorage1;
 if numel(StimTime)
     if sum(~isnan(StimTime))
-        svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+        svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
         disp(['Saving Stimulus to ',svfn])
         save(svfn,'StimTime');
-        handles.SaveFileN = handles.SaveFileN + 1;
+        hObject.UserData.SaveFileN = hObject.UserData.SaveFileN + 1;
     end
 end
 SignalSaved = handles.sigStorage1;
 SignalSaved = SignalSaved(~isnan(SignalSaved(:,1)), :);
 if ~isempty(SignalSaved)
-    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
     disp(['Saving Signal to ',svfn])
     save(svfn,'SignalSaved');
-    handles.SaveFileN = handles.SaveFileN + 1;
+    hObject.UserData.SaveFileN = hObject.UserData.SaveFileN + 1;
 end
 SerialLog = handles.srlStorage1;
-svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
 disp(['Saving Serial to ',svfn])
 save(svfn,'SerialLog');
 disp('Saving all data...')
@@ -472,10 +472,10 @@ try
             %assignin("base",phname,phaseStorage{1,iph});
             %eval(phname+" = phaseStorage{1,iph};");
             dataNeedsName = phStorage{1,iph}; dataName = phname;
-            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
             disp("Saving "+phname+" to "+svfn)
             save(svfn,'dataNeedsName','dataName');
-            handles.SaveFileN = handles.SaveFileN + 1;
+            hObject.UserData.SaveFileN = hObject.UserData.SaveFileN + 1;
             phStorage{1,iph} = phStorage{3,iph};
             phStorage{2,iph} = p2;
             phStorage{3,iph} = nan(size(phStorage{3,iph}));

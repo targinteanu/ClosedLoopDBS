@@ -24,10 +24,10 @@ if hFigure.UserData.stP1 <= length(hFigure.UserData.stStorage1)
 else
     % storage full; save
     StimTime = hFigure.UserData.stStorage1;
-    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hFigure.UserData.SaveFileN),'.mat'];
     disp(['Saving Stimulus to ',svfn])
     save(svfn,'StimTime');
-    handles.SaveFileN = handles.SaveFileN + 1;
+    hFigure.UserData.SaveFileN = hFigure.UserData.SaveFileN + 1;
     hFigure.UserData.stP1 = 1;
     hFigure.UserData.stStorage1 = nan(size(hFigure.UserData.stStorage1));
 end

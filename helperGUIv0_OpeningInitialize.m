@@ -85,6 +85,6 @@ handles.h_trouTrace = [];
 
 % data saving
 handles.SaveFileLoc = svloc;
-handles.SaveFileN = 1; % may need to move this to stimtracker as well!
+stimtracker.SaveFileN = 1; 
 
 end
