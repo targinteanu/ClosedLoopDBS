@@ -1,5 +1,5 @@
 function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
-    helperGUIv0_MainProcessAndPlot(handles, newContinuousData, ...
+    helperGUIv0_MainProcessAndPlot(handles, hFigure, newContinuousData, ...
     controllerFun, phaseTraceHandles, phaseBuffers, phaseStorage)
 
     N = length(newContinuousData);
@@ -19,7 +19,7 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
 
             % update AR coeffs using gradient descent 
             ARupdated = false;
-            if handles.stimLastTime + handles.ArtifactDuration - handles.ArtifactStartBefore ...
+            if hFigure.UserData.stimLastTime + handles.ArtifactDuration - handles.ArtifactStartBefore ...
                     < handles.lastSampleProcTime
             if handles.ARlearnrate > 0
                 w = -Mdl(2:end)/Mdl(1);
@@ -84,21 +84,21 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
             end
 
             % time of stimulus 
-            if handles.stimNewTime > 0
-            stimtimerel = handles.stimNewTime - handles.lastSampleProcTime; 
+            if hFigure.UserData.stimNewTime > 0
+            stimtimerel = hFigure.UserData.stimNewTime - handles.lastSampleProcTime; 
                 % rel to 0 on screen
                 % lastSampleProcTime should be time 0 on the screen
             stimind = round(stimtimerel*handles.fSample); % ind rel to END of buffer
             stimind = stimind + handles.bufferSize; % ind rel to START of buffer 
-            handles.stimind = stimind - N;
-            handles.stimNewTime = -inf;
+            hFigure.UserData.stimind = stimind - N;
+            hFigure.UserData.stimNewTime = -inf;
             if stimind > 0
                 if stimind <= length(handles.stimDataBuffer)
                     handles.stimDataBuffer(stimind) = true;
                 end
             end
             else
-                handles.stimind = -1;
+                hFigure.UserData.stimind = -1;
             end
 
             [handles.stimDataBuffer, oldStim] = CombineAndCycle(...
@@ -118,7 +118,7 @@ function [handles, phaseTraceHandles, phaseBuffers, phaseStorage] = ...
                 t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
                 if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
                     t2Qabs = t2Q + handles.lastSampleProcTime; % in NSP time "absolute"
-                    Dt2Q = t2Qabs - handles.stimLastTime; 
+                    Dt2Q = t2Qabs - hFigure.UserData.stimLastTime; 
                     if 1/Dt2Q <= handles.stimMaxFreq
                         stim2Q_proceed = true;
                         if strcmp(handles.QueuedStim.Running, 'on')

@@ -85,7 +85,10 @@ svloc = ['Saved Data PD',filesep,'Saved Data ',...
 pause(1)
 mkdir(svloc); 
 
-handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
+[handles, stimtracker] = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
+
+% stimulation tracking - sep from handles
+hObject.UserData = stimtracker;
 
 % additional phase tracking buffers & objects
 emptyStorage = nan(100000,1);
@@ -333,7 +336,7 @@ for iph = 1:length(handles.PhaseOfInterest)
         end
     end
 end
-StimTime = handles.stStorage1;
+StimTime = hObject.UserData.stStorage1;
 if numel(StimTime)
     if sum(~isnan(StimTime))
         svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
@@ -420,7 +423,8 @@ try
     N = length(newContinuousData);
 
     [handles, newContinuousData] = ...
-        helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time);
+        helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time, ...
+        hObject.UserData.stimind);
 
     guidata(hObject,handles)
 
@@ -446,7 +450,7 @@ try
     end
 
     [handles, ~, phBuffers, phStorage] = ...
-        helperGUIv0_MainProcessAndPlot(handles, ...
+        helperGUIv0_MainProcessAndPlot(handles, hObject, ...
         newContinuousData, @Controller_PDS_PD, ...
         {handles.h_peakTrace, handles.h_trouTrace, ...
          handles.h_redTrace, handles.h_yelTrace, handles.h_grnTrace, handles.h_stpTrace}, ...
@@ -615,19 +619,19 @@ stimschedtime = hTimer.UserData;
 disp(['Stimulus pulsed at ',eventTime,' within ',num2str(dstimtime),'s, ',...
       num2str(stimtime - stimschedtime),' s late'])
 %}
-handles.stimLastTime = stimtime; handles.stimNewTime = stimtime; 
-if handles.stP1 <= length(handles.stStorage1)
-    handles.stStorage1(handles.stP1) = stimtime; 
-    handles.stP1 = handles.stP1 + 1;
+hFigure.UserData.stimLastTime = stimtime; hFigure.UserData.stimNewTime = stimtime; 
+if hFigure.UserData.stP1 <= length(hFigure.UserData.stStorage1)
+    hFigure.UserData.stStorage1(hFigure.UserData.stP1) = stimtime; 
+    hFigure.UserData.stP1 = hFigure.UserData.stP1 + 1;
 else
     % storage full; save
-    StimTime = handles.stStorage1;
+    StimTime = hFigure.UserData.stStorage1;
     svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
     disp(['Saving Stimulus to ',svfn])
     save(svfn,'StimTime');
     handles.SaveFileN = handles.SaveFileN + 1;
-    handles.stP1 = 1;
-    handles.stStorage1 = nan(size(handles.stStorage1));
+    hFigure.UserData.stP1 = 1;
+    hFigure.UserData.stStorage1 = nan(size(hFigure.UserData.stStorage1));
 end
 % end
 guidata(hFigure,handles);
