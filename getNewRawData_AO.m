@@ -18,6 +18,7 @@ if Results
     error(msg); % consider trying again until success 
 end
 time = time/1510; % TO DO: make sure this is correct time in seconds!
+% may be in samples of the channel's sample rate (i.e. 1375)
 continuousData = continuousData(1:DataCapture); 
 L = DataCapture/W;
 continuousData = reshape(continuousData, ...
