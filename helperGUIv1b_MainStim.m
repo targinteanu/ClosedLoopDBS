@@ -1,4 +1,5 @@
-function handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, controllerFun)
+function handles = helperGUIv1b_MainStim(handles, ...
+    lastSampleProcTime, stimLastTime, controllerFun)
 
 % setup: access GUI details, data, and calculate time to stim 
 Stim2Q = false;
@@ -23,7 +24,7 @@ if Stim2Q && (t2Q >= 0)
     t2Q = .001*floor(1000*t2Q); % round to nearest 1ms 
     if t2Q < (100/handles.locutoff + handles.TimeShiftFIR)
         t2Qabs = t2Q + lastSampleProcTime; % in NSP time "absolute"
-        Dt2Q = t2Qabs - handles.stimLastTime; 
+        Dt2Q = t2Qabs - stimLastTime; 
         if 1/Dt2Q <= handles.stimMaxFreq
             stim2Q_proceed = true;
             if strcmp(handles.QueuedStim.Running, 'on')

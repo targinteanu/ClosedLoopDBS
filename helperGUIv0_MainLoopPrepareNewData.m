@@ -1,4 +1,5 @@
-function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData(handles, newContinuousData, time)
+function [handles, newContinuousData] = helperGUIv0_MainLoopPrepareNewData...
+    (handles, newContinuousData, time, stimind)
 
 useKalman = false; % specify artifact removal method 
 
@@ -82,7 +83,7 @@ end
     if handles.FilterSetUp
     if handles.MdlSetUp
     if handles.check_artifact.Value
-        stimind = handles.stimind - N; % N samples have passed
+        stimind = stimind - N; % N samples have passed
         if stimind > 0 % rel to start of buffer
         try
 

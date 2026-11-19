@@ -87,7 +87,10 @@ svloc = ['Saved Data PD',filesep,'Saved Data ',...
 pause(1)
 mkdir(svloc); 
 
-handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
+[handles, stimtracker] = helperGUIv0_OpeningInitialize(handles, ud, svloc, RecSrlCallback);
+
+% stimulation tracking - sep from handles
+hObject.UserData = stimtracker;
 
 % initiate other vars ...
 handles.DAQstatus = handles.cbmexStatus; handles = rmfield(handles, 'cbmexStatus');
@@ -331,32 +334,32 @@ for iph = 1:length(handles.PhaseOfInterest)
         if sum(~isnan(phStorage1))
             %assignin("caller",phname,phStorage1);
             eval(phname+" = phStorage1;");
-            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
             disp("Saving "+phname+" to "+svfn)
             save(svfn,phname);
-            handles.SaveFileN = handles.SaveFileN + 1;
+            hObject.UserData.SaveFileN = hObject.UserData.SaveFileN + 1;
         end
     end
 end
-StimTime = handles.stStorage1;
+StimTime = hObject.UserData.stStorage1;
 if numel(StimTime)
     if sum(~isnan(StimTime))
-        svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+        svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
         disp(['Saving Stimulus to ',svfn])
         save(svfn,'StimTime');
-        handles.SaveFileN = handles.SaveFileN + 1;
+        hObject.UserData.SaveFileN = hObject.UserData.SaveFileN + 1;
     end
 end
 SignalSaved = handles.sigStorage1;
 SignalSaved = SignalSaved(~isnan(SignalSaved(:,1)), :);
 if ~isempty(SignalSaved)
-    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+    svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
     disp(['Saving Signal to ',svfn])
     save(svfn,'SignalSaved');
-    handles.SaveFileN = handles.SaveFileN + 1;
+    hObject.UserData.SaveFileN = hObject.UserData.SaveFileN + 1;
 end
 SerialLog = handles.srlStorage1;
-svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hObject.UserData.SaveFileN),'.mat'];
 disp(['Saving Serial to ',svfn])
 save(svfn,'SerialLog');
 disp('Saving all data...')
@@ -395,6 +398,8 @@ while handles.RunMainLoop
 
 try
 
+    hFigure = helperGUIv0_getFigureHandle(hObject);
+
     % ensure connection with hardware 
     handles = guidata(hObject);
     if ~handles.DAQstatus
@@ -410,7 +415,7 @@ try
     dT = 0.001; % mandatory pause (twice) between loop iterations 
 
     % main iteration ================================================
-    handles = helperGUIv1b_MainIter(handles);
+    handles = helperGUIv1b_MainIter(handles, hFigure);
     
     % plot and buffer extraction ====================================
 
@@ -469,10 +474,10 @@ try
             %assignin("base",phname,phaseStorage{1,iph});
             %eval(phname+" = phaseStorage{1,iph};");
             dataNeedsName = phStorage{1,iph}; dataName = phname;
-            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(handles.SaveFileN),'.mat'];
+            svfn = [handles.SaveFileLoc,filesep,'SaveFile',num2str(hFigure.UserData.SaveFileN),'.mat'];
             disp("Saving "+phname+" to "+svfn)
             save(svfn,'dataNeedsName','dataName');
-            handles.SaveFileN = handles.SaveFileN + 1;
+            hFigure.UserData.SaveFileN = hFigure.UserData.SaveFileN + 1;
             phStorage{1,iph} = phStorage{3,iph};
             phStorage{2,iph} = p2;
             phStorage{3,iph} = nan(size(phStorage{3,iph}));
@@ -493,7 +498,8 @@ try
     handles.stpStorage2   = phStorage{3,6}; 
 
     % stimulation ===================================================
-    handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, @Controller_PDS_PD);
+    handles = helperGUIv1b_MainStim(handles, lastSampleProcTime, ...
+        hFigure.UserData.stimLastTime, @Controller_PDS_PD);
     
     if handles.check_polar.Value
     % x axes alignment 
@@ -605,13 +611,13 @@ try
                     keyboard; % if this happens, fix the code
                 end
                 %}
-                xStim = handles.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
+                xStim = hFigure.UserData.stStorage1; % TO DO: will this disappear when buffer fills/is saved?
                 maxNstim = handles.stimMaxFreq * xDurSec; % max to show 
                 maxNstim = ceil(maxNstim);
                 if maxNstim < length(xStim)
-                    iOldestStim = handles.stP1 - maxNstim;
+                    iOldestStim = hFigure.UserData.stP1 - maxNstim;
                     iOldestStim = max(1, iOldestStim);
-                    xStim = xStim(iOldestStim : handles.stP1);
+                    xStim = xStim(iOldestStim : hFigure.UserData.stP1);
                 end
                 xStim = xStim(xStim >= lastSampleProcTime - xDurSec);
                 if handles.check_polar.Value
@@ -830,7 +836,7 @@ keyboard
 
 function myPULSE(hTimer,eventdata,hFigure)
 handles = guidata(hFigure);
-handles = helperGUIv1b_myPULSE(hTimer, eventdata, handles);
+handles = helperGUIv1b_myPULSE(hTimer, eventdata, handles, hFigure);
 guidata(hFigure,handles);
 
 function schedulePULSE(hTimer,eventdata,hFigure)

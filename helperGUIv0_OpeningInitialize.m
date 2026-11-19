@@ -1,4 +1,5 @@
-function handles = helperGUIv0_OpeningInitialize(handles, ud, svloc, srlfunc)
+function [handles, stimtracker] = ...
+    helperGUIv0_OpeningInitialize(handles, ud, svloc, srlfunc)
 % 
 % Automate & standardize the common opening steps in GUIv0 to be run in the
 % GUIDE opening function. 
@@ -45,9 +46,9 @@ handles.showElecGrid = false;
 
 % tracking stimulations and artifact
 handles.lastSampleProcTime = -inf;
-handles.stimLastTime = -inf;
-handles.stimNewTime = -inf;
-handles.stimind = -1;
+stimtracker.stimLastTime = -inf;
+stimtracker.stimNewTime = -inf;
+stimtracker.stimind = -1;
 handles.artReplaceRemaining = [];
 
 % defaults: these should be settable by user input
@@ -65,7 +66,7 @@ handles.pkStorage1 = emptyStorage; handles.pkP1 = 1;
 handles.pkStorage2 = emptyStorage; 
 handles.trStorage1 = emptyStorage; handles.trP1 = 1;
 handles.trStorage2 = emptyStorage; 
-handles.stStorage1 = emptyStorage; handles.stP1 = 1;
+stimtracker.stStorage1 = emptyStorage; stimtracker.stP1 = 1;
 % serial log storage
 ud.TimeStamp = nan;
 handles.udBlank = ud;
@@ -84,6 +85,6 @@ handles.h_trouTrace = [];
 
 % data saving
 handles.SaveFileLoc = svloc;
-handles.SaveFileN = 1;
+stimtracker.SaveFileN = 1; 
 
 end
