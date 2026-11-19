@@ -6,6 +6,7 @@ function [newContData, chname, chnum] = getNewRawData_AO(selChanInfo, ~)
 % and chsel is chanInfo.IDnumber 
 
 chsel = cellfun(@(ifo) ifo.IDnumber, selChanInfo);
+Fs = mode(cellfun(@(ifo) ifo.SampleRate, selChanInfo)); % should be same all chans
 
 W = length(chsel);
 [Results,continuousData,DataCapture,time] = AO_GetAlignedData(chsel);
@@ -17,13 +18,14 @@ if Results
     end
     error(msg); % consider trying again until success 
 end
-time = time/1510; % TO DO: make sure this is correct time in seconds!
 % may be in samples of the channel's sample rate (i.e. 1375)
 continuousData = continuousData(1:DataCapture); 
 L = DataCapture/W;
 continuousData = reshape(continuousData, ...
     L, W); % columns = channels 
 continuousData = double(continuousData);
+time = double(time); L = double(L);
+time = (time-L)/Fs; % is this correct time in seconds?
 
 newContData = cell(1,W);
 for ch = 1:W

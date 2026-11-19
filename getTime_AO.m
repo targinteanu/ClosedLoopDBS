@@ -1,7 +1,8 @@
 function t = getTime_AO(~)
 
 [Result, t] = AO_GetLatestTimeStamp(); 
-t = double(t)/(3.02e4); % TO DO: make sure this is correct time in seconds!
+t = double(t);
+t = t/(3e4); % is this correct time in seconds?
 % should be in 30kHz system clocks 
 
 if Result
